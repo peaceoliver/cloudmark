@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="hu" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudMark - Modern Multi-User Bookmark Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div id="notificationArea" class="notification-area" aria-live="polite"></div>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="nav-container">
+            <a href="#" class="logo">
+                <i class="fa-solid fa-bookmark"></i>
+                CloudMark
+            </a>
+            
+            <div class="nav-actions">
+                <button class="btn-icon" id="themeToggle" title="Téma váltása">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+
+                <!-- Dynamic User / Superuser Menu Area -->
+                <div id="userStateArea">
+                    <button class="btn btn-primary" onclick="openModal('authModal')">
+                        <i class="fa-solid fa-user"></i> Bejelentkezés / Regisztráció
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Bookmarklet Quick Helper -->
+        <div class="bookmarklet-banner">
+            <div class="bookmarklet-info">
+                <h3><i class="fa-solid fa-bolt"></i> Gyors Könyvjelzőzés (Bookmarklet)</h3>
+                <p>Húzd ki a gombot a böngésződ Könyvjelzők sávjára. Bármelyik oldalon jársz, 1 kattintással ide mentheted!</p>
+            </div>
+            <a href="javascript:(function(){var t=encodeURIComponent(document.title);var u=encodeURIComponent(window.location.href);window.open(window.location.origin+window.location.pathname+'?url='+u+'&title='+t,'_blank');})();" 
+               class="bookmarklet-link" onclick="event.preventDefault(); alert('Húzd ezt a gombot a böngésződ könyvjelző sávjára!')">
+                <i class="fa-solid fa-plus-circle"></i> + Mentés CloudMarkba
+            </a>
+        </div>
+
+        <!-- Manual Add Bookmark Panel -->
+        <div class="control-panel" id="addPanel" style="display: none;">
+            <div class="panel-header">
+                <span class="panel-title"><i class="fa-solid fa-link"></i> Új Könyvjelző Hozzáadása</span>
+                <span id="incomingAlert" style="display:none; color: var(--accent); font-size: 0.85rem; font-weight:600;">
+                    <i class="fa-solid fa-arrow-down"></i> Bookmarkletből beérkezett adatok!
+                </span>
+            </div>
+            <form id="bookmarkForm" class="add-form-grid">
+                <div class="form-control">
+                    <label>Cím</label>
+                    <input type="text" id="bmTitle" placeholder="Pl. GitHub Repó" required>
+                </div>
+                <div class="form-control">
+                    <label>URL Cím</label>
+                    <input type="url" id="bmUrl" placeholder="https://example.com" required>
+                </div>
+                <div class="form-control">
+                    <label>Kategória</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select id="bmCategory" required></select>
+                        <button type="button" class="btn btn btn-secondary" onclick="openModal('categoryModal')" title="Új kategória hozzáadása">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-control" style="justify-content: flex-end;">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-save"></i> Mentés
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Category Filters -->
+        <!-- Category Filters & View Switcher Container -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+            <div class="categories-bar" id="categoriesBar" style="margin-bottom: 0; flex-grow: 1;"></div>
+
+            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                <!-- ÚJ RENDEZÉS LEGÖRDÜLŐ -->
+                <select id="sortSelect" onchange="changeSortMode(this.value)" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: 8px;">
+                    <option value="newest">🕒 Legújabb elöl</option>
+                    <option value="oldest">⏳ Legrégebbi elöl</option>
+                    <option value="abc">🔤 ABC sorrend (Cím)</option>
+                    <option value="frequency">🔥 Leggyakrabban kattintott</option>
+                </select>
+
+                <div class="view-switcher">
+                    <button class="view-btn active" id="btnViewGrid" onclick="setBookmarkView('grid')" title="Normál Kártyák">
+                        <i class="fa-solid fa-border-all"></i>
+                    </button>
+                    <button class="view-btn" id="btnViewCompact" onclick="setBookmarkView('compact')" title="Kompakt Kártyák">
+                        <i class="fa-solid fa-grip"></i>
+                    </button>
+                    <button class="view-btn" id="btnViewList" onclick="setBookmarkView('list')" title="Lista Nézet">
+                        <i class="fa-solid fa-list"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bookmarks Dashboard -->
+        <div class="dashboard-grid" id="bookmarkGrid">
+            <!-- Dynamic Cards -->
+        </div>
+    </main>
+
+    <!-- Modal: Auth & Registration -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal">
+            <div class="modal-title" id="authModalTitle">
+                <i class="fa-solid fa-user-lock"></i> Bejelentkezés
+            </div>
+            
+            <form id="authForm" class="modal-form">
+                <div class="form-control">
+                    <label>Felhasználónév</label>
+                    <input type="text" id="authUsername" required minlength="3" autocomplete="username" placeholder="pl. jondoe vagy admin">
+                </div>
+                <div class="form-control" id="emailGroup" style="display: none;">
+                    <label>E-mail Cím</label>
+                    <input type="email" id="authEmail" placeholder="nev@domain.com">
+                </div>
+                <div class="form-control">
+                    <label>Jelszó</label>
+                    <input type="password" id="authPassword" required minlength="4" autocomplete="current-password" placeholder="Jelszó vagy 4 jegyű PIN">
+                </div>
+                <div class="form-control">
+                    <label>Munkamenet Megjegyzése</label>
+                    <select id="authRetention">
+                        <option value="session">Kilépésig (Session)</option>
+                        <option value="7">7 Napig</option>
+                        <option value="30" selected>30 Napig</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="authSubmitBtn">Bejelentkezés</button>
+            </form>
+
+            <div style="margin-top: 1.25rem; text-align: center; font-size: 0.85rem; color: var(--text-secondary);">
+                <span id="authToggleText">Még nincs fiókod?</span>
+                <a href="#" id="authToggleLink" style="color: var(--accent); font-weight:600; text-decoration:none;" onclick="toggleAuthMode(event)">Regisztráció</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: User Settings -->
+    <div class="modal-overlay" id="userSettingsModal">
+        <div class="modal">
+            <div class="modal-title">
+                <i class="fa-solid fa-user-gear"></i> Felhasználói beállítások
+            </div>
+            <form id="userSettingsForm" class="modal-form">
+                <div class="section-divider"><i class="fa-solid fa-sliders"></i> Megjelenés</div>
+                <div class="form-control">
+                    <label>Téma</label>
+                    <select id="userThemeSetting">
+                        <option value="dark">Sötét</option>
+                        <option value="light">Világos</option>
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label>Nézet</label>
+                    <select id="userViewSetting">
+                        <option value="grid">Kártyák</option>
+                        <option value="compact">Kompakt</option>
+                        <option value="list">Lista</option>
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label>Rendezés</label>
+                    <select id="userSortSetting">
+                        <option value="newest">Legújabb elöl</option>
+                        <option value="oldest">Legrégebbi elöl</option>
+                        <option value="abc">ABC sorrend</option>
+                        <option value="frequency">Leggyakrabban kattintott</option>
+                    </select>
+                </div>
+                <div class="section-divider"><i class="fa-solid fa-key"></i> Jelszó módosítása</div>
+                <div class="form-control">
+                    <label>Jelenlegi jelszó</label>
+                    <input type="password" id="currentPassword" minlength="4" autocomplete="current-password">
+                </div>
+                <div class="form-control">
+                    <label>Új jelszó</label>
+                    <input type="password" id="newPassword" minlength="4" autocomplete="new-password">
+                </div>
+                <div class="form-control">
+                    <label>Új jelszó ismét</label>
+                    <input type="password" id="confirmNewPassword" minlength="4" autocomplete="new-password">
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;">
+                    <button type="button" class="btn btn-danger" onclick="closeModal('userSettingsModal')">Mégse</button>
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Mentés</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Superuser / Admin Config Panel -->
+    <div class="modal-overlay" id="adminConfigModal">
+        <div class="modal">
+            <div class="modal-title" style="color: var(--warning);">
+                <i class="fa-solid fa-sliders"></i> Rendszerbeállítások (Superuser)
+            </div>
+            
+            <form id="adminConfigForm" class="modal-form">
+                <div class="section-divider">
+                    <i class="fa-solid fa-envelope"></i> SMTP E-mail Küldési Beállítások
+                </div>
+
+                <div class="form-control">
+                    <label>Küldő E-mail Cím (Sender)</label>
+                    <input type="email" id="cfgEmailSender" required>
+                </div>
+                <div class="form-control">
+                    <label>Alkalmazás Jelszó / Password</label>
+                    <input type="password" id="cfgEmailPassword" required>
+                </div>
+                <div class="add-form-grid" style="grid-template-columns: 2fr 1fr; gap: 0.5rem; margin:0;">
+                    <div class="form-control">
+                        <label>SMTP Szerver</label>
+                        <input type="text" id="cfgSmtpServer" required>
+                    </div>
+                    <div class="form-control">
+                        <label>Port</label>
+                        <input type="number" id="cfgSmtpPort" value="587" required>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem;">
+                    <button type="button" class="btn btn btn-danger" onclick="closeModal('adminConfigModal')">Mégse</button>
+                    <button type="submit" class="btn btn-primary" style="background-color: var(--warning); border-color: var(--warning);">
+                        <i class="fa-solid fa-floppy-disk"></i> Beállítások Mentése
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Email Confirmation Simulation -->
+    <div class="modal-overlay" id="verifyModal">
+        <div class="modal">
+            <div class="modal-title" style="color: var(--warning);">
+                <i class="fa-solid fa-envelope-circle-check"></i> E-mail Cím Megerősítése
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                Küldtünk egy aktiváló kódot a megadott e-mail címre. A fiókod csak a megerősítés után aktiválódik az adatbázisban!
+            </p>
+            <div class="form-control" style="margin-bottom: 1rem;">
+                <label>Aktivációs Kód (Szimulált kód: 123456)</label>
+                <input type="text" id="verifyCode" placeholder="123456" style="text-align: center; font-weight:700; letter-spacing: 2px;">
+            </div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="confirmEmailActivation()">Fiók Aktiválása</button>
+        </div>
+    </div>
+
+    <!-- Modal: Add / Manage Categories -->
+    <div class="modal-overlay" id="categoryModal" style="z-index: 2200;">
+        <div class="modal">
+            <div class="modal-title">
+                <i class="fa-solid fa-folder-gear"></i> Kategóriák Kezelése
+            </div>
+            
+            <!-- Új kategória hozzáadása -->
+            <div class="form-control" style="margin-bottom: 1rem;">
+                <label>Új Kategória Neve</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="newCatName" placeholder="Pl. Olvasnivaló...">
+                    <button class="btn btn-primary" onclick="createNewCategory()">Létrehozás</button>
+                </div>
+            </div>
+
+            <div class="section-divider">Meglévő Kategóriák</div>
+
+            <!-- Meglévő kategóriák listája törlés/szerkesztés gombokkal -->
+            <div id="manageCategoriesList" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; margin-bottom: 1rem;">
+                <!-- Dinamikusan feltöltve -->
+            </div>
+
+            <button class="btn btn btn-danger" style="width: 100%;" onclick="closeModal('categoryModal')">Bezárás</button>
+        </div>
+    </div>
+
+    <!-- Modal: Edit Bookmark -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <div class="modal-title">
+                <i class="fa-solid fa-pen-to-square"></i> Könyvjelző Szerkesztése
+            </div>
+            <form id="editBookmarkForm" class="modal-form">
+                <input type="hidden" id="editBmId">
+                <div class="form-control">
+                    <label>Cím</label>
+                    <input type="text" id="editBmTitle" required>
+                </div>
+                <div class="form-control">
+                    <label>URL Cím</label>
+                    <input type="url" id="editBmUrl" required>
+                </div>
+                <div class="form-control">
+                    <label>Kategória</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select id="editBmCategory" required></select>
+                        <button type="button" class="btn btn btn-secondary" onclick="openModal('categoryModal')" title="Új kategória hozzáadása">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+                    <button type="button" class="btn btn btn-danger" onclick="closeModal('editModal')">Mégse</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i> Módosítások Mentése
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="/js/config.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/notifications.js"></script>
+    <script src="/js/modal.js"></script>
+    <script src="/js/categories-ui.js"></script>
+    <script src="/js/bookmarks-ui.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
