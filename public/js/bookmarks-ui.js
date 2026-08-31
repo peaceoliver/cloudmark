@@ -5,7 +5,15 @@ function setBookmarkView(viewMode) {
     currentBookmarkView = viewMode; localStorage.setItem(config.storageKeys.viewMode, viewMode);
     if (currentUser && typeof api !== 'undefined') api.saveUserSetting('viewMode', viewMode).catch(err => console.warn('Failed to save view mode:', err));
     document.querySelectorAll('.view-btn').forEach(button => button.classList.remove('active'));
-    const button = document.getElementById(`btnView${viewMode[0].toUpperCase()}${viewMode.slice(1)}`);
+
+    const buttonMap = {
+        grid: 'btnViewGrid',
+        compact: 'btnViewCompact',
+        list: 'btnViewList',
+        noimage: 'btnViewNoimage'
+    };
+
+    const button = document.getElementById(buttonMap[viewMode] || `btnView${viewMode[0].toUpperCase()}${viewMode.slice(1)}`);
     if (button) button.classList.add('active');
     renderBookmarks();
 }

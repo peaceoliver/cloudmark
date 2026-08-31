@@ -154,14 +154,24 @@
             background-color: var(--accent-hover);
         }
 
-        .btn btn-danger {
+        .btn-secondary {
             background-color: transparent;
             border-color: var(--border-color);
             color: var(--text-primary);
         }
 
-        .btn btn-danger:hover {
+        .btn-secondary:hover {
             background-color: var(--bg-card-hover);
+        }
+
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+        }
+
+        .btn-danger:hover {
+            background-color: #dc2626;
         }
 
         .btn-admin {
@@ -534,17 +544,7 @@
             gap: 0.5rem;
         }
 
-        .btn-danger {
-            background-color: #ef4444; /* Modern piros */
-            color: white;
-            border: none;
-        }
-        .btn-danger:hover {
-            background-color: #dc2626; /* Sötétebb piros hover állapotban */
-        }
-
-
-        /* View Switcher Gombok */
+        /* View Switcher - uniform button group */
         .view-switcher {
             display: flex;
             gap: 0.25rem;
@@ -558,83 +558,82 @@
             background: transparent;
             border: none;
             color: var(--text-secondary);
-            padding: 0.4rem 0.6rem;
+            padding: 0.45rem 0.7rem;
             border-radius: 6px;
             cursor: pointer;
             font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2.4rem;
+        }
+
+        .view-btn:hover {
+            background-color: var(--bg-card-hover);
+            color: var(--text-primary);
         }
 
         .view-btn.active {
             background-color: var(--accent);
             color: #ffffff;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
         }
 
-        /* Kompakt Grid Nézet */
+        /* Shared layout behavior for all bookmark views */
+        .dashboard-grid.view-compact,
+        .dashboard-grid.view-list,
+        .dashboard-grid.view-noimage {
+            align-items: stretch;
+        }
+
         .dashboard-grid.view-compact {
             grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
             gap: 1rem;
         }
+
         .dashboard-grid.view-compact .card {
-            padding: 0.85rem;
+            padding: 0.9rem;
         }
+
+        .dashboard-grid.view-compact .card-cover {
+            height: 120px;
+            margin-bottom: 0.75rem;
+        }
+
         .dashboard-grid.view-compact .card-url {
-            display: none; /* Kompakt módban rejtjük a hosszú URL-t a tisztább képért */
+            display: none;
         }
+
         .dashboard-grid.view-compact .card-footer {
             padding-top: 0.5rem;
             margin-top: 0.25rem;
             font-size: 0.7rem;
+            gap: 0.5rem;
         }
 
-        /* Lista Nézet */
         .dashboard-grid.view-list {
             grid-template-columns: 1fr;
             gap: 0.5rem;
         }
+
         .dashboard-grid.view-list .card {
+            display: flex;
             flex-direction: row;
             align-items: center;
-            padding: 0.75rem 1rem;
             gap: 1rem;
+            padding: 0.7rem 1rem;
+            overflow: hidden;
         }
+
         .dashboard-grid.view-list .card > div:first-child {
             display: flex;
             align-items: center;
             gap: 1rem;
             flex-grow: 1;
-            overflow: hidden;
-        }
-        .dashboard-grid.view-list .card-header {
-            margin-bottom: 0;
-            flex-grow: 1;
-        }
-        .dashboard-grid.view-list .card-url {
-            margin-bottom: 0;
-            max-width: 300px;
-        }
-        .dashboard-grid.view-list .card-footer {
-            border-top: none;
-            padding-top: 0;
-            margin-top: 0;
-            flex-shrink: 0;
-            gap: 1.5rem;
-        }
-
-/* --- LISTA NÉZET - TÖKÉLETESEN EGYSÉGESÍTETT OSZLOPOK --- */
-        .dashboard-grid.view-list {
-            grid-template-columns: 1fr;
-            gap: 0.5rem;
-        }
-        
-        .dashboard-grid.view-list .card {
-            flex-direction: row;
-            align-items: center;
-            padding: 0.6rem 1rem;
-            gap: 1rem;
+            min-width: 0;
             overflow: hidden;
         }
 
-        /* Borítókép fix helye: ha nincs kép, akkor is fenntartja a helyet, hogy ne ugorjon el a szöveg */
         .dashboard-grid.view-list .card-cover {
             width: 60px;
             height: 45px;
@@ -643,17 +642,7 @@
             border-radius: 6px;
             object-fit: cover;
             flex-shrink: 0;
-            background-color: var(--bg-input); /* Ha nincs kép, egy szolid háttér látszódik helyette */
-        }
-
-        /* Fő tartalom konténer */
-        .dashboard-grid.view-list .card > div:first-child {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex-grow: 1;
-            min-width: 0;
-            overflow: hidden;
+            background-color: var(--bg-input);
         }
 
         .dashboard-grid.view-list .card-header {
@@ -666,7 +655,6 @@
             gap: 0.15rem;
         }
 
-        /* Címsor balra igazítva, elegánsan vágva */
         .dashboard-grid.view-list .card-title {
             font-size: 0.95rem;
             white-space: nowrap;
@@ -675,7 +663,6 @@
             width: 100%;
         }
 
-        /* URL vagy leírás a cím alatt balra */
         .dashboard-grid.view-list .card-url {
             margin-bottom: 0;
             max-width: 100%;
@@ -687,7 +674,6 @@
             width: 100%;
         }
 
-        /* Jobb oldali blokk: kategória badge + dátum + gombok egy sorban */
         .dashboard-grid.view-list .card-footer {
             border-top: none;
             padding-top: 0;
@@ -698,12 +684,32 @@
             gap: 1rem;
         }
 
-        /* Kategória badge a dátum elé igazítva */
         .dashboard-grid.view-list .card-category {
-            order: -1; /* Előretolja a dátum elé */
+            order: -1;
             white-space: nowrap;
         }
 
+        .dashboard-grid.view-noimage {
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1rem;
+        }
+
+        .dashboard-grid.view-noimage .card {
+            padding: 1rem;
+        }
+
+        .dashboard-grid.view-noimage .card-cover {
+            display: none;
+        }
+
+        .dashboard-grid.view-noimage .card-url {
+            margin-bottom: 0.75rem;
+        }
+
+        .dashboard-grid.view-noimage .card-footer {
+            padding-top: 0.6rem;
+            margin-top: 0.25rem;
+        }
 
         /* --- MOBIL NÉZET (< 768px) --- */
         @media (max-width: 768px) {
@@ -736,5 +742,9 @@
                 width: 100%;
                 justify-content: space-between;
                 flex-wrap: wrap;
+            }
+
+            .dashboard-grid.view-noimage .card {
+                padding: 0.85rem;
             }
         }
