@@ -620,7 +620,7 @@
             gap: 1.5rem;
         }
 
-/* --- LISTA NÉZET FIX ÉS OPTIMALIZÁLÁS --- */
+/* --- LISTA NÉZET FIX ÉS UNIFORM KÁRTYÁK --- */
         .dashboard-grid.view-list {
             grid-template-columns: 1fr;
             gap: 0.75rem;
@@ -660,7 +660,7 @@
             min-width: 0;
         }
 
-        /* Hosszú URL elegáns kezelése túlcsordulás nélkül */
+        /* AZ URL LEVÁGÁSA "...": Nem törhet sort, és ha túl hosszú, elvágódik */
         .dashboard-grid.view-list .card-url {
             margin-bottom: 0;
             max-width: 100%;
@@ -698,8 +698,15 @@
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 0.3rem;
+                width: 100%;
             }
 
+            .dashboard-grid.view-list .card-header {
+                width: 100%;
+                min-width: 0;
+            }
+
+            /* MOBILON IS BIZTOSÍTJUK A HOSSZÚ URL LEVÁGÁST (...), HOGY NE NYÚJTSA SZÉT A KÁRTYÁT */
             .dashboard-grid.view-list .card-url {
                 width: 100%;
                 overflow: hidden;
