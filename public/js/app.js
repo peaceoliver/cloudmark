@@ -57,8 +57,15 @@ async function loadUserSettings() {
             currentSortMode = settings.sortMode;
             localStorage.setItem(config.storageKeys.sortMode, settings.sortMode);
         }
+        if (Object.prototype.hasOwnProperty.call(settings, 'fetchMetadata')) {
+            const fetchMetadataValue = String(settings.fetchMetadata) === 'false' ? 'false' : 'true';
+            localStorage.setItem(config.storageKeys.fetchMetadata, fetchMetadataValue);
+        } else {
+            localStorage.setItem(config.storageKeys.fetchMetadata, 'true');
+        }
     } catch (err) {
         console.warn('Failed to load user settings:', err);
+        localStorage.setItem(config.storageKeys.fetchMetadata, 'true');
     }
 }
 

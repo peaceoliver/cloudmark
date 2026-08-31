@@ -34,7 +34,8 @@ function renderBookmarks() {
 /** Builds a bookmark card and wires its actions. */
 function createBookmarkCard(bookmark) {
     const card = document.createElement('div'); card.className = 'card';
-    if (bookmark.imageUrl) {
+    const fetchMetadataEnabled = localStorage.getItem(config.storageKeys.fetchMetadata) !== 'false';
+    if (fetchMetadataEnabled && bookmark.imageUrl) {
         const image = document.createElement('img'); image.className = 'card-cover'; image.src = bookmark.imageUrl; image.alt = bookmark.metadataTitle || bookmark.title;
         image.loading = 'lazy'; image.onerror = () => image.remove(); card.appendChild(image);
     }
@@ -44,7 +45,7 @@ function createBookmarkCard(bookmark) {
     const titleContainer = document.createElement('div'); titleContainer.style.cssText = 'display:flex; align-items:center; gap:0.5rem; overflow:hidden;'; titleContainer.appendChild(title);
     const category = document.createElement('span'); category.className = 'card-category'; category.textContent = bookmark.category; header.append(titleContainer, category);
     const url = document.createElement('div'); url.className = 'card-url'; url.textContent = bookmark.url; left.append(header, url);
-    if (bookmark.metadataTitle && bookmark.metadataTitle !== bookmark.title) {
+    if (fetchMetadataEnabled && bookmark.metadataTitle && bookmark.metadataTitle !== bookmark.title) {
         const articleTitle = document.createElement('div'); articleTitle.className = 'card-metadata-title'; articleTitle.textContent = bookmark.metadataTitle; left.appendChild(articleTitle);
     }
     const footer = document.createElement('div'); footer.className = 'card-footer'; footer.innerHTML = `<span><i class="fa-regular fa-clock"></i> ${bookmark.createdAt}</span>`;

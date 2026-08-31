@@ -192,6 +192,43 @@ function extractMetaValue(html, names) {
     return null;
 }
 
+function normalizeBooleanSetting(value, fallback = true) {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+        if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+    }
+    if (typeof value === 'number') return value !== 0;
+    return fallback;
+}
+
+async function getUserSettingValue(userId, key, fallback) {
+    try {
+        const result = await pool.query(
+            'SELECT value FROM settings_user WHERE user_id = $1 AND setting_key = $2',
+            [userId, key]
+        );
+        if (!result.rows.length) return fallback;
+        const rawValue = result.rows[0].value;
+        if (typeof rawValue === 'string') {
+            try {
+                return JSON.parse(rawValue);
+            } catch (err) {
+                return rawValue;
+            }
+        }
+        return rawValue ?? fallback;
+    } catch (err) {
+        return fallback;
+    }
+}
+
+async function shouldFetchWebsiteMetadata(userId) {
+    const value = await getUserSettingValue(userId, 'fetchMetadata', true);
+    return normalizeBooleanSetting(value, true);
+}
+
 /** Fetches lightweight article metadata without making metadata mandatory. */
 async function fetchBookmarkMetadata(url) {
     try {
@@ -206,7 +243,7 @@ async function fetchBookmarkMetadata(url) {
             title: extractMetaValue(html, ['og:title', 'twitter:title']) || extractMetaValue(html, ['title']),
             imageUrl: image ? new URL(image, url).href : null,
             description: extractMetaValue(html, ['og:description', 'description']),
-            siteName: extractMetaValue(html, ['og:site_name'])
+            siteName: extractMetaValue(html, ['og:site_name']) || new URL(url).hostname
         };
     } catch (err) {
         console.warn('Bookmark metadata fetch failed:', err.message);
@@ -431,7 +468,7 @@ app.get('/api/bookmarks', async (req, res) => {
 app.post('/api/bookmarks', requireAuth, async (req, res) => {
     const { title, url, category } = req.body;
     try {
-        const metadata = await fetchBookmarkMetadata(url);
+        const metadata = (await shouldFetchWebsiteMetadata(req.user.id)) ? await fetchBookmarkMetadata(url) : {};
         const result = await pool.query(
             `INSERT INTO bookmarks (user_id, title, url, category, metadata_title, image_url, description, site_name)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
@@ -461,7 +498,7 @@ app.put('/api/bookmarks/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const { title, url, category } = req.body;
     try {
-        const metadata = await fetchBookmarkMetadata(url);
+        const metadata = (await shouldFetchWebsiteMetadata(req.user.id)) ? await fetchBookmarkMetadata(url) : {};
         const owner = req.user.role === 'admin' ? '' : ' AND user_id = $9';
         const result = await pool.query(
             `UPDATE bookmarks SET title = $1, url = $2, category = $3, metadata_title = $5, image_url = $6, description = $7, site_name = $8 WHERE id = $4${owner} RETURNING *`,
@@ -612,10 +649,10 @@ app.get('/api/user/settings', requireAuth, async (req, res) => {
 
 /** Saves one supported UI preference for the authenticated user. */
 app.put('/api/user/settings/:key', requireAuth, async (req, res) => {
-    const allowedKeys = ['theme', 'viewMode', 'sortMode'];
+    const allowedKeys = ['theme', 'viewMode', 'sortMode', 'fetchMetadata'];
     const { key } = req.params;
     if (!allowedKeys.includes(key)) return res.status(400).json({ error: 'Ismeretlen felhasználói beállítás.' });
-    if (typeof req.body.value !== 'string' || !req.body.value) return res.status(400).json({ error: 'Érvénytelen beállítási érték.' });
+    if (req.body.value === undefined || req.body.value === null || String(req.body.value).trim() === '') return res.status(400).json({ error: 'Érvénytelen beállítási érték.' });
 
     try {
         await pool.query(

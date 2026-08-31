@@ -63,9 +63,11 @@ function updateUserUI() {
 /** Opens the user settings modal with database values and local fallbacks. */
 async function openUserSettings() {
     const settings = await api.getUserSettings().catch(() => ({}));
+    const metadataValue = settings.fetchMetadata ?? localStorage.getItem(config.storageKeys.fetchMetadata) ?? 'true';
     document.getElementById('userThemeSetting').value = settings.theme || localStorage.getItem(config.storageKeys.theme) || 'dark';
     document.getElementById('userViewSetting').value = settings.viewMode || localStorage.getItem(config.storageKeys.viewMode) || 'grid';
     document.getElementById('userSortSetting').value = settings.sortMode || localStorage.getItem(config.storageKeys.sortMode) || 'newest';
+    document.getElementById('userMetadataSetting').value = String(metadataValue) === 'false' ? 'false' : 'true';
     document.getElementById('currentPassword').value = '';
     document.getElementById('newPassword').value = '';
     document.getElementById('confirmNewPassword').value = '';
@@ -138,6 +140,7 @@ document.getElementById('userSettingsForm').addEventListener('submit', async eve
     const currentPassword = document.getElementById('currentPassword').value;
     const newPassword = document.getElementById('newPassword').value;
     const confirmation = document.getElementById('confirmNewPassword').value;
+    const metadataSetting = document.getElementById('userMetadataSetting').value;
     if (newPassword && currentPassword.length < 4) {
         showNotification('Jelszócseréhez add meg a jelenlegi jelszavadat.', 'error');
         return;
@@ -151,11 +154,13 @@ document.getElementById('userSettingsForm').addEventListener('submit', async eve
         await Promise.all([
             api.saveUserSetting('theme', document.getElementById('userThemeSetting').value),
             api.saveUserSetting('viewMode', document.getElementById('userViewSetting').value),
-            api.saveUserSetting('sortMode', document.getElementById('userSortSetting').value)
+            api.saveUserSetting('sortMode', document.getElementById('userSortSetting').value),
+            api.saveUserSetting('fetchMetadata', metadataSetting)
         ]);
         localStorage.setItem(config.storageKeys.theme, document.getElementById('userThemeSetting').value);
         localStorage.setItem(config.storageKeys.viewMode, document.getElementById('userViewSetting').value);
         localStorage.setItem(config.storageKeys.sortMode, document.getElementById('userSortSetting').value);
+        localStorage.setItem(config.storageKeys.fetchMetadata, metadataSetting);
         document.documentElement.setAttribute('data-theme', document.getElementById('userThemeSetting').value);
         updateThemeIcon(document.getElementById('userThemeSetting').value);
         currentSortMode = document.getElementById('userSortSetting').value;
