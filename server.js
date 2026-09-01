@@ -575,10 +575,12 @@ app.get('/api/bookmarks', async (req, res) => {
             params.push(String(req.query.tag).slice(0, 80));
             conditions.push(`t.name = $${params.length}`);
         }
-        if (req.query.trash === 'true') conditions.push('b.trashed = TRUE');
-        else {
-            conditions.push('b.trashed = FALSE');
-            if (req.query.archived !== 'true') conditions.push('b.archived = FALSE');
+        if (req.query.all !== 'true') {
+            if (req.query.trash === 'true') conditions.push('b.trashed = TRUE');
+            else {
+                conditions.push('b.trashed = FALSE');
+                if (req.query.archived !== 'true') conditions.push('b.archived = FALSE');
+            }
         }
         if (req.query.status && ['inbox', 'read_later', 'to_review', 'done'].includes(req.query.status)) conditions.push(`b.status = $${params.length + 1}`), params.push(req.query.status);
         if (conditions.length) query += ` WHERE ${conditions.join(' AND ')}`;

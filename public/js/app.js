@@ -26,7 +26,7 @@ async function loadCategoriesFromServer() {
 /** Loads bookmarks and maps database columns to the client model. */
 async function loadBookmarksFromServer() {
     try {
-        const rows = await api.getBookmarks();
+        const rows = await api.getBookmarks({ all: 'true' });
         bookmarks = Array.isArray(rows) ? rows.map(row => ({
             id: row.id,
             userId: String(row.user_id || row.userId || 'demo'),
