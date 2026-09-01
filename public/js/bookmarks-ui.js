@@ -79,7 +79,7 @@ function createBookmarkCard(bookmark) {
     const left = document.createElement('div'); left.className = 'card-content'; const header = document.createElement('div'); header.className = 'card-header';
     const title = document.createElement('a'); title.href = bookmark.url; title.target = '_blank'; title.className = 'card-title'; title.textContent = primaryTitle;
     title.onclick = event => { event.preventDefault(); trackClickAndOpen(bookmark.id, bookmark.url); };
-    const titleContainer = document.createElement('div'); titleContainer.style.cssText = 'display:flex; align-items:center; gap:0.5rem; overflow:hidden;'; titleContainer.appendChild(title);
+    const titleContainer = document.createElement('div'); titleContainer.className = 'card-title-container'; titleContainer.appendChild(title);
     const category = document.createElement('span'); category.className = 'card-category'; category.textContent = bookmark.category; header.append(titleContainer, category);
     const url = document.createElement('div'); url.className = 'card-url'; url.textContent = bookmark.url; left.append(header, url);
     if (fetchMetadataTitleEnabled && bookmark.metadataTitle && bookmark.metadataTitle.trim() && bookmark.metadataTitle.trim() !== primaryTitle.trim()) {
