@@ -148,6 +148,31 @@ async function initDatabase() {
         await client.query('ALTER TABLE bookmarks ADD COLUMN IF NOT EXISTS image_url TEXT');
         await client.query('ALTER TABLE bookmarks ADD COLUMN IF NOT EXISTS description TEXT');
         await client.query('ALTER TABLE bookmarks ADD COLUMN IF NOT EXISTS site_name VARCHAR(255)');
+        await client.query('ALTER TABLE bookmarks ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE');
+        await client.query('ALTER TABLE bookmarks ADD COLUMN IF NOT EXISTS starred BOOLEAN NOT NULL DEFAULT FALSE');
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS tags (
+                id BIGSERIAL PRIMARY KEY,
+                user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+                name VARCHAR(80) NOT NULL,
+                UNIQUE(user_id, name)
+            );
+            CREATE TABLE IF NOT EXISTS bookmark_tags (
+                bookmark_id BIGINT NOT NULL REFERENCES bookmarks(id) ON DELETE CASCADE,
+                tag_id BIGINT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+                PRIMARY KEY (bookmark_id, tag_id)
+            );
+            CREATE TABLE IF NOT EXISTS bookmark_shares (
+                id BIGSERIAL PRIMARY KEY,
+                bookmark_id BIGINT NOT NULL REFERENCES bookmarks(id) ON DELETE CASCADE,
+                token CHAR(64) UNIQUE NOT NULL,
+                permission VARCHAR(10) NOT NULL DEFAULT 'view',
+                expires_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS bookmarks_user_created_idx ON bookmarks(user_id, created_at DESC);
+            CREATE INDEX IF NOT EXISTS bookmarks_search_idx ON bookmarks USING gin(to_tsvector('simple', coalesce(title,'') || ' ' || coalesce(url,'') || ' ' || coalesce(description,'')));
+        `);
 
         // Kategóriák tábla létrehozása
         await client.query(`
@@ -179,6 +204,23 @@ function hashSessionToken(token) {
 /** Hashes an email verification token before it is persisted. */
 function hashVerificationToken(token) {
     return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function normalizeTags(tags) {
+    return [...new Set((Array.isArray(tags) ? tags : String(tags || '').split(',')).map(tag => String(tag).trim().toLowerCase()).filter(Boolean))].slice(0, 30);
+}
+
+async function replaceBookmarkTags(bookmarkId, userId, tags) {
+    const names = normalizeTags(tags);
+    await pool.query('DELETE FROM bookmark_tags WHERE bookmark_id = $1', [bookmarkId]);
+    for (const name of names) {
+        const tag = await pool.query(
+            `INSERT INTO tags (user_id, name) VALUES ($1, $2)
+             ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
+            [userId, name]
+        );
+        await pool.query('INSERT INTO bookmark_tags (bookmark_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [bookmarkId, tag.rows[0].id]);
+    }
 }
 
 /** Extracts a quoted Open Graph or standard HTML meta value. */
@@ -480,12 +522,15 @@ app.post('/api/auth/logout', async (req, res) => {
 app.get('/api/bookmarks', async (req, res) => {
     try {
         const user = await getAuthenticatedUser(req);
-        let query = 'SELECT * FROM bookmarks';
+        let query = `SELECT b.*, COALESCE(array_agg(t.name) FILTER (WHERE t.name IS NOT NULL), '{}') AS tags
+                     FROM bookmarks b LEFT JOIN bookmark_tags bt ON bt.bookmark_id = b.id
+                     LEFT JOIN tags t ON t.id = bt.tag_id`;
         let params = [];
+        const conditions = [];
 
         if (user) {
             if (user.role === 'admin') {
-                query += ' ORDER BY created_at DESC';
+                // administrators can search the complete collection
             } else {
                 const userIds = [...new Set([
                     String(user.username || '').toLowerCase(),
@@ -493,13 +538,24 @@ app.get('/api/bookmarks', async (req, res) => {
                     'demo',
                     'admin'
                 ].filter(Boolean))];
-                query += ' WHERE LOWER(CAST(user_id AS TEXT)) = ANY($1) ORDER BY created_at DESC';
+                conditions.push('LOWER(CAST(b.user_id AS TEXT)) = ANY($1)');
                 params = [userIds];
             }
         } else {
-            query += ' WHERE LOWER(CAST(user_id AS TEXT)) = ANY($1) ORDER BY created_at DESC';
+            conditions.push('LOWER(CAST(b.user_id AS TEXT)) = ANY($1)');
             params = [['demo', 'admin', 'main']];
         }
+        if (req.query.q) {
+            params.push(`%${String(req.query.q).slice(0, 200)}%`);
+            conditions.push(`(b.title ILIKE $${params.length} OR b.url ILIKE $${params.length} OR b.category ILIKE $${params.length} OR b.description ILIKE $${params.length} OR t.name ILIKE $${params.length})`);
+        }
+        if (req.query.tag) {
+            params.push(String(req.query.tag).slice(0, 80));
+            conditions.push(`t.name = $${params.length}`);
+        }
+        if (req.query.archived !== 'true') conditions.push('b.archived = FALSE');
+        if (conditions.length) query += ` WHERE ${conditions.join(' AND ')}`;
+        query += ' GROUP BY b.id ORDER BY b.created_at DESC';
 
         const result = await pool.query(query, params);
         res.json(result.rows);
@@ -510,7 +566,7 @@ app.get('/api/bookmarks', async (req, res) => {
 
 /** Creates a bookmark for the requested user. */
 app.post('/api/bookmarks', requireAuth, async (req, res) => {
-    const { title, url, category } = req.body;
+    const { title, url, category, tags = [] } = req.body;
     try {
         const fetchTitle = await shouldFetchWebsiteMetadataTitle(req.user.id);
         const fetchImage = await shouldFetchWebsiteMetadataImage(req.user.id);
@@ -530,7 +586,8 @@ app.post('/api/bookmarks', requireAuth, async (req, res) => {
                 metadata.siteName
             ]
         );
-        res.status(201).json(result.rows[0]);
+        await replaceBookmarkTags(result.rows[0].id, req.user.id, tags);
+        res.status(201).json({ ...result.rows[0], tags: normalizeTags(tags) });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -557,7 +614,7 @@ app.delete('/api/bookmarks/:id', requireAuth, async (req, res) => {
 /** Updates a bookmark's title, URL, and category. */
 app.put('/api/bookmarks/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
-    const { title, url, category } = req.body;
+    const { title, url, category, tags = [] } = req.body;
     try {
         const fetchTitle = await shouldFetchWebsiteMetadataTitle(req.user.id);
         const fetchImage = await shouldFetchWebsiteMetadataImage(req.user.id);
@@ -572,7 +629,8 @@ app.put('/api/bookmarks/:id', requireAuth, async (req, res) => {
         query += ' RETURNING *';
         const result = await pool.query(query, params);
         if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-        res.json(result.rows[0]);
+        await replaceBookmarkTags(result.rows[0].id, req.user.id, tags);
+        res.json({ ...result.rows[0], tags: normalizeTags(tags) });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -593,6 +651,72 @@ app.post('/api/bookmarks/:id/click', async (req, res) => {
         console.error('Hiba a kattintás frissítésekor:', err);
         res.status(500).json({ error: 'Internal Server Error' });
     }
+});
+
+app.get('/api/tags', requireAuth, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT name FROM tags WHERE user_id = $1 ORDER BY name', [req.user.id]);
+        res.json(result.rows.map(row => row.name));
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/bookmarks/import', requireAuth, async (req, res) => {
+    const items = Array.isArray(req.body) ? req.body : (req.body.bookmarks || []);
+    if (!Array.isArray(items)) return res.status(400).json({ error: 'bookmarks tömb szükséges' });
+    let imported = 0;
+    try {
+        for (const item of items.slice(0, 5000)) {
+            if (!item.url) continue;
+            const title = resolveBookmarkTitle(item.title, {}, item.url);
+            const row = await pool.query(
+                `INSERT INTO bookmarks (user_id,title,url,category,description,starred)
+                 VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+                [req.user.username, title, item.url, item.category || 'Inbox', item.description || null, Boolean(item.starred)]
+            );
+            await replaceBookmarkTags(row.rows[0].id, req.user.id, item.tags || []);
+            imported++;
+        }
+        res.status(201).json({ imported });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/bookmarks/export', requireAuth, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT b.*, COALESCE(array_agg(t.name) FILTER (WHERE t.name IS NOT NULL), '{}') tags
+             FROM bookmarks b LEFT JOIN bookmark_tags bt ON bt.bookmark_id=b.id
+             LEFT JOIN tags t ON t.id=bt.tag_id
+             WHERE LOWER(CAST(b.user_id AS TEXT)) IN (LOWER($1), LOWER($2))
+             GROUP BY b.id ORDER BY b.created_at DESC`,
+            [req.user.username, String(req.user.id)]
+        );
+        if ((req.query.format || 'json').toLowerCase() === 'html') {
+            const esc = value => String(value || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            const html = '<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<TITLE>CloudMark export</TITLE><DL><p>\n' +
+                result.rows.map(b => `<DT><A HREF="${esc(b.url)}" ADD_DATE="${Math.floor(new Date(b.created_at).getTime()/1000)}">${esc(b.title)}</A>`).join('\n') + '\n</DL><p>';
+            res.type('application/x-netscape-bookmark').attachment('cloudmark-bookmarks.html').send(html);
+        } else {
+            res.type('application/json').attachment('cloudmark-bookmarks.json').send(JSON.stringify(result.rows, null, 2));
+        }
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/bookmarks/:id/share', requireAuth, async (req, res) => {
+    try {
+        const owned = await pool.query('SELECT id FROM bookmarks WHERE id=$1 AND (user_id=$2 OR user_id=$3)', [req.params.id, req.user.username, String(req.user.id)]);
+        if (!owned.rows.length) return res.status(404).json({ error: 'Not found' });
+        const token = crypto.randomBytes(32).toString('hex');
+        await pool.query('INSERT INTO bookmark_shares (bookmark_id,token,permission,expires_at) VALUES ($1,$2,$3,$4)', [req.params.id, token, req.body.permission === 'edit' ? 'edit' : 'view', req.body.expiresAt || null]);
+        res.status(201).json({ token, url: `${process.env.APP_URL || `http://localhost:${PORT}`}/share/${token}` });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/shares/:token', async (req, res) => {
+    try {
+        const result = await pool.query(`SELECT b.*, s.permission FROM bookmark_shares s JOIN bookmarks b ON b.id=s.bookmark_id WHERE s.token=$1 AND (s.expires_at IS NULL OR s.expires_at>NOW())`, [req.params.token]);
+        if (!result.rows.length) return res.status(404).json({ error: 'A megosztási hivatkozás lejárt vagy érvénytelen' });
+        res.json(result.rows[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 

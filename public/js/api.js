@@ -155,6 +155,17 @@ apiNamespace.api = {
         return requestJson(`/api/categories/${encodeURIComponent(name)}`, {
             method: 'DELETE'
         });
+    },
+    getTags() { return requestJson('/api/tags'); },
+    importBookmarks(bookmarks) {
+        return requestJson('/api/bookmarks/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookmarks }) });
+    },
+    exportBookmarks(format) { return fetch(`/api/bookmarks/export?format=${encodeURIComponent(format)}`).then(response => { if (!response.ok) throw new Error('Export failed'); return response.blob(); }); },
+    shareBookmark(id, permission = 'view') {
+        return requestJson(`/api/bookmarks/${id}/share`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permission }) });
+    },
+    getSharedBookmark(token) {
+        return requestJson(`/api/shares/${encodeURIComponent(token)}`);
     }
 };
 

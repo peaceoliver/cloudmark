@@ -38,6 +38,7 @@ async function loadBookmarksFromServer() {
             imageUrl: row.image_url || '',
             description: row.description || '',
             siteName: row.site_name || ''
+            ,tags: Array.isArray(row.tags) ? row.tags : []
         })) : [];
     } catch (err) { console.error('Failed to fetch bookmarks:', err); bookmarks = []; }
 }
@@ -125,6 +126,11 @@ document.getElementById('themeToggle').addEventListener('click', () => {
 /** Initializes theme, data, UI state, and event-driven modules. */
 async function initApp() {
     initTheme();
+    const shareMatch = window.location.pathname.match(/^\/share\/([a-f0-9]{64})$/i);
+    if (shareMatch) {
+        await loadSharedBookmark(shareMatch[1]);
+        return;
+    }
     document.getElementById('sortSelect').value = currentSortMode;
     await loadCurrentUser();
     await loadUserSettings();
@@ -136,6 +142,31 @@ async function initApp() {
     renderBookmarks();
     renderManageCategoriesList();
     checkIncomingBookmarklet();
+}
+
+async function loadSharedBookmark(token) {
+    const grid = document.getElementById('bookmarkGrid');
+    try {
+        const bookmark = await api.getSharedBookmark(token);
+        grid.innerHTML = '';
+        grid.className = 'dashboard-grid';
+        grid.appendChild(createBookmarkCard({
+            id: bookmark.id,
+            userId: bookmark.user_id,
+            title: bookmark.title,
+            url: bookmark.url,
+            category: bookmark.category,
+            createdAt: bookmark.created_at ? bookmark.created_at.split('T')[0] : '',
+            clicks: bookmark.clicks || 0,
+            metadataTitle: bookmark.metadata_title || '',
+            imageUrl: bookmark.image_url || '',
+            description: bookmark.description || '',
+            siteName: bookmark.site_name || '',
+            tags: Array.isArray(bookmark.tags) ? bookmark.tags : []
+        }));
+    } catch (err) {
+        grid.innerHTML = '<div class="empty-state">A megosztási hivatkozás lejárt vagy érvénytelen.</div>';
+    }
 }
 
 window.changeSortMode = changeSortMode;

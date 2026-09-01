@@ -315,6 +315,22 @@ input:focus, select:focus {
     box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
+.enterprise-toolbar {
+    display: flex;
+    gap: .65rem;
+    align-items: center;
+    margin: 0 0 1.25rem;
+    flex-wrap: wrap;
+}
+.enterprise-toolbar input { flex: 1 1 220px; }
+.import-label { cursor: pointer; }
+.card-tags {
+    color: var(--accent);
+    font-size: .75rem;
+    margin: -.35rem 0 .65rem;
+    word-break: break-word;
+}
+
 /* Categories Section */
 .categories-bar {
     display: flex;
