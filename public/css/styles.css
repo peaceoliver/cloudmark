@@ -631,8 +631,8 @@ input:focus, select:focus {
 }
 
 .dashboard-grid.view-list .card {
-    display: flex;
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 1rem;
     padding: 0.7rem 1rem;
@@ -643,8 +643,7 @@ input:focus, select:focus {
 
 .dashboard-grid.view-list .card-content {
     display: block;
-    flex: 1 1 auto;
-    width: auto;
+    width: 100%;
     min-width: 0;
     text-align: left;
 }
