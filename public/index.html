@@ -91,51 +91,40 @@
             </form>
         </div>
 
-        <!-- Category Filters -->
-        <!-- Category Filters & View Switcher Container -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-            <div class="categories-bar" id="categoriesBar" style="margin-bottom: 0; flex-grow: 1;"></div>
-
-            <div style="display: flex; gap: 0.75rem; align-items: center;">
-                <!-- ÚJ RENDEZÉS LEGÖRDÜLŐ -->
-                <select id="sortSelect" onchange="changeSortMode(this.value)" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: 8px;">
-                    <option value="newest">🕒 Legújabb elöl</option>
-                    <option value="oldest">⏳ Legrégebbi elöl</option>
-                    <option value="abc">🔤 ABC sorrend (Cím)</option>
-                    <option value="frequency">🔥 Leggyakrabban kattintott</option>
-                </select>
-
-                <div class="view-switcher">
-                    <button class="view-btn active" id="btnViewGrid" onclick="setBookmarkView('grid')" title="Normál Kártyák">
-                        <i class="fa-solid fa-border-all"></i>
-                    </button>
-                    <button class="view-btn" id="btnViewCompact" onclick="setBookmarkView('compact')" title="Kompakt Kártyák">
-                        <i class="fa-solid fa-grip"></i>
-                    </button>
-                    <button class="view-btn" id="btnViewList" onclick="setBookmarkView('list')" title="Lista Nézet">
-                        <i class="fa-solid fa-list"></i>
-                    </button>
-                    <button class="view-btn" id="btnToggleImages" onclick="toggleImageVisibility()" title="Képek elrejtése">
-                        <i class="fa-solid fa-image"></i>
-                    </button>
-                </div>
+        <div class="categories-bar" id="categoriesBar"></div>
+        <section class="enterprise-toolbar" aria-label="Enterprise tools">
+            <div class="state-filters" aria-label="Könyvjelző állapotok">
+                <button class="btn btn-secondary state-filter active" onclick="setBookmarkStateFilter('active')">Aktív</button>
+                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('starred')">★ Kedvencek</button>
+                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('read_later')">Olvasás később</button>
+                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('to_review')">Ellenőrzésre</button>
+                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('archived')">Archivált</button>
+                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('trash')">Kuka</button>
             </div>
-            <section class="enterprise-toolbar" aria-label="Enterprise tools">
-                <div class="state-filters" aria-label="Könyvjelző állapotok">
-                    <button class="btn btn-secondary state-filter active" onclick="setBookmarkStateFilter('active')">Aktív</button>
-                    <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('starred')">★ Kedvencek</button>
-                    <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('read_later')">Olvasás később</button>
-                    <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('to_review')">Ellenőrzésre</button>
-                    <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('archived')">Archivált</button>
-                    <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('trash')">Kuka</button>
-                </div>
-                <input id="bookmarkSearch" type="search" placeholder="Keresés cím, URL, kategória, címke vagy leírás alapján…" />
-                <input id="tagFilter" type="text" placeholder="Címke szűrő" />
+            <div class="enterprise-actions">
                 <button class="btn btn-secondary" id="manageTagsBtn"><i class="fa-solid fa-tags"></i> Címkék kezelése</button>
                 <button class="btn btn-secondary" id="exportJsonBtn"><i class="fa-solid fa-download"></i> Export JSON</button>
                 <button class="btn btn-secondary" id="exportHtmlBtn"><i class="fa-solid fa-file-export"></i> Export HTML</button>
                 <label class="btn btn-secondary import-label"><i class="fa-solid fa-upload"></i> Import<input id="importBookmarksInput" type="file" accept=".json,.html,text/html,application/json" hidden></label>
-            </section>
+            </div>
+            <div class="enterprise-search">
+                <input id="bookmarkSearch" type="search" placeholder="Keresés cím, URL, kategória, címke vagy leírás alapján…" />
+                <input id="tagFilter" type="text" placeholder="Címke szűrő" />
+            </div>
+        </section>
+        <div class="bookmark-list-toolbar">
+            <select id="sortSelect" onchange="changeSortMode(this.value)">
+                <option value="newest">🕒 Legújabb elöl</option>
+                <option value="oldest">⏳ Legrégebbi elöl</option>
+                <option value="abc">🔤 ABC sorrend (Cím)</option>
+                <option value="frequency">🔥 Leggyakrabban kattintott</option>
+            </select>
+            <div class="view-switcher">
+                <button class="view-btn active" id="btnViewGrid" onclick="setBookmarkView('grid')" title="Normál Kártyák"><i class="fa-solid fa-border-all"></i></button>
+                <button class="view-btn" id="btnViewCompact" onclick="setBookmarkView('compact')" title="Kompakt Kártyák"><i class="fa-solid fa-grip"></i></button>
+                <button class="view-btn" id="btnViewList" onclick="setBookmarkView('list')" title="Lista Nézet"><i class="fa-solid fa-list"></i></button>
+                <button class="view-btn" id="btnToggleImages" onclick="toggleImageVisibility()" title="Képek elrejtése"><i class="fa-solid fa-image"></i></button>
+            </div>
         </div>
 
         <!-- Bookmarks Dashboard -->
