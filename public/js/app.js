@@ -6,6 +6,7 @@ let bookmarks = [];
 let currentUser = null;
 let activeCategoryFilter = 'All';
 let currentSortMode = localStorage.getItem(config.storageKeys.sortMode) || 'newest';
+let bookmarkStateFilter = 'active';
 
 if (localStorage.getItem(config.storageKeys.viewMode) === 'noimage') {
     localStorage.setItem(config.storageKeys.viewMode, 'grid');
@@ -38,7 +39,10 @@ async function loadBookmarksFromServer() {
             imageUrl: row.image_url || '',
             description: row.description || '',
             siteName: row.site_name || ''
-            ,tags: Array.isArray(row.tags) ? row.tags : []
+            ,tags: Array.isArray(row.tags) ? row.tags : [],
+            archived: Boolean(row.archived), trashed: Boolean(row.trashed),
+            starred: Boolean(row.starred), status: row.status || 'inbox',
+            normalizedUrl: row.normalized_url || row.url
         })) : [];
     } catch (err) { console.error('Failed to fetch bookmarks:', err); bookmarks = []; }
 }
@@ -170,4 +174,9 @@ async function loadSharedBookmark(token) {
 }
 
 window.changeSortMode = changeSortMode;
+window.setBookmarkStateFilter = function (filter) {
+    bookmarkStateFilter = filter;
+    document.querySelectorAll('.state-filter').forEach(button => button.classList.toggle('active', button.getAttribute('onclick').includes(`'${filter}'`)));
+    renderBookmarks();
+};
 initApp();

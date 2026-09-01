@@ -148,6 +148,11 @@ function renderBookmarks() {
             ? [...bookmarks]
             : bookmarks.filter(bookmark => userIds.has(String(bookmark.userId || '').toLowerCase()));
     if (activeCategoryFilter !== 'All') visible = visible.filter(bookmark => bookmark.category === activeCategoryFilter);
+    if (bookmarkStateFilter === 'starred') visible = visible.filter(bookmark => bookmark.starred);
+    else if (bookmarkStateFilter === 'archived') visible = visible.filter(bookmark => bookmark.archived);
+    else if (bookmarkStateFilter === 'trash') visible = visible.filter(bookmark => bookmark.trashed);
+    else if (['read_later', 'to_review', 'done'].includes(bookmarkStateFilter)) visible = visible.filter(bookmark => bookmark.status === bookmarkStateFilter);
+    else visible = visible.filter(bookmark => !bookmark.archived && !bookmark.trashed);
     const search = String(window.enterpriseSearch || '').toLowerCase();
     const tagFilter = String(window.enterpriseTagFilter || '').toLowerCase();
     if (search) visible = visible.filter(bookmark => [bookmark.title, bookmark.url, bookmark.category, bookmark.description, ...(bookmark.tags || [])].join(' ').toLowerCase().includes(search));
@@ -182,9 +187,13 @@ function createBookmarkCard(bookmark) {
     }
     const footer = document.createElement('div'); footer.className = 'card-footer'; footer.innerHTML = `<span><i class="fa-regular fa-clock"></i> ${bookmark.createdAt}</span>`;
     const actions = document.createElement('div'); actions.className = 'card-actions';
+    const star = document.createElement('button'); star.className = 'action-btn' + (bookmark.starred ? ' is-starred' : ''); star.title = 'Kedvenc'; star.innerHTML = `<i class="fa-${bookmark.starred ? 'solid' : 'regular'} fa-star"></i>`; star.onclick = () => updateBookmarkState(bookmark.id, { starred: !bookmark.starred });
+    const later = document.createElement('button'); later.className = 'action-btn'; later.title = 'Olvasás később'; later.innerHTML = '<i class="fa-solid fa-clock"></i>'; later.onclick = () => updateBookmarkState(bookmark.id, { status: bookmark.status === 'read_later' ? 'inbox' : 'read_later' });
+    const review = document.createElement('button'); review.className = 'action-btn'; review.title = 'Ellenőrzésre'; review.innerHTML = '<i class="fa-solid fa-flag"></i>'; review.onclick = () => updateBookmarkState(bookmark.id, { status: bookmark.status === 'to_review' ? 'inbox' : 'to_review' });
+    const archive = document.createElement('button'); archive.className = 'action-btn'; archive.title = bookmark.trashed || bookmark.archived ? 'Visszaállítás' : 'Archiválás'; archive.innerHTML = `<i class="fa-solid fa-box-${bookmark.archived ? 'open' : 'archive'}"></i>`; archive.onclick = () => updateBookmarkState(bookmark.id, bookmark.trashed ? { trashed: false } : { archived: !bookmark.archived });
     const edit = document.createElement('button'); edit.className = 'action-btn'; edit.title = 'Szerkesztés'; edit.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>'; edit.onclick = () => openEditModal(bookmark.id);
     const share = document.createElement('button'); share.className = 'action-btn'; share.title = 'Megosztás'; share.innerHTML = '<i class="fa-solid fa-share-nodes"></i>'; share.onclick = async () => { try { const result = await api.shareBookmark(bookmark.id); await navigator.clipboard.writeText(result.url); showNotification('Megosztási hivatkozás a vágólapra másolva.', 'success'); } catch (err) { showNotification('A megosztás nem sikerült.', 'error'); } };
-    const remove = document.createElement('button'); remove.className = 'action-btn'; remove.title = 'Törlés'; remove.innerHTML = '<i class="fa-solid fa-trash"></i>'; remove.onclick = () => deleteBookmark(bookmark.id); actions.append(edit, share, remove); footer.appendChild(actions); card.append(left, footer); return card;
+    const remove = document.createElement('button'); remove.className = 'action-btn'; remove.title = bookmark.trashed ? 'Végleges törlés' : 'Kukába helyezés'; remove.innerHTML = '<i class="fa-solid fa-trash"></i>'; remove.onclick = () => bookmark.trashed ? permanentlyDeleteBookmark(bookmark.id) : deleteBookmark(bookmark.id); actions.append(star, later, review, archive, edit, share, remove); footer.appendChild(actions); card.append(left, footer); return card;
 }
 
 /** Populates a category select while preserving a valid selection. */
@@ -195,6 +204,8 @@ function populateCategorySelect(id, selectedValue = null) {
 
 /** Deletes a bookmark and refreshes the list. */
 async function deleteBookmark(id) { try { await api.deleteBookmark(id); await loadBookmarksFromServer(); renderBookmarks(); showNotification('A könyvjelző törölve.', 'success'); } catch (err) { showNotification('Hiba történt a törlés során.', 'error'); } }
+async function updateBookmarkState(id, state) { try { await api.updateBookmarkState(id, state); await loadBookmarksFromServer(); renderBookmarks(); } catch (err) { showNotification(err.message || 'Állapot mentése sikertelen.', 'error'); } }
+async function permanentlyDeleteBookmark(id) { if (!confirm('Véglegesen törlöd ezt a könyvjelzőt?')) return; try { await api.permanentlyDeleteBookmark(id); await loadBookmarksFromServer(); renderBookmarks(); } catch (err) { showNotification('A végleges törlés sikertelen.', 'error'); } }
 
 /** Records a click locally and remotely before opening the bookmark. */
 async function trackClickAndOpen(id, url) {
@@ -224,4 +235,4 @@ document.getElementById('editBookmarkForm').addEventListener('submit', async eve
     renderBookmarks(); closeModal('editModal'); showNotification('A könyvjelző módosítva.', 'success');
 });
 
-window.setBookmarkView = setBookmarkView; window.toggleImageVisibility = toggleImageVisibility; window.deleteBookmark = deleteBookmark; window.trackClickAndOpen = trackClickAndOpen; window.openEditModal = openEditModal;
+window.setBookmarkView = setBookmarkView; window.toggleImageVisibility = toggleImageVisibility; window.deleteBookmark = deleteBookmark; window.updateBookmarkState = updateBookmarkState; window.permanentlyDeleteBookmark = permanentlyDeleteBookmark; window.trackClickAndOpen = trackClickAndOpen; window.openEditModal = openEditModal;

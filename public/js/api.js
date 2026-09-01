@@ -92,8 +92,9 @@ apiNamespace.api = {
     },
 
     /** Returns all bookmarks from the API. */
-    getBookmarks() {
-        return requestJson('/api/bookmarks');
+    getBookmarks(filters = {}) {
+        const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && value !== ''));
+        return requestJson(`/api/bookmarks${query.toString() ? `?${query}` : ''}`);
     },
 
     /** Creates a bookmark through the API. */
@@ -117,6 +118,12 @@ apiNamespace.api = {
     /** Deletes a bookmark by its database identifier. */
     deleteBookmark(id) {
         return requestJson(`/api/bookmarks/${id}`, { method: 'DELETE' });
+    },
+    updateBookmarkState(id, state) {
+        return requestJson(`/api/bookmarks/${id}/state`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state) });
+    },
+    permanentlyDeleteBookmark(id) {
+        return requestJson(`/api/bookmarks/${id}/permanent`, { method: 'DELETE' });
     },
 
     /** Increments the server-side click counter for a bookmark. */

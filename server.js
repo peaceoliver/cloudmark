@@ -150,6 +150,10 @@ async function initDatabase() {
         await client.query('ALTER TABLE bookmarks ADD COLUMN IF NOT EXISTS site_name VARCHAR(255)');
         await client.query('ALTER TABLE bookmarks ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE');
         await client.query('ALTER TABLE bookmarks ADD COLUMN IF NOT EXISTS starred BOOLEAN NOT NULL DEFAULT FALSE');
+        await client.query("ALTER TABLE bookmarks ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'inbox'");
+        await client.query('ALTER TABLE bookmarks ADD COLUMN IF NOT EXISTS trashed BOOLEAN NOT NULL DEFAULT FALSE');
+        await client.query('ALTER TABLE bookmarks ADD COLUMN IF NOT EXISTS normalized_url TEXT');
+        await client.query('UPDATE bookmarks SET normalized_url = url WHERE normalized_url IS NULL');
         await client.query(`
             CREATE TABLE IF NOT EXISTS tags (
                 id BIGSERIAL PRIMARY KEY,
@@ -172,6 +176,7 @@ async function initDatabase() {
             );
             CREATE INDEX IF NOT EXISTS bookmarks_user_created_idx ON bookmarks(user_id, created_at DESC);
             CREATE INDEX IF NOT EXISTS bookmarks_search_idx ON bookmarks USING gin(to_tsvector('simple', coalesce(title,'') || ' ' || coalesce(url,'') || ' ' || coalesce(description,'')));
+            CREATE INDEX IF NOT EXISTS bookmarks_normalized_url_idx ON bookmarks(user_id, normalized_url);
         `);
 
         // Kategóriák tábla létrehozása
@@ -208,6 +213,23 @@ function hashVerificationToken(token) {
 
 function normalizeTags(tags) {
     return [...new Set((Array.isArray(tags) ? tags : String(tags || '').split(',')).map(tag => String(tag).trim().toLowerCase()).filter(Boolean))].slice(0, 30);
+}
+
+/** Canonicalizes a URL for duplicate detection without changing the stored URL. */
+function normalizeBookmarkUrl(value) {
+    try {
+        const parsed = new URL(String(value || '').trim());
+        parsed.protocol = parsed.protocol.toLowerCase();
+        parsed.hostname = parsed.hostname.toLowerCase();
+        if ((parsed.protocol === 'http:' && parsed.port === '80') || (parsed.protocol === 'https:' && parsed.port === '443')) parsed.port = '';
+        parsed.hash = '';
+        ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'].forEach(key => parsed.searchParams.delete(key));
+        parsed.search = parsed.searchParams.toString() ? `?${parsed.searchParams.toString()}` : '';
+        parsed.pathname = parsed.pathname.replace(/\/+$/, '') || '/';
+        return parsed.toString();
+    } catch (err) {
+        return null;
+    }
 }
 
 async function replaceBookmarkTags(bookmarkId, userId, tags) {
@@ -553,7 +575,12 @@ app.get('/api/bookmarks', async (req, res) => {
             params.push(String(req.query.tag).slice(0, 80));
             conditions.push(`t.name = $${params.length}`);
         }
-        if (req.query.archived !== 'true') conditions.push('b.archived = FALSE');
+        if (req.query.trash === 'true') conditions.push('b.trashed = TRUE');
+        else {
+            conditions.push('b.trashed = FALSE');
+            if (req.query.archived !== 'true') conditions.push('b.archived = FALSE');
+        }
+        if (req.query.status && ['inbox', 'read_later', 'to_review', 'done'].includes(req.query.status)) conditions.push(`b.status = $${params.length + 1}`), params.push(req.query.status);
         if (conditions.length) query += ` WHERE ${conditions.join(' AND ')}`;
         query += ' GROUP BY b.id ORDER BY b.created_at DESC';
 
@@ -566,15 +593,20 @@ app.get('/api/bookmarks', async (req, res) => {
 
 /** Creates a bookmark for the requested user. */
 app.post('/api/bookmarks', requireAuth, async (req, res) => {
-    const { title, url, category, tags = [] } = req.body;
+    const { title, url, category, tags = [], status = 'inbox', starred = false } = req.body;
+    const normalizedUrl = normalizeBookmarkUrl(url);
+    if (!normalizedUrl) return res.status(400).json({ error: 'Érvénytelen URL.' });
+    if (!['inbox', 'read_later', 'to_review', 'done'].includes(status)) return res.status(400).json({ error: 'Érvénytelen állapot.' });
     try {
+        const duplicate = await pool.query('SELECT id, title FROM bookmarks WHERE user_id = $1 AND normalized_url = $2 AND trashed = FALSE LIMIT 1', [req.user.username, normalizedUrl]);
+        if (duplicate.rows.length) return res.status(409).json({ error: 'Ez a hivatkozás már szerepel a könyvjelzőid között.', duplicate: duplicate.rows[0] });
         const fetchTitle = await shouldFetchWebsiteMetadataTitle(req.user.id);
         const fetchImage = await shouldFetchWebsiteMetadataImage(req.user.id);
         const metadata = (fetchTitle || fetchImage) ? await fetchBookmarkMetadata(url) : {};
         const resolvedTitle = resolveBookmarkTitle(title, metadata, url);
         const result = await pool.query(
-            `INSERT INTO bookmarks (user_id, title, url, category, metadata_title, image_url, description, site_name)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            `INSERT INTO bookmarks (user_id, title, url, category, metadata_title, image_url, description, site_name, status, starred, normalized_url)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
             [
                 req.user.username,
                 resolvedTitle,
@@ -583,7 +615,10 @@ app.post('/api/bookmarks', requireAuth, async (req, res) => {
                 fetchTitle ? metadata.title : null,
                 fetchImage ? metadata.imageUrl : null,
                 metadata.description,
-                metadata.siteName
+                metadata.siteName,
+                status,
+                Boolean(starred),
+                normalizedUrl
             ]
         );
         await replaceBookmarkTags(result.rows[0].id, req.user.id, tags);
@@ -593,15 +628,15 @@ app.post('/api/bookmarks', requireAuth, async (req, res) => {
     }
 });
 
-/** Deletes a bookmark by its database identifier. */
+/** Moves a bookmark to the trash; permanent deletion is available via the trash action. */
 app.delete('/api/bookmarks/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     try {
         if (req.user.role === 'admin') {
-            await pool.query('DELETE FROM bookmarks WHERE id = $1', [id]);
+            await pool.query('UPDATE bookmarks SET trashed = TRUE, archived = FALSE WHERE id = $1', [id]);
         } else {
             await pool.query(
-                'DELETE FROM bookmarks WHERE id = $1 AND (LOWER(CAST(user_id AS TEXT)) = LOWER($2) OR LOWER(CAST(user_id AS TEXT)) = LOWER($3))',
+                'UPDATE bookmarks SET trashed = TRUE, archived = FALSE WHERE id = $1 AND (LOWER(CAST(user_id AS TEXT)) = LOWER($2) OR LOWER(CAST(user_id AS TEXT)) = LOWER($3))',
                 [id, req.user.username, String(req.user.id)]
             );
         }
@@ -611,19 +646,53 @@ app.delete('/api/bookmarks/:id', requireAuth, async (req, res) => {
     }
 });
 
+app.patch('/api/bookmarks/:id/state', requireAuth, async (req, res) => {
+    const { archived, trashed, starred, status } = req.body;
+    const fields = [], values = [req.params.id];
+    if (archived !== undefined) { fields.push(`archived = $${values.length + 1}`); values.push(Boolean(archived)); }
+    if (trashed !== undefined) { fields.push(`trashed = $${values.length + 1}`); values.push(Boolean(trashed)); }
+    if (starred !== undefined) { fields.push(`starred = $${values.length + 1}`); values.push(Boolean(starred)); }
+    if (status !== undefined) { if (!['inbox', 'read_later', 'to_review', 'done'].includes(status)) return res.status(400).json({ error: 'Érvénytelen állapot.' }); fields.push(`status = $${values.length + 1}`); values.push(status); }
+    if (!fields.length) return res.status(400).json({ error: 'Nincs módosítandó állapot.' });
+    let owner = '';
+    if (req.user.role !== 'admin') {
+        values.push(req.user.username, String(req.user.id));
+        owner = ' AND (LOWER(CAST(user_id AS TEXT)) = LOWER($' + (values.length - 1) + ') OR LOWER(CAST(user_id AS TEXT)) = LOWER($' + values.length + '))';
+    }
+    try {
+    const result = await pool.query(`UPDATE bookmarks SET ${fields.join(', ')} WHERE id = $1${owner} RETURNING *`, values);
+        if (!result.rowCount) return res.status(404).json({ error: 'Not found' });
+        res.json(result.rows[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/bookmarks/:id/permanent', requireAuth, async (req, res) => {
+    try {
+        const result = await pool.query('DELETE FROM bookmarks WHERE id = $1 AND trashed = TRUE AND (user_id = $2 OR user_id = $3) RETURNING id', [req.params.id, req.user.username, String(req.user.id)]);
+        if (!result.rowCount && req.user.role !== 'admin') return res.status(404).json({ error: 'Not found' });
+        if (req.user.role === 'admin') await pool.query('DELETE FROM bookmarks WHERE id = $1 AND trashed = TRUE', [req.params.id]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 /** Updates a bookmark's title, URL, and category. */
 app.put('/api/bookmarks/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
-    const { title, url, category, tags = [] } = req.body;
+    const { title, url, category, tags = [], status, starred } = req.body;
+    const normalizedUrl = normalizeBookmarkUrl(url);
+    if (!normalizedUrl) return res.status(400).json({ error: 'Érvénytelen URL.' });
     try {
         const fetchTitle = await shouldFetchWebsiteMetadataTitle(req.user.id);
         const fetchImage = await shouldFetchWebsiteMetadataImage(req.user.id);
         const metadata = (fetchTitle || fetchImage) ? await fetchBookmarkMetadata(url) : {};
         const resolvedTitle = resolveBookmarkTitle(title, metadata, url);
-        let query = `UPDATE bookmarks SET title = $1, url = $2, category = $3, metadata_title = $5, image_url = $6, description = $7, site_name = $8 WHERE id = $4`;
-        let params = [resolvedTitle, url, category, id, fetchTitle ? metadata.title : null, fetchImage ? metadata.imageUrl : null, metadata.description, metadata.siteName];
+        let query = `UPDATE bookmarks SET title = $1, url = $2, category = $3, metadata_title = $5, image_url = $6, description = $7, site_name = $8, normalized_url = $9`;
+        let params = [resolvedTitle, url, category, id, fetchTitle ? metadata.title : null, fetchImage ? metadata.imageUrl : null, metadata.description, metadata.siteName, normalizedUrl];
+        if (status !== undefined) { if (!['inbox', 'read_later', 'to_review', 'done'].includes(status)) return res.status(400).json({ error: 'Érvénytelen állapot.' }); query += ', status = $10'; params.push(status); }
+        if (starred !== undefined) { query += `, starred = $${params.length + 1}`; params.push(Boolean(starred)); }
+        query += ' WHERE id = $4';
         if (req.user.role !== 'admin') {
-            query += ' AND (LOWER(CAST(user_id AS TEXT)) = LOWER($9) OR LOWER(CAST(user_id AS TEXT)) = LOWER($10))';
+            query += ` AND (LOWER(CAST(user_id AS TEXT)) = LOWER($${params.length + 1}) OR LOWER(CAST(user_id AS TEXT)) = LOWER($${params.length + 2}))`;
             params.push(req.user.username, String(req.user.id));
         }
         query += ' RETURNING *';
@@ -688,11 +757,15 @@ app.post('/api/bookmarks/import', requireAuth, async (req, res) => {
     try {
         for (const item of items.slice(0, 5000)) {
             if (!item.url) continue;
+            const normalizedUrl = normalizeBookmarkUrl(item.url);
+            if (!normalizedUrl) continue;
+            const duplicate = await pool.query('SELECT id FROM bookmarks WHERE user_id = $1 AND normalized_url = $2 AND trashed = FALSE LIMIT 1', [req.user.username, normalizedUrl]);
+            if (duplicate.rowCount) continue;
             const title = resolveBookmarkTitle(item.title, {}, item.url);
             const row = await pool.query(
-                `INSERT INTO bookmarks (user_id,title,url,category,description,starred)
-                 VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-                [req.user.username, title, item.url, item.category || 'Inbox', item.description || null, Boolean(item.starred)]
+                `INSERT INTO bookmarks (user_id,title,url,category,description,starred,normalized_url,status)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+                [req.user.username, title, item.url, item.category || 'Inbox', item.description || null, Boolean(item.starred), normalizedUrl, ['inbox', 'read_later', 'to_review', 'done'].includes(item.status) ? item.status : 'inbox']
             );
             await replaceBookmarkTags(row.rows[0].id, req.user.id, item.tags || []);
             imported++;

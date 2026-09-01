@@ -121,6 +121,14 @@
                 </div>
             </div>
             <section class="enterprise-toolbar" aria-label="Enterprise tools">
+                <div class="state-filters" aria-label="Könyvjelző állapotok">
+                    <button class="btn btn-secondary state-filter active" onclick="setBookmarkStateFilter('active')">Aktív</button>
+                    <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('starred')">★ Kedvencek</button>
+                    <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('read_later')">Olvasás később</button>
+                    <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('to_review')">Ellenőrzésre</button>
+                    <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('archived')">Archivált</button>
+                    <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('trash')">Kuka</button>
+                </div>
                 <input id="bookmarkSearch" type="search" placeholder="Keresés cím, URL, kategória, címke vagy leírás alapján…" />
                 <input id="tagFilter" type="text" placeholder="Címke szűrő" />
                 <button class="btn btn-secondary" id="manageTagsBtn"><i class="fa-solid fa-tags"></i> Címkék kezelése</button>
