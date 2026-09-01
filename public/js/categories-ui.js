@@ -10,6 +10,13 @@ function renderCategories() {
     }
     container.innerHTML = `<button class="category-chip ${activeCategoryFilter === 'All' ? 'active' : ''}" onclick="filterCategory('All')">Összes</button>`;
     if (select) select.innerHTML = '';
+    if (currentUser) {
+        const manageButton = document.createElement('button');
+        manageButton.className = 'category-chip add-cat-btn';
+        manageButton.innerHTML = '<i class="fa-solid fa-folder-gear"></i> Kategóriák Kezelése';
+        manageButton.onclick = () => { openModal('categoryModal'); renderManageCategoriesList(); };
+        container.prepend(manageButton);
+    }
     visible.forEach(category => {
         if (select) select.append(new Option(category, category));
         const button = document.createElement('button');
@@ -18,13 +25,6 @@ function renderCategories() {
         button.onclick = () => filterCategory(category);
         container.appendChild(button);
     });
-    if (currentUser) {
-        const button = document.createElement('button');
-        button.className = 'category-chip add-cat-btn';
-        button.innerHTML = '<i class="fa-solid fa-plus"></i> Kategóriák Kezelése';
-        button.onclick = () => { openModal('categoryModal'); renderManageCategoriesList(); };
-        container.appendChild(button);
-    }
 }
 
 /** Selects a category filter and refreshes the bookmark view. */

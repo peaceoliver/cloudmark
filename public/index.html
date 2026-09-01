@@ -119,6 +119,7 @@
             <section class="enterprise-toolbar" aria-label="Enterprise tools">
                 <input id="bookmarkSearch" type="search" placeholder="Keresés cím, URL, kategória, címke vagy leírás alapján…" />
                 <input id="tagFilter" type="text" placeholder="Címke szűrő" />
+                <button class="btn btn-secondary" id="manageTagsBtn"><i class="fa-solid fa-tags"></i> Címkék kezelése</button>
                 <button class="btn btn-secondary" id="exportJsonBtn"><i class="fa-solid fa-download"></i> Export JSON</button>
                 <button class="btn btn-secondary" id="exportHtmlBtn"><i class="fa-solid fa-file-export"></i> Export HTML</button>
                 <label class="btn btn-secondary import-label"><i class="fa-solid fa-upload"></i> Import<input id="importBookmarksInput" type="file" accept=".json,.html,text/html,application/json" hidden></label>
@@ -301,7 +302,7 @@
             <div class="modal-title">
                 <i class="fa-solid fa-folder-gear"></i> Kategóriák Kezelése
             </div>
-            
+
             <!-- Új kategória hozzáadása -->
             <div class="form-control" style="margin-bottom: 1rem;">
                 <label>Új Kategória Neve</label>
@@ -319,6 +320,14 @@
             </div>
 
             <button class="btn btn btn-danger" style="width: 100%;" onclick="closeModal('categoryModal')">Bezárás</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="tagModal" style="z-index: 2200;">
+        <div class="modal">
+            <div class="modal-title"><i class="fa-solid fa-tags"></i> Címkék kezelése</div>
+            <div id="manageTagsList" style="display:flex; flex-direction:column; gap:0.5rem; max-height:300px; overflow-y:auto; margin-bottom:1rem;"></div>
+            <button class="btn btn-danger" style="width:100%;" onclick="closeModal('tagModal')">Bezárás</button>
         </div>
     </div>
 

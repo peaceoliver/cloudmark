@@ -8,6 +8,38 @@
     document.getElementById('bookmarkSearch').addEventListener('input', refresh);
     document.getElementById('tagFilter').addEventListener('input', refresh);
 
+    async function renderTagsManagement() {
+        const container = document.getElementById('manageTagsList');
+        container.innerHTML = '<span style="color:var(--text-secondary)">Betöltés...</span>';
+        const tags = await api.getTags();
+        container.innerHTML = '';
+        if (!tags.length) {
+            container.innerHTML = '<span style="color:var(--text-secondary)">Még nincs létrehozott címke.</span>';
+            return;
+        }
+        tags.forEach(tag => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:var(--bg-input); padding:0.5rem 0.75rem; border-radius:8px; border:1px solid var(--border-color);';
+            row.innerHTML = `<span style="font-weight:600">#${tag}</span><span style="display:flex; gap:0.4rem;"><button class="action-btn" title="Átnevezés"><i class="fa-solid fa-pen"></i></button><button class="action-btn" title="Törlés"><i class="fa-solid fa-trash"></i></button></span>`;
+            row.querySelector('button').onclick = async () => {
+                const newName = prompt(`A(z) "${tag}" címke új neve:`, tag);
+                if (!newName || !newName.trim() || newName.trim() === tag) return;
+                try { await api.renameTag(tag, newName.trim()); await renderTagsManagement(); await loadBookmarksFromServer(); renderBookmarks(); showNotification('A címke átnevezve.', 'success'); }
+                catch (err) { showNotification('Nem sikerült átnevezni a címkét.', 'error'); }
+            };
+            row.querySelectorAll('button')[1].onclick = async () => {
+                if (!confirm(`Biztosan törlöd a(z) "${tag}" címkét?`)) return;
+                try { await api.deleteTag(tag); await renderTagsManagement(); await loadBookmarksFromServer(); renderBookmarks(); showNotification('A címke törölve.', 'success'); }
+                catch (err) { showNotification('Nem sikerült törölni a címkét.', 'error'); }
+            };
+            container.appendChild(row);
+        });
+    }
+    document.getElementById('manageTagsBtn').onclick = async () => {
+        openModal('tagModal');
+        try { await renderTagsManagement(); } catch (err) { showNotification('Nem sikerült betölteni a címkéket.', 'error'); }
+    };
+
     async function download(format) {
         try {
             const blob = await api.exportBookmarks(format);

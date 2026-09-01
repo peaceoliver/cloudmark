@@ -660,6 +660,27 @@ app.get('/api/tags', requireAuth, async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.put('/api/tags/:name', requireAuth, async (req, res) => {
+    const oldName = req.params.name.trim();
+    const newName = String(req.body.newName || '').trim();
+    if (!newName || newName.length > 80) return res.status(400).json({ error: 'Érvénytelen címke' });
+    try {
+        const existing = await pool.query('SELECT id FROM tags WHERE user_id = $1 AND LOWER(name) = LOWER($2)', [req.user.id, newName]);
+        if (existing.rowCount && oldName.toLowerCase() !== newName.toLowerCase()) return res.status(409).json({ error: 'A címke már létezik' });
+        const result = await pool.query('UPDATE tags SET name = $1 WHERE user_id = $2 AND name = $3 RETURNING name', [newName, req.user.id, oldName]);
+        if (!result.rowCount) return res.status(404).json({ error: 'Címke nem található' });
+        res.json(result.rows[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/tags/:name', requireAuth, async (req, res) => {
+    try {
+        const result = await pool.query('DELETE FROM tags WHERE user_id = $1 AND name = $2 RETURNING id', [req.user.id, req.params.name.trim()]);
+        if (!result.rowCount) return res.status(404).json({ error: 'Címke nem található' });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/bookmarks/import', requireAuth, async (req, res) => {
     const items = Array.isArray(req.body) ? req.body : (req.body.bookmarks || []);
     if (!Array.isArray(items)) return res.status(400).json({ error: 'bookmarks tömb szükséges' });

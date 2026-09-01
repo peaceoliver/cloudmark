@@ -157,6 +157,16 @@ apiNamespace.api = {
         });
     },
     getTags() { return requestJson('/api/tags'); },
+    renameTag(name, newName) {
+        return requestJson(`/api/tags/${encodeURIComponent(name)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ newName })
+        });
+    },
+    deleteTag(name) {
+        return requestJson(`/api/tags/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    },
     importBookmarks(bookmarks) {
         return requestJson('/api/bookmarks/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookmarks }) });
     },
