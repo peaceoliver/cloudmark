@@ -348,6 +348,8 @@ input:focus, select:focus {
 .action-btn.is-starred { color: var(--warning); }
 .action-btn.is-read-later { color: var(--accent); }
 .action-btn.is-to-review { color: var(--warning); }
+.view-btn.images-hidden { position: relative; }
+.view-btn.images-hidden::after { content: ""; position: absolute; width: 1.35em; height: 2px; left: 50%; top: 50%; background: currentColor; transform: translate(-50%, -50%) rotate(-45deg); border-radius: 2px; pointer-events: none; }
 .import-label { cursor: pointer; }
 .card-tags {
     color: var(--accent);

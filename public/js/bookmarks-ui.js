@@ -114,10 +114,9 @@ function updateImageToggleButton() {
     const toggleButton = document.getElementById('btnToggleImages');
     if (!toggleButton) return;
     toggleButton.classList.toggle('active', !showBookmarkImages);
+    toggleButton.classList.toggle('images-hidden', !showBookmarkImages);
     toggleButton.title = showBookmarkImages ? 'Képek elrejtése' : 'Képek megjelenítése';
-    toggleButton.innerHTML = showBookmarkImages
-        ? '<i class="fa-solid fa-image"></i>'
-        : '<i class="fa-solid fa-image-slash"></i>';
+    toggleButton.innerHTML = '<i class="fa-solid fa-image"></i>';
 }
 
 function toggleImageVisibility(forceValue) {
@@ -199,7 +198,14 @@ function createBookmarkCard(bookmark) {
 /** Populates a category select while preserving a valid selection. */
 function populateCategorySelect(id, selectedValue = null) {
     const select = document.getElementById(id); if (!select) return; const current = selectedValue || select.value;
-    select.innerHTML = ''; categories.forEach(category => select.append(new Option(category, category))); if (categories.includes(current)) select.value = current;
+    select.innerHTML = '';
+    if (typeof categoryTree === 'function') {
+        categoryTree().forEach(({ category, depth }) => {
+            const name = categoryName(category);
+            select.append(new Option(`${'— '.repeat(depth)}${name}`, name));
+        });
+    } else categories.forEach(category => select.append(new Option(categoryName(category), categoryName(category))));
+    if (categories.some(category => categoryName(category) === current)) select.value = current;
 }
 
 /** Deletes a bookmark and refreshes the list. */

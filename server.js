@@ -183,9 +183,12 @@ async function initDatabase() {
         await client.query(`
             CREATE TABLE IF NOT EXISTS categories (
                 id SERIAL PRIMARY KEY,
-                name VARCHAR(100) UNIQUE NOT NULL
+                name VARCHAR(100) UNIQUE NOT NULL,
+                parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL
             );
         `);
+        await client.query('ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL');
+        await client.query('CREATE INDEX IF NOT EXISTS categories_parent_idx ON categories(parent_id)');
 
         // Alapértelmezett kategóriák feltöltése, ha üres a tábla
         await client.query(`
@@ -821,8 +824,8 @@ app.get('/api/shares/:token', async (req, res) => {
 /** Returns category names in their database order. */
 app.get('/api/categories', async (req, res) => {
     try {
-        const result = await pool.query('SELECT name FROM categories ORDER BY id ASC');
-        res.json(result.rows.map(row => row.name));
+        const result = await pool.query('SELECT id, name, parent_id FROM categories ORDER BY id ASC');
+        res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -830,12 +833,16 @@ app.get('/api/categories', async (req, res) => {
 
 /** Creates a category and returns the refreshed category list. */
 app.post('/api/categories', async (req, res) => {
-    const { name } = req.body;
+    const { name, parentId } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Missing name' });
     try {
-        await pool.query('INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING', [name.trim()]);
-        const result = await pool.query('SELECT name FROM categories ORDER BY id ASC');
-        res.status(201).json(result.rows.map(row => row.name));
+        const parent = parentId === null || parentId === undefined || parentId === '' ? null : Number(parentId);
+        if (parent !== null && (!Number.isInteger(parent) || !(await pool.query('SELECT 1 FROM categories WHERE id = $1', [parent])).rowCount)) {
+            return res.status(400).json({ error: 'Érvénytelen szülőkategória.' });
+        }
+        await pool.query('INSERT INTO categories (name, parent_id) VALUES ($1, $2)', [name.trim(), parent]);
+        const result = await pool.query('SELECT id, name, parent_id FROM categories ORDER BY id ASC');
+        res.status(201).json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -854,10 +861,14 @@ app.put('/api/categories/:oldName', async (req, res) => {
         // Ha Supabase / PostgreSQL adatbázist használsz:
         // 1. Átírjuk a kategóriát magában a categories táblában (vagy tömbben, attól függően hol tárolod)
         // 2. Frissítjük a hivatkozott könyvjelzőket is, hogy ne vesszenek el!
-        await pool.query('UPDATE bookmarks SET category = $1 WHERE category = $2', [newName.trim(), oldName]);
-        
-        // Ha külön kategória táblád van az adatbázisban:
-        await pool.query('UPDATE categories SET name = $1 WHERE name = $2', [newName.trim(), oldName]).catch(() => {});
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const renamed = await client.query('UPDATE categories SET name = $1 WHERE name = $2 RETURNING id', [newName.trim(), oldName]);
+            if (!renamed.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'A kategória nem található.' }); }
+            await client.query('UPDATE bookmarks SET category = $1 WHERE category = $2', [newName.trim(), oldName]);
+            await client.query('COMMIT');
+        } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
 
         res.json({ success: true, message: 'Kategoria sikeresen atnevezve' });
     } catch (err) {
@@ -873,10 +884,17 @@ app.delete('/api/categories/:name', async (req, res) => {
     try {
         // Opcionális: Ha törlöd a kategóriát, az abba tartozó könyvjelzőket áthelyezheted "Inbox"-ba, vagy törölheted. 
         // Itt átrakjuk őket "Inbox"-ba, hogy ne törlődjenek a könyvjelzők:
-        await pool.query('UPDATE bookmarks SET category = $1 WHERE category = $2', ['Inbox', catName]);
+        if (catName === 'Inbox') return res.status(400).json({ error: 'Az Inbox nem törölhető.' });
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const deleted = await client.query('DELETE FROM categories WHERE name = $1 RETURNING id', [catName]);
+            if (!deleted.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'A kategória nem található.' }); }
+            await client.query('UPDATE bookmarks SET category = $1 WHERE category = $2', ['Inbox', catName]);
+            await client.query('COMMIT');
+        } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
         
         // Ha külön kategória táblád van:
-        await pool.query('DELETE FROM categories WHERE name = $1', [catName]).catch(() => {});
 
         res.json({ success: true, message: 'Kategoria törölve' });
     } catch (err) {

@@ -1,80 +1,97 @@
-/** Renders category filters and the bookmark category select. */
+/** Category data is kept as objects; the name-only fallback keeps old API responses usable. */
+function categoryName(category) { return typeof category === 'string' ? category : category.name; }
+function categoryId(category) { return typeof category === 'string' ? category : category.id; }
+function categoryTree() {
+    const result = [], byParent = new Map();
+    categories.forEach(category => {
+        const parent = category.parent_id == null ? null : String(category.parent_id);
+        if (!byParent.has(parent)) byParent.set(parent, []);
+        byParent.get(parent).push(category);
+    });
+    function visit(parent, depth) {
+        (byParent.get(parent) || []).forEach(category => {
+            result.push({ category, depth });
+            visit(String(categoryId(category)), depth + 1);
+        });
+    }
+    visit(null, 0);
+    return result;
+}
+
 function renderCategories() {
     const container = document.getElementById('categoriesBar');
     const select = document.getElementById('bmCategory');
-    const visible = !currentUser && categories.includes('MAIN') ? ['MAIN'] : categories;
-    if (!currentUser && categories.includes('MAIN') && activeCategoryFilter !== 'MAIN') {
-        activeCategoryFilter = 'MAIN';
-    } else if (!currentUser && !categories.includes('MAIN') && activeCategoryFilter === 'MAIN') {
-        activeCategoryFilter = 'All';
-    }
+    const names = categories.map(categoryName);
+    const visible = !currentUser && names.includes('MAIN') ? categories.filter(c => categoryName(c) === 'MAIN') : categories;
+    if (!currentUser && names.includes('MAIN') && activeCategoryFilter !== 'MAIN') activeCategoryFilter = 'MAIN';
+    else if (!currentUser && !names.includes('MAIN') && activeCategoryFilter === 'MAIN') activeCategoryFilter = 'All';
     container.innerHTML = `<button class="category-chip ${activeCategoryFilter === 'All' ? 'active' : ''}" onclick="filterCategory('All')">Összes</button>`;
-    if (select) select.innerHTML = '';
+    if (select) populateCategorySelect('bmCategory');
     const manageButton = document.getElementById('manageCategoriesBtn');
     if (manageButton) {
         manageButton.style.display = currentUser ? '' : 'none';
         manageButton.onclick = () => { openModal('categoryModal'); renderManageCategoriesList(); };
     }
-    visible.forEach(category => {
-        if (select) select.append(new Option(category, category));
+    categoryTree().filter(({ category }) => visible.includes(category)).forEach(({ category, depth }) => {
+        const name = categoryName(category);
         const button = document.createElement('button');
-        button.className = `category-chip ${activeCategoryFilter === category ? 'active' : ''}`;
-        button.innerHTML = `<i class="fa-solid fa-folder"></i> ${category}`;
-        button.onclick = () => filterCategory(category);
+        button.className = `category-chip ${activeCategoryFilter === name ? 'active' : ''}`;
+        button.style.marginLeft = `${depth * 0.8}rem`;
+        button.innerHTML = `<i class="fa-solid fa-folder"></i> ${name}`;
+        button.onclick = () => filterCategory(name);
         container.appendChild(button);
     });
 }
 
-/** Selects a category filter and refreshes the bookmark view. */
-function filterCategory(category) {
-    activeCategoryFilter = category;
-    renderCategories();
-    renderBookmarks();
-}
+function filterCategory(category) { activeCategoryFilter = category; renderCategories(); renderBookmarks(); }
 
-/** Renders category management actions inside the category modal. */
 function renderManageCategoriesList() {
     const container = document.getElementById('manageCategoriesList');
     if (!container) return;
+    const parentSelect = document.getElementById('newCatParent');
+    if (parentSelect) {
+        parentSelect.innerHTML = '<option value="">Nincs szülőkategória (gyökér)</option>';
+        categoryTree().forEach(({ category, depth }) => parentSelect.append(new Option(`${'— '.repeat(depth)}${categoryName(category)}`, categoryId(category))));
+    }
     container.innerHTML = '';
-    categories.forEach(category => {
+    categoryTree().forEach(({ category, depth }) => {
+        const name = categoryName(category);
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:var(--bg-input); padding:0.5rem 0.75rem; border-radius:8px; border:1px solid var(--border-color);';
-        row.innerHTML = `<span style="font-weight:600">${category}</span>`;
+        row.style.cssText = `display:flex; margin-left:${depth * 1.25}rem; justify-content:space-between; align-items:center; background:var(--bg-input); padding:0.5rem 0.75rem; border-radius:8px; border:1px solid var(--border-color);`;
+        row.innerHTML = `<span style="font-weight:600"><i class="fa-solid fa-folder"></i> ${name}</span>`;
         const actions = document.createElement('div');
         actions.style.cssText = 'display:flex; gap:0.4rem;';
-        if (category !== 'Inbox') {
+        if (name !== 'Inbox') {
             actions.innerHTML = '<button class="action-btn" title="Átnevezés"><i class="fa-solid fa-pen"></i></button><button class="action-btn" title="Törlés"><i class="fa-solid fa-trash"></i></button>';
-            actions.children[0].onclick = () => renameCategory(category);
-            actions.children[1].onclick = () => deleteCategory(category);
+            actions.children[0].onclick = () => renameCategory(name);
+            actions.children[1].onclick = () => deleteCategory(name);
         } else actions.innerHTML = '<span style="font-size:0.75rem; color:var(--text-secondary)">Alapértelmezett</span>';
         row.appendChild(actions); container.appendChild(row);
     });
 }
 
-/** Renames a category through the API and refreshes dependent views. */
 async function renameCategory(oldName) {
     const newName = prompt(`Add meg a(z) "${oldName}" kategória új nevét:`, oldName);
     if (!newName || !newName.trim() || newName.trim() === oldName) return;
-    if (categories.includes(newName.trim())) { showNotification('Ez a kategória már létezik.', 'error'); return; }
+    if (categories.some(category => categoryName(category) === newName.trim())) { showNotification('Ez a kategória már létezik.', 'error'); return; }
     try { await api.renameCategory(oldName, newName.trim()); await loadCategoriesFromServer(); await loadBookmarksFromServer(); renderCategories(); renderManageCategoriesList(); renderBookmarks(); showNotification('A kategória átnevezve.', 'success'); }
     catch (err) { showNotification('Nem sikerült átnevezni a kategóriát.', 'error'); }
 }
 
-/** Deletes a category through the API and refreshes dependent views. */
 async function deleteCategory(category) {
-    if (!confirm(`Biztosan törölni akarod a(z) "${category}" kategóriát?`)) return;
-    try { await api.deleteCategory(category); if (activeCategoryFilter === category) activeCategoryFilter = 'All'; await loadCategoriesFromServer(); await loadBookmarksFromServer(); renderCategories(); renderManageCategoriesList(); renderBookmarks(); showNotification('A kategória törölve.', 'success'); }
+    const name = categoryName(category);
+    if (!confirm(`Biztosan törölni akarod a(z) "${name}" kategóriát? A könyvjelzők az Inboxba kerülnek.`)) return;
+    try { await api.deleteCategory(name); if (activeCategoryFilter === name) activeCategoryFilter = 'All'; await loadCategoriesFromServer(); await loadBookmarksFromServer(); renderCategories(); renderManageCategoriesList(); renderBookmarks(); showNotification('A kategória törölve.', 'success'); }
     catch (err) { showNotification('Nem sikerült törölni a kategóriát.', 'error'); }
 }
 
-/** Creates a category from the category modal form. */
 async function createNewCategory() {
     const input = document.getElementById('newCatName');
+    const parent = document.getElementById('newCatParent');
     const name = input.value.trim();
     if (!name) return;
-    if (categories.includes(name)) { showNotification('Ez a kategória már létezik.', 'error'); return; }
-    try { await api.createCategory(name); await loadCategoriesFromServer(); renderCategories(); populateCategorySelect('bmCategory', name); populateCategorySelect('editBmCategory', name); closeModal('categoryModal'); input.value = ''; showNotification('A kategória létrehozva.', 'success'); }
+    if (categories.some(category => categoryName(category) === name)) { showNotification('Ez a kategória már létezik.', 'error'); return; }
+    try { await api.createCategory(name, parent && parent.value ? Number(parent.value) : null); await loadCategoriesFromServer(); renderCategories(); populateCategorySelect('bmCategory', name); populateCategorySelect('editBmCategory', name); renderManageCategoriesList(); input.value = ''; if (parent) parent.value = ''; showNotification('A kategória létrehozva.', 'success'); }
     catch (err) { showNotification('Nem sikerült elmenteni az új kategóriát.', 'error'); }
 }
 

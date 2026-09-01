@@ -70,7 +70,7 @@
                     <label>Kategória</label>
                     <div style="display: flex; gap: 0.5rem;">
                         <select id="bmCategory" required></select>
-                        <button type="button" class="btn btn btn-secondary" onclick="openModal('categoryModal')" title="Új kategória hozzáadása">
+                        <button type="button" class="btn btn btn-secondary" onclick="openModal('categoryModal'); renderManageCategoriesList()" title="Új kategória hozzáadása">
                             <i class="fa-solid fa-plus"></i>
                         </button>
                     </div>
@@ -324,6 +324,9 @@
                     <input type="text" id="newCatName" placeholder="Pl. Olvasnivaló...">
                     <button class="btn btn-primary" onclick="createNewCategory()">Létrehozás</button>
                 </div>
+                <select id="newCatParent" style="margin-top:0.5rem;" aria-label="Szülőkategória">
+                    <option value="">Nincs szülőkategória (gyökér)</option>
+                </select>
             </div>
 
             <div class="section-divider">Meglévő Kategóriák</div>
@@ -365,7 +368,7 @@
                     <label>Kategória</label>
                     <div style="display: flex; gap: 0.5rem;">
                         <select id="editBmCategory" required></select>
-                        <button type="button" class="btn btn btn-secondary" onclick="openModal('categoryModal')" title="Új kategória hozzáadása">
+                        <button type="button" class="btn btn btn-secondary" onclick="openModal('categoryModal'); renderManageCategoriesList()" title="Új kategória hozzáadása">
                             <i class="fa-solid fa-plus"></i>
                         </button>
                     </div>

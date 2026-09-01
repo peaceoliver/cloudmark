@@ -140,11 +140,11 @@ apiNamespace.api = {
     },
 
     /** Creates a category and returns the refreshed category list. */
-    createCategory(name) {
+    createCategory(name, parentId = null) {
         return requestJson('/api/categories', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name })
+            body: JSON.stringify({ name, parentId })
         });
     },
 
