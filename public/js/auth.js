@@ -1,4 +1,4 @@
-const config = window.CloudMark && window.CloudMark.config ? window.CloudMark.config : {};
+const authConfig = window.CloudMark && window.CloudMark.config ? window.CloudMark.config : {};
 let isRegisterMode = false;
 
 /** Switches the authentication modal between login and registration. */
@@ -64,11 +64,11 @@ function updateUserUI() {
 /** Opens the user settings modal with database values and local fallbacks. */
 async function openUserSettings() {
     const settings = await api.getUserSettings().catch(() => ({}));
-    const titleValue = settings.fetchMetadataTitle ?? settings.fetchMetadata ?? localStorage.getItem(config.storageKeys.fetchMetadataTitle) ?? 'true';
-    const imageValue = settings.fetchMetadataImage ?? settings.fetchMetadata ?? localStorage.getItem(config.storageKeys.fetchMetadataImage) ?? 'true';
-    document.getElementById('userThemeSetting').value = settings.theme || localStorage.getItem(config.storageKeys.theme) || 'dark';
-    document.getElementById('userViewSetting').value = settings.viewMode || localStorage.getItem(config.storageKeys.viewMode) || 'grid';
-    document.getElementById('userSortSetting').value = settings.sortMode || localStorage.getItem(config.storageKeys.sortMode) || 'newest';
+    const titleValue = settings.fetchMetadataTitle ?? settings.fetchMetadata ?? localStorage.getItem(authConfig.storageKeys.fetchMetadataTitle) ?? 'true';
+    const imageValue = settings.fetchMetadataImage ?? settings.fetchMetadata ?? localStorage.getItem(authConfig.storageKeys.fetchMetadataImage) ?? 'true';
+    document.getElementById('userThemeSetting').value = settings.theme || localStorage.getItem(authConfig.storageKeys.theme) || 'dark';
+    document.getElementById('userViewSetting').value = settings.viewMode || localStorage.getItem(authConfig.storageKeys.viewMode) || 'grid';
+    document.getElementById('userSortSetting').value = settings.sortMode || localStorage.getItem(authConfig.storageKeys.sortMode) || 'newest';
     document.getElementById('userMetadataTitleSetting').value = String(titleValue) === 'false' ? 'false' : 'true';
     document.getElementById('userMetadataImageSetting').value = String(imageValue) === 'false' ? 'false' : 'true';
     document.getElementById('currentPassword').value = '';
@@ -167,12 +167,12 @@ document.getElementById('userSettingsForm').addEventListener('submit', async eve
             api.saveUserSetting('fetchMetadataImage', metadataImageSetting),
             api.saveUserSetting('fetchMetadata', combinedMetadataSetting)
         ]);
-        localStorage.setItem(config.storageKeys.theme, theme);
-        localStorage.setItem(config.storageKeys.viewMode, viewMode);
-        localStorage.setItem(config.storageKeys.sortMode, sortMode);
-        localStorage.setItem(config.storageKeys.fetchMetadataTitle, metadataTitleSetting);
-        localStorage.setItem(config.storageKeys.fetchMetadataImage, metadataImageSetting);
-        localStorage.setItem(config.storageKeys.fetchMetadata, combinedMetadataSetting);
+        localStorage.setItem(authConfig.storageKeys.theme, theme);
+        localStorage.setItem(authConfig.storageKeys.viewMode, viewMode);
+        localStorage.setItem(authConfig.storageKeys.sortMode, sortMode);
+        localStorage.setItem(authConfig.storageKeys.fetchMetadataTitle, metadataTitleSetting);
+        localStorage.setItem(authConfig.storageKeys.fetchMetadataImage, metadataImageSetting);
+        localStorage.setItem(authConfig.storageKeys.fetchMetadata, combinedMetadataSetting);
         document.documentElement.setAttribute('data-theme', theme);
         updateThemeIcon(theme);
         currentSortMode = sortMode;

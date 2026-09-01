@@ -1,12 +1,12 @@
-const config = window.CloudMark && window.CloudMark.config ? window.CloudMark.config : {};
-let currentBookmarkView = (config.storageKeys ? localStorage.getItem(config.storageKeys.viewMode) : null) || 'grid';
-let showBookmarkImages = config.storageKeys ? localStorage.getItem(config.storageKeys.showImages) !== 'false' : true;
+const bookmarksConfig = window.CloudMark && window.CloudMark.config ? window.CloudMark.config : {};
+let currentBookmarkView = (bookmarksConfig.storageKeys ? localStorage.getItem(bookmarksConfig.storageKeys.viewMode) : null) || 'grid';
+let showBookmarkImages = bookmarksConfig.storageKeys ? localStorage.getItem(bookmarksConfig.storageKeys.showImages) !== 'false' : true;
 
 /** Persists the selected bookmark layout and refreshes the grid. */
 function setBookmarkView(viewMode) {
     const normalizedMode = ['grid', 'compact', 'list'].includes(viewMode) ? viewMode : 'grid';
     currentBookmarkView = normalizedMode;
-    localStorage.setItem(config.storageKeys.viewMode, normalizedMode);
+    localStorage.setItem(bookmarksConfig.storageKeys.viewMode, normalizedMode);
     if (currentUser && typeof api !== 'undefined') api.saveUserSetting('viewMode', normalizedMode).catch(err => console.warn('Failed to save view mode:', err));
     document.querySelectorAll('.view-btn').forEach(button => button.classList.remove('active'));
 
@@ -35,7 +35,7 @@ function updateImageToggleButton() {
 function toggleImageVisibility(forceValue) {
     const nextValue = typeof forceValue === 'boolean' ? forceValue : !showBookmarkImages;
     showBookmarkImages = nextValue;
-    localStorage.setItem(config.storageKeys.showImages, String(nextValue));
+    localStorage.setItem(bookmarksConfig.storageKeys.showImages, String(nextValue));
     updateImageToggleButton();
     renderBookmarks();
 }
@@ -68,8 +68,8 @@ function renderBookmarks() {
 /** Builds a bookmark card and wires its actions. */
 function createBookmarkCard(bookmark) {
     const card = document.createElement('div'); card.className = 'card';
-    const fetchMetadataTitleEnabled = localStorage.getItem(config.storageKeys.fetchMetadataTitle) !== 'false';
-    const fetchMetadataImageEnabled = localStorage.getItem(config.storageKeys.fetchMetadataImage) !== 'false';
+    const fetchMetadataTitleEnabled = localStorage.getItem(bookmarksConfig.storageKeys.fetchMetadataTitle) !== 'false';
+    const fetchMetadataImageEnabled = localStorage.getItem(bookmarksConfig.storageKeys.fetchMetadataImage) !== 'false';
     const primaryTitle = (bookmark.title && String(bookmark.title).trim()) || (bookmark.metadataTitle && String(bookmark.metadataTitle).trim()) || 'Névtelen könyvjelző';
     const shouldShowImage = showBookmarkImages && fetchMetadataImageEnabled && bookmark.imageUrl;
     if (shouldShowImage) {
