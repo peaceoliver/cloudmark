@@ -641,11 +641,14 @@ input:focus, select:focus {
     min-height: 76px;
 }
 
+.dashboard-grid.view-list .card:has(.card-cover) {
+    grid-template-columns: 60px minmax(0, 1fr) auto;
+}
+
 .dashboard-grid.view-list .card-content {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    flex: 1 1 auto;
     width: auto;
     min-width: 0;
     overflow: visible;
@@ -667,8 +670,7 @@ input:focus, select:focus {
     margin-bottom: 0;
     flex: 0 0 auto;
     min-width: 0;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
     align-items: flex-start;
     justify-content: center;
     gap: 0.15rem;
@@ -678,8 +680,8 @@ input:focus, select:focus {
 
 .dashboard-grid.view-list .card-header > div:first-child {
     display: flex;
-    flex: none;
-    width: 100%;
+    flex: 1 1 auto;
+    width: auto;
     min-width: 0;
 }
 
@@ -697,6 +699,11 @@ input:focus, select:focus {
     min-width: 0;
     color: var(--text-primary);
     visibility: visible;
+}
+
+.dashboard-grid.view-list .card-category {
+    flex: 0 0 auto;
+    margin-left: auto;
 }
 
 .dashboard-grid.view-list .card-title {
