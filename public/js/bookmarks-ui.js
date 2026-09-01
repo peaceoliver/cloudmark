@@ -1,5 +1,6 @@
-let currentBookmarkView = localStorage.getItem(CloudMark.config.storageKeys.viewMode) || 'grid';
-let showBookmarkImages = localStorage.getItem(config.storageKeys.showImages) !== 'false';
+const config = window.CloudMark && window.CloudMark.config ? window.CloudMark.config : {};
+let currentBookmarkView = (config.storageKeys ? localStorage.getItem(config.storageKeys.viewMode) : null) || 'grid';
+let showBookmarkImages = config.storageKeys ? localStorage.getItem(config.storageKeys.showImages) !== 'false' : true;
 
 /** Persists the selected bookmark layout and refreshes the grid. */
 function setBookmarkView(viewMode) {
@@ -45,15 +46,19 @@ function renderBookmarks() {
     const layoutClass = currentBookmarkView === 'grid' ? '' : ` view-${currentBookmarkView}`;
     grid.innerHTML = ''; grid.className = `dashboard-grid${layoutClass}`;
     if (addPanel) addPanel.style.display = currentUser ? 'block' : 'none';
-    const userId = currentUser ? String(currentUser.username || '').toLowerCase() : 'demo';
+    const userIds = currentUser
+        ? new Set([
+            String(currentUser.username || '').toLowerCase(),
+            String(currentUser.id || '').toLowerCase(),
+            'demo',
+            'admin'
+        ].filter(Boolean))
+        : new Set(['demo', 'admin', 'main']);
     let visible = !currentUser
-        ? bookmarks.filter(bookmark => ['admin', 'demo', 'main'].includes(String(bookmark.userId || '').toLowerCase()))
+        ? bookmarks.filter(bookmark => userIds.has(String(bookmark.userId || '').toLowerCase()))
         : currentUser.isSuperuser
             ? [...bookmarks]
-            : bookmarks.filter(bookmark => {
-                const ownerId = String(bookmark.userId || '').toLowerCase();
-                return ownerId === userId || ownerId === 'demo' || ownerId === 'admin';
-            });
+            : bookmarks.filter(bookmark => userIds.has(String(bookmark.userId || '').toLowerCase()));
     if (activeCategoryFilter !== 'All') visible = visible.filter(bookmark => bookmark.category === activeCategoryFilter);
     visible.sort((a, b) => currentSortMode === 'abc' ? (a.title || '').localeCompare(b.title || '', 'hu') : currentSortMode === 'oldest' ? new Date(a.createdAt || 0) - new Date(b.createdAt || 0) : currentSortMode === 'frequency' ? (b.clicks || 0) - (a.clicks || 0) : new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     if (!visible.length) { grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-secondary)"><i class="fa-solid fa-folder-open" style="font-size:2.5rem"></i><p>Nincs megjeleníthető könyvjelző ebben a kategóriában.</p></div>'; return; }

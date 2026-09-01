@@ -1,3 +1,4 @@
+const config = window.CloudMark && window.CloudMark.config ? window.CloudMark.config : {};
 let isRegisterMode = false;
 
 /** Switches the authentication modal between login and registration. */

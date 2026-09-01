@@ -377,7 +377,7 @@ async function requireAdmin(req, res, next) {
 app.get('/api/auth/me', async (req, res) => {
     try {
         const user = await getAuthenticatedUser(req);
-        res.json(user ? { username: user.username, email: user.email, isSuperuser: user.role === 'admin' } : null);
+        res.json(user ? { id: user.id, username: user.username, email: user.email, isSuperuser: user.role === 'admin' } : null);
     } catch (err) {
         res.status(500).json({ error: 'Hitelesítési hiba' });
     }
@@ -458,7 +458,7 @@ app.post('/api/auth/login', async (req, res) => {
         }
         if (!user.is_verified) return res.status(403).json({ error: 'Előbb erősítsd meg az e-mail címedet.' });
         await createSession(user, res);
-        res.json({ username: user.username, email: user.email, isSuperuser: user.role === 'admin' });
+        res.json({ id: user.id, username: user.username, email: user.email, isSuperuser: user.role === 'admin' });
     } catch (err) {
         res.status(500).json({ error: 'A bejelentkezés nem sikerült.' });
     }
@@ -487,12 +487,18 @@ app.get('/api/bookmarks', async (req, res) => {
             if (user.role === 'admin') {
                 query += ' ORDER BY created_at DESC';
             } else {
-                query += ' WHERE user_id = $1 OR user_id = $2 ORDER BY created_at DESC';
-                params = [user.username, 'demo'];
+                const userIds = [...new Set([
+                    String(user.username || '').toLowerCase(),
+                    String(user.id || '').toLowerCase(),
+                    'demo',
+                    'admin'
+                ].filter(Boolean))];
+                query += ' WHERE LOWER(CAST(user_id AS TEXT)) = ANY($1) ORDER BY created_at DESC';
+                params = [userIds];
             }
         } else {
-            query += ' WHERE user_id = $1 OR user_id = $2 ORDER BY created_at DESC';
-            params = ['demo', 'admin'];
+            query += ' WHERE LOWER(CAST(user_id AS TEXT)) = ANY($1) ORDER BY created_at DESC';
+            params = [['demo', 'admin', 'main']];
         }
 
         const result = await pool.query(query, params);
@@ -534,9 +540,14 @@ app.post('/api/bookmarks', requireAuth, async (req, res) => {
 app.delete('/api/bookmarks/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     try {
-        const owner = req.user.role === 'admin' ? '' : ' AND user_id = $2';
-        const values = req.user.role === 'admin' ? [id] : [id, req.user.username];
-        await pool.query(`DELETE FROM bookmarks WHERE id = $1${owner}`, values);
+        if (req.user.role === 'admin') {
+            await pool.query('DELETE FROM bookmarks WHERE id = $1', [id]);
+        } else {
+            await pool.query(
+                'DELETE FROM bookmarks WHERE id = $1 AND (LOWER(CAST(user_id AS TEXT)) = LOWER($2) OR LOWER(CAST(user_id AS TEXT)) = LOWER($3))',
+                [id, req.user.username, String(req.user.id)]
+            );
+        }
         res.json({ message: 'Könyvjelző sikeresen törölve' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -552,13 +563,14 @@ app.put('/api/bookmarks/:id', requireAuth, async (req, res) => {
         const fetchImage = await shouldFetchWebsiteMetadataImage(req.user.id);
         const metadata = (fetchTitle || fetchImage) ? await fetchBookmarkMetadata(url) : {};
         const resolvedTitle = resolveBookmarkTitle(title, metadata, url);
-        const owner = req.user.role === 'admin' ? '' : ' AND user_id = $9';
-        const result = await pool.query(
-            `UPDATE bookmarks SET title = $1, url = $2, category = $3, metadata_title = $5, image_url = $6, description = $7, site_name = $8 WHERE id = $4${owner} RETURNING *`,
-            req.user.role === 'admin'
-                ? [resolvedTitle, url, category, id, fetchTitle ? metadata.title : null, fetchImage ? metadata.imageUrl : null, metadata.description, metadata.siteName]
-                : [resolvedTitle, url, category, id, fetchTitle ? metadata.title : null, fetchImage ? metadata.imageUrl : null, metadata.description, metadata.siteName, req.user.username]
-        );
+        let query = `UPDATE bookmarks SET title = $1, url = $2, category = $3, metadata_title = $5, image_url = $6, description = $7, site_name = $8 WHERE id = $4`;
+        let params = [resolvedTitle, url, category, id, fetchTitle ? metadata.title : null, fetchImage ? metadata.imageUrl : null, metadata.description, metadata.siteName];
+        if (req.user.role !== 'admin') {
+            query += ' AND (LOWER(CAST(user_id AS TEXT)) = LOWER($9) OR LOWER(CAST(user_id AS TEXT)) = LOWER($10))';
+            params.push(req.user.username, String(req.user.id));
+        }
+        query += ' RETURNING *';
+        const result = await pool.query(query, params);
         if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
         res.json(result.rows[0]);
     } catch (err) {
