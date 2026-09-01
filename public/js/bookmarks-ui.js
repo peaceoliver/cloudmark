@@ -45,8 +45,15 @@ function renderBookmarks() {
     const layoutClass = currentBookmarkView === 'grid' ? '' : ` view-${currentBookmarkView}`;
     grid.innerHTML = ''; grid.className = `dashboard-grid${layoutClass}`;
     if (addPanel) addPanel.style.display = currentUser ? 'block' : 'none';
-    const userId = currentUser ? currentUser.username : 'demo';
-    let visible = !currentUser ? bookmarks.filter(bookmark => bookmark.userId === 'admin' || bookmark.userId === 'demo' || bookmark.category === 'MAIN') : currentUser.isSuperuser ? [...bookmarks] : bookmarks.filter(bookmark => bookmark.userId === userId || bookmark.userId === 'demo');
+    const userId = currentUser ? String(currentUser.username || '').toLowerCase() : 'demo';
+    let visible = !currentUser
+        ? bookmarks.filter(bookmark => ['admin', 'demo', 'main'].includes(String(bookmark.userId || '').toLowerCase()))
+        : currentUser.isSuperuser
+            ? [...bookmarks]
+            : bookmarks.filter(bookmark => {
+                const ownerId = String(bookmark.userId || '').toLowerCase();
+                return ownerId === userId || ownerId === 'demo' || ownerId === 'admin';
+            });
     if (activeCategoryFilter !== 'All') visible = visible.filter(bookmark => bookmark.category === activeCategoryFilter);
     visible.sort((a, b) => currentSortMode === 'abc' ? (a.title || '').localeCompare(b.title || '', 'hu') : currentSortMode === 'oldest' ? new Date(a.createdAt || 0) - new Date(b.createdAt || 0) : currentSortMode === 'frequency' ? (b.clicks || 0) - (a.clicks || 0) : new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     if (!visible.length) { grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-secondary)"><i class="fa-solid fa-folder-open" style="font-size:2.5rem"></i><p>Nincs megjeleníthető könyvjelző ebben a kategóriában.</p></div>'; return; }

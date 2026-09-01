@@ -27,12 +27,17 @@ async function loadBookmarksFromServer() {
     try {
         const rows = await api.getBookmarks();
         bookmarks = Array.isArray(rows) ? rows.map(row => ({
-            id: row.id, userId: row.user_id || row.userId || 'demo', title: row.title || row.metadata_title || row.url || 'Névtelen könyvjelző',
-            url: row.url, category: row.category,
+            id: row.id,
+            userId: String(row.user_id || row.userId || 'demo'),
+            title: row.title || row.metadata_title || row.url || 'Névtelen könyvjelző',
+            url: row.url,
+            category: row.category,
             createdAt: row.created_at ? row.created_at.split('T')[0] : '',
-            clicks: row.clicks || row.click_count || 0
-            ,metadataTitle: row.metadata_title || '', imageUrl: row.image_url || '',
-            description: row.description || '', siteName: row.site_name || ''
+            clicks: Number(row.clicks || row.click_count || 0),
+            metadataTitle: row.metadata_title || '',
+            imageUrl: row.image_url || '',
+            description: row.description || '',
+            siteName: row.site_name || ''
         })) : [];
     } catch (err) { console.error('Failed to fetch bookmarks:', err); bookmarks = []; }
 }

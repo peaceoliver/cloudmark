@@ -476,10 +476,26 @@ app.post('/api/auth/logout', async (req, res) => {
     }
 });
 
-/** Returns all bookmarks ordered by creation time. */
+/** Returns bookmarks visible to the current session, keeping public demo/admin entries public. */
 app.get('/api/bookmarks', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM bookmarks ORDER BY created_at DESC');
+        const user = await getAuthenticatedUser(req);
+        let query = 'SELECT * FROM bookmarks';
+        let params = [];
+
+        if (user) {
+            if (user.role === 'admin') {
+                query += ' ORDER BY created_at DESC';
+            } else {
+                query += ' WHERE user_id = $1 OR user_id = $2 ORDER BY created_at DESC';
+                params = [user.username, 'demo'];
+            }
+        } else {
+            query += ' WHERE user_id = $1 OR user_id = $2 ORDER BY created_at DESC';
+            params = ['demo', 'admin'];
+        }
+
+        const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
