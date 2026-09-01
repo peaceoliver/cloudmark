@@ -176,6 +176,8 @@ async function loadSharedBookmark(token) {
 window.changeSortMode = changeSortMode;
 window.setBookmarkStateFilter = function (filter) {
     bookmarkStateFilter = filter;
+    activeCategoryFilter = 'All';
+    renderCategories();
     document.querySelectorAll('.state-filter').forEach(button => button.classList.toggle('active', button.getAttribute('onclick').includes(`'${filter}'`)));
     renderBookmarks();
 };

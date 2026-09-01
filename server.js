@@ -634,14 +634,16 @@ app.post('/api/bookmarks', requireAuth, async (req, res) => {
 app.delete('/api/bookmarks/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     try {
+        let result;
         if (req.user.role === 'admin') {
-            await pool.query('UPDATE bookmarks SET trashed = TRUE, archived = FALSE WHERE id = $1', [id]);
+            result = await pool.query('UPDATE bookmarks SET trashed = TRUE, archived = FALSE WHERE id = $1 RETURNING id', [id]);
         } else {
-            await pool.query(
+            result = await pool.query(
                 'UPDATE bookmarks SET trashed = TRUE, archived = FALSE WHERE id = $1 AND (LOWER(CAST(user_id AS TEXT)) = LOWER($2) OR LOWER(CAST(user_id AS TEXT)) = LOWER($3))',
                 [id, req.user.username, String(req.user.id)]
             );
         }
+        if (!result.rowCount) return res.status(404).json({ error: 'A könyvjelző nem található.' });
         res.json({ message: 'Könyvjelző sikeresen törölve' });
     } catch (err) {
         res.status(500).json({ error: err.message });

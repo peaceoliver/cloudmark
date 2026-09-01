@@ -203,7 +203,10 @@ function populateCategorySelect(id, selectedValue = null) {
 }
 
 /** Deletes a bookmark and refreshes the list. */
-async function deleteBookmark(id) { try { await api.deleteBookmark(id); await loadBookmarksFromServer(); renderBookmarks(); showNotification('A könyvjelző törölve.', 'success'); } catch (err) { showNotification('Hiba történt a törlés során.', 'error'); } }
+async function deleteBookmark(id) {
+    if (!confirm('Biztosan kukába helyezed ezt a könyvjelzőt? A kukából később visszaállítható.')) return;
+    try { await api.deleteBookmark(id); await loadBookmarksFromServer(); renderBookmarks(); showNotification('A könyvjelző a kukába került.', 'success'); } catch (err) { showNotification(err.message || 'Hiba történt a törlés során.', 'error'); }
+}
 async function updateBookmarkState(id, state) { try { await api.updateBookmarkState(id, state); await loadBookmarksFromServer(); renderBookmarks(); } catch (err) { showNotification(err.message || 'Állapot mentése sikertelen.', 'error'); } }
 async function permanentlyDeleteBookmark(id) { if (!confirm('Véglegesen törlöd ezt a könyvjelzőt?')) return; try { await api.permanentlyDeleteBookmark(id); await loadBookmarksFromServer(); renderBookmarks(); } catch (err) { showNotification('A végleges törlés sikertelen.', 'error'); } }
 
