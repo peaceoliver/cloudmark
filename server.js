@@ -229,6 +229,16 @@ async function shouldFetchWebsiteMetadata(userId) {
     return normalizeBooleanSetting(value, true);
 }
 
+async function shouldFetchWebsiteMetadataTitle(userId) {
+    const value = await getUserSettingValue(userId, 'fetchMetadataTitle', await shouldFetchWebsiteMetadata(userId));
+    return normalizeBooleanSetting(value, true);
+}
+
+async function shouldFetchWebsiteMetadataImage(userId) {
+    const value = await getUserSettingValue(userId, 'fetchMetadataImage', await shouldFetchWebsiteMetadata(userId));
+    return normalizeBooleanSetting(value, true);
+}
+
 /** Fetches lightweight article metadata without making metadata mandatory. */
 async function fetchBookmarkMetadata(url) {
     try {
@@ -468,11 +478,22 @@ app.get('/api/bookmarks', async (req, res) => {
 app.post('/api/bookmarks', requireAuth, async (req, res) => {
     const { title, url, category } = req.body;
     try {
-        const metadata = (await shouldFetchWebsiteMetadata(req.user.id)) ? await fetchBookmarkMetadata(url) : {};
+        const fetchTitle = await shouldFetchWebsiteMetadataTitle(req.user.id);
+        const fetchImage = await shouldFetchWebsiteMetadataImage(req.user.id);
+        const metadata = (fetchTitle || fetchImage) ? await fetchBookmarkMetadata(url) : {};
         const result = await pool.query(
             `INSERT INTO bookmarks (user_id, title, url, category, metadata_title, image_url, description, site_name)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-            [req.user.username, title, url, category, metadata.title, metadata.imageUrl, metadata.description, metadata.siteName]
+            [
+                req.user.username,
+                title,
+                url,
+                category,
+                fetchTitle ? metadata.title : null,
+                fetchImage ? metadata.imageUrl : null,
+                metadata.description,
+                metadata.siteName
+            ]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -498,13 +519,15 @@ app.put('/api/bookmarks/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const { title, url, category } = req.body;
     try {
-        const metadata = (await shouldFetchWebsiteMetadata(req.user.id)) ? await fetchBookmarkMetadata(url) : {};
+        const fetchTitle = await shouldFetchWebsiteMetadataTitle(req.user.id);
+        const fetchImage = await shouldFetchWebsiteMetadataImage(req.user.id);
+        const metadata = (fetchTitle || fetchImage) ? await fetchBookmarkMetadata(url) : {};
         const owner = req.user.role === 'admin' ? '' : ' AND user_id = $9';
         const result = await pool.query(
             `UPDATE bookmarks SET title = $1, url = $2, category = $3, metadata_title = $5, image_url = $6, description = $7, site_name = $8 WHERE id = $4${owner} RETURNING *`,
             req.user.role === 'admin'
-                ? [title, url, category, id, metadata.title, metadata.imageUrl, metadata.description, metadata.siteName]
-                : [title, url, category, id, metadata.title, metadata.imageUrl, metadata.description, metadata.siteName, req.user.username]
+                ? [title, url, category, id, fetchTitle ? metadata.title : null, fetchImage ? metadata.imageUrl : null, metadata.description, metadata.siteName]
+                : [title, url, category, id, fetchTitle ? metadata.title : null, fetchImage ? metadata.imageUrl : null, metadata.description, metadata.siteName, req.user.username]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
         res.json(result.rows[0]);
@@ -649,7 +672,7 @@ app.get('/api/user/settings', requireAuth, async (req, res) => {
 
 /** Saves one supported UI preference for the authenticated user. */
 app.put('/api/user/settings/:key', requireAuth, async (req, res) => {
-    const allowedKeys = ['theme', 'viewMode', 'sortMode', 'fetchMetadata'];
+    const allowedKeys = ['theme', 'viewMode', 'sortMode', 'fetchMetadata', 'fetchMetadataTitle', 'fetchMetadataImage'];
     const { key } = req.params;
     if (!allowedKeys.includes(key)) return res.status(400).json({ error: 'Ismeretlen felhasználói beállítás.' });
     if (req.body.value === undefined || req.body.value === null || String(req.body.value).trim() === '') return res.status(400).json({ error: 'Érvénytelen beállítási érték.' });

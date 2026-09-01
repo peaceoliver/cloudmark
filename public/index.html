@@ -180,6 +180,7 @@
                         <option value="grid">Kártyák</option>
                         <option value="compact">Kompakt</option>
                         <option value="list">Lista</option>
+                        <option value="noimage">Kép nélkül</option>
                     </select>
                 </div>
                 <div class="form-control">
@@ -192,8 +193,15 @@
                     </select>
                 </div>
                 <div class="form-control">
-                    <label>Weboldal címsor és kép olvasása</label>
-                    <select id="userMetadataSetting">
+                    <label>Weboldal címsor olvasása</label>
+                    <select id="userMetadataTitleSetting">
+                        <option value="true">Bekapcsolva (alapértelmezett)</option>
+                        <option value="false">Kikapcsolva</option>
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label>Weboldal kép olvasása</label>
+                    <select id="userMetadataImageSetting">
                         <option value="true">Bekapcsolva (alapértelmezett)</option>
                         <option value="false">Kikapcsolva</option>
                     </select>

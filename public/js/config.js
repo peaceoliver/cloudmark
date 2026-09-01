@@ -6,6 +6,8 @@ CloudMark.config = Object.freeze({
         viewMode: 'cloudmark_view_mode',
         sortMode: 'cloudmark_sort_mode',
         fetchMetadata: 'cloudmark_fetch_metadata',
+        fetchMetadataTitle: 'cloudmark_fetch_metadata_title',
+        fetchMetadataImage: 'cloudmark_fetch_metadata_image',
         user: 'cloudmark_user'
     }),
     defaultCategories: Object.freeze(['Inbox', 'Fejlesztés', 'Eszközök', 'Hírek', 'Szórakozás'])

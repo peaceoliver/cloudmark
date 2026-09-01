@@ -618,7 +618,7 @@ input:focus, select:focus {
     gap: 0.5rem;
 }
 
-/* --- LISTA NÉZET EGYESÍTETT BALRA IGAZÍTÁSSAL --- */
+/* --- LISTA NÉZET --- */
 .dashboard-grid.view-list {
     grid-template-columns: 1fr;
     gap: 0.5rem;
@@ -632,13 +632,14 @@ input:focus, select:focus {
     padding: 0.7rem 1rem;
     overflow: hidden;
     text-align: left;
+    min-height: 76px;
 }
 
 .dashboard-grid.view-list .card > div:first-child {
     display: flex;
-    align-items: flex-start; /* Biztosítja a balra igazítást közép helyett */
+    align-items: center;
     gap: 1rem;
-    flex-grow: 1;
+    flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
     text-align: left;
@@ -657,11 +658,11 @@ input:focus, select:focus {
 
 .dashboard-grid.view-list .card-header {
     margin-bottom: 0;
-    flex-grow: 1;
+    flex: 1 1 auto;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    align-items: flex-start; /* Szigorúan balra zárva */
+    align-items: flex-start;
     text-align: left;
     gap: 0.15rem;
 }
@@ -675,16 +676,25 @@ input:focus, select:focus {
     text-align: left;
 }
 
-.dashboard-grid.view-list .card-url {
+.dashboard-grid.view-list .card-url,
+.dashboard-grid.view-list .card-metadata-title {
     margin-bottom: 0;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
+    font-size: 0.78rem;
     width: 100%;
     text-align: left;
+}
+
+.dashboard-grid.view-list .card-url {
+    color: var(--text-secondary);
+}
+
+.dashboard-grid.view-list .card-metadata-title {
+    color: var(--text-secondary);
+    opacity: 0.9;
 }
 
 .dashboard-grid.view-list .card-footer {
@@ -694,7 +704,9 @@ input:focus, select:focus {
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 1rem;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    min-width: 140px;
 }
 
 .dashboard-grid.view-list .card-category {

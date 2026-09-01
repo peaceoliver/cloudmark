@@ -57,14 +57,15 @@ async function loadUserSettings() {
             currentSortMode = settings.sortMode;
             localStorage.setItem(config.storageKeys.sortMode, settings.sortMode);
         }
-        if (Object.prototype.hasOwnProperty.call(settings, 'fetchMetadata')) {
-            const fetchMetadataValue = String(settings.fetchMetadata) === 'false' ? 'false' : 'true';
-            localStorage.setItem(config.storageKeys.fetchMetadata, fetchMetadataValue);
-        } else {
-            localStorage.setItem(config.storageKeys.fetchMetadata, 'true');
-        }
+        const fetchMetadataTitleValue = settings.fetchMetadataTitle ?? settings.fetchMetadata ?? 'true';
+        const fetchMetadataImageValue = settings.fetchMetadataImage ?? settings.fetchMetadata ?? 'true';
+        localStorage.setItem(config.storageKeys.fetchMetadataTitle, String(fetchMetadataTitleValue) === 'false' ? 'false' : 'true');
+        localStorage.setItem(config.storageKeys.fetchMetadataImage, String(fetchMetadataImageValue) === 'false' ? 'false' : 'true');
+        localStorage.setItem(config.storageKeys.fetchMetadata, String(fetchMetadataTitleValue) === 'false' && String(fetchMetadataImageValue) === 'false' ? 'false' : 'true');
     } catch (err) {
         console.warn('Failed to load user settings:', err);
+        localStorage.setItem(config.storageKeys.fetchMetadataTitle, 'true');
+        localStorage.setItem(config.storageKeys.fetchMetadataImage, 'true');
         localStorage.setItem(config.storageKeys.fetchMetadata, 'true');
     }
 }
