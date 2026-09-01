@@ -1,6 +1,94 @@
 const bookmarksConfig = window.CloudMark && window.CloudMark.config ? window.CloudMark.config : {};
 let currentBookmarkView = (bookmarksConfig.storageKeys ? localStorage.getItem(bookmarksConfig.storageKeys.viewMode) : null) || 'grid';
 let showBookmarkImages = bookmarksConfig.storageKeys ? localStorage.getItem(bookmarksConfig.storageKeys.showImages) !== 'false' : true;
+const tagInputState = new Map();
+
+function initTagInputs() {
+    document.querySelectorAll('[data-tag-input]').forEach(wrapper => {
+        const input = wrapper.querySelector('.tag-entry');
+        const state = { values: [], suggestions: [] };
+        tagInputState.set(wrapper.dataset.tagInput, state);
+        input.addEventListener('focus', () => loadTagSuggestions(wrapper));
+        input.addEventListener('input', () => renderTagSuggestions(wrapper));
+        input.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ',') {
+                event.preventDefault();
+                addTagValue(wrapper, input.value);
+            } else if (event.key === 'Backspace' && !input.value && state.values.length) {
+                state.values.pop();
+                renderTagChips(wrapper);
+            }
+        });
+        wrapper.addEventListener('click', () => input.focus());
+    });
+}
+
+async function loadTagSuggestions(wrapper) {
+    const state = tagInputState.get(wrapper.dataset.tagInput);
+    if (state.suggestions.length || !currentUser || typeof api === 'undefined') return;
+    state.suggestions = await api.getTags();
+    renderTagSuggestions(wrapper);
+}
+
+function addTagValue(wrapper, value) {
+    const state = tagInputState.get(wrapper.dataset.tagInput);
+    const tag = String(value || '').trim().replace(/,+$/, '').trim();
+    if (!tag || state.values.some(item => item.toLowerCase() === tag.toLowerCase())) return;
+    state.values.push(tag);
+    wrapper.querySelector('.tag-entry').value = '';
+    renderTagChips(wrapper);
+    renderTagSuggestions(wrapper);
+}
+
+function renderTagChips(wrapper) {
+    const state = tagInputState.get(wrapper.dataset.tagInput);
+    const chips = wrapper.querySelector('.tag-chips');
+    chips.innerHTML = '';
+    state.values.forEach(tag => {
+        const chip = document.createElement('span');
+        chip.className = 'tag-chip';
+        chip.textContent = `#${tag}`;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.setAttribute('aria-label', `${tag} törlése`);
+        remove.textContent = '×';
+        remove.onclick = event => { event.stopPropagation(); state.values = state.values.filter(item => item !== tag); renderTagChips(wrapper); };
+        chip.appendChild(remove);
+        chips.appendChild(chip);
+    });
+}
+
+function renderTagSuggestions(wrapper) {
+    const state = tagInputState.get(wrapper.dataset.tagInput);
+    const query = wrapper.querySelector('.tag-entry').value.trim().toLowerCase();
+    const suggestions = wrapper.querySelector('.tag-suggestions');
+    suggestions.innerHTML = '';
+    state.suggestions.filter(tag => !state.values.includes(tag) && (!query || tag.toLowerCase().includes(query))).slice(0, 8).forEach(tag => {
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'tag-suggestion'; button.textContent = `#${tag}`;
+        button.onclick = () => addTagValue(wrapper, tag);
+        suggestions.appendChild(button);
+    });
+    suggestions.classList.toggle('visible', suggestions.children.length > 0);
+}
+
+function getTagInputValues(id) {
+    const state = tagInputState.get(id);
+    const entry = document.querySelector(`[data-tag-input="${id}"] .tag-entry`);
+    if (entry && entry.value.trim()) addTagValue(document.querySelector(`[data-tag-input="${id}"]`), entry.value);
+    return state ? [...state.values] : [];
+}
+
+function setTagInputValues(id, values) {
+    const wrapper = document.querySelector(`[data-tag-input="${id}"]`);
+    const state = tagInputState.get(id);
+    if (!wrapper || !state) return;
+    state.values = Array.isArray(values) ? values.map(String).map(value => value.trim()).filter(Boolean) : [];
+    wrapper.querySelector('.tag-entry').value = '';
+    renderTagChips(wrapper);
+}
+
+initTagInputs();
 
 /** Persists the selected bookmark layout and refreshes the grid. */
 function setBookmarkView(viewMode) {
@@ -121,17 +209,17 @@ function openEditModal(id) {
     document.getElementById('editBmId').value = bookmark.id;
     document.getElementById('editBmTitle').value = bookmark.title;
     document.getElementById('editBmUrl').value = bookmark.url;
-    document.getElementById('editBmTags').value = (bookmark.tags || []).join(', ');
+    setTagInputValues('editBmTags', bookmark.tags || []);
     populateCategorySelect('editBmCategory', bookmark.category); openModal('editModal');
 }
 
 document.getElementById('bookmarkForm').addEventListener('submit', async event => {
     event.preventDefault(); const title = document.getElementById('bmTitle'); const url = document.getElementById('bmUrl'); const category = document.getElementById('bmCategory');
-    try { await api.createBookmark({ userId: currentUser ? currentUser.username : 'demo', title: title.value, url: url.value, category: category.value, tags: document.getElementById('bmTags').value.split(',') }); await loadBookmarksFromServer(); event.target.reset(); history.replaceState({}, document.title, location.pathname); document.getElementById('incomingAlert').style.display = 'none'; document.getElementById('addPanel').style.borderColor = 'var(--border-color)'; renderBookmarks(); showNotification('A könyvjelző mentve.', 'success'); } catch (err) { showNotification('Hiba történt a mentés során.', 'error'); }
+    try { await api.createBookmark({ userId: currentUser ? currentUser.username : 'demo', title: title.value, url: url.value, category: category.value, tags: getTagInputValues('bmTags') }); await loadBookmarksFromServer(); event.target.reset(); setTagInputValues('bmTags', []); history.replaceState({}, document.title, location.pathname); document.getElementById('incomingAlert').style.display = 'none'; document.getElementById('addPanel').style.borderColor = 'var(--border-color)'; renderBookmarks(); showNotification('A könyvjelző mentve.', 'success'); } catch (err) { showNotification('Hiba történt a mentés során.', 'error'); }
 });
 
 document.getElementById('editBookmarkForm').addEventListener('submit', async event => {
-    event.preventDefault(); const id = Number(document.getElementById('editBmId').value); const data = { title: document.getElementById('editBmTitle').value.trim(), url: document.getElementById('editBmUrl').value.trim(), category: document.getElementById('editBmCategory').value, tags: document.getElementById('editBmTags').value.split(',') };
+    event.preventDefault(); const id = Number(document.getElementById('editBmId').value); const data = { title: document.getElementById('editBmTitle').value.trim(), url: document.getElementById('editBmUrl').value.trim(), category: document.getElementById('editBmCategory').value, tags: getTagInputValues('editBmTags') };
     try { await api.updateBookmark(id, data); await loadBookmarksFromServer(); } catch (err) { const bookmark = bookmarks.find(item => item.id === id); if (bookmark) Object.assign(bookmark, data); }
     renderBookmarks(); closeModal('editModal'); showNotification('A könyvjelző módosítva.', 'success');
 });

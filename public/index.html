@@ -76,8 +76,12 @@
                     </div>
                 </div>
                 <div class="form-control">
-                    <label>Címkék (vesszővel elválasztva)</label>
-                    <input type="text" id="bmTags" placeholder="pl. munka, olvasás">
+                    <label>Címkék</label>
+                    <div class="tag-input" data-tag-input="bmTags">
+                        <div class="tag-chips"></div>
+                        <input type="text" class="tag-entry" placeholder="Címke hozzáadása…">
+                        <div class="tag-suggestions"></div>
+                    </div>
                 </div>
                 <div class="form-control" style="justify-content: flex-end;">
                     <button type="submit" class="btn btn-primary">
@@ -358,7 +362,11 @@
                 </div>
                 <div class="form-control">
                     <label>Címkék</label>
-                    <input type="text" id="editBmTags" placeholder="munka, olvasás">
+                    <div class="tag-input" data-tag-input="editBmTags">
+                        <div class="tag-chips"></div>
+                        <input type="text" class="tag-entry" placeholder="Címke hozzáadása…">
+                        <div class="tag-suggestions"></div>
+                    </div>
                 </div>
                 <div style="display:flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
                     <button type="button" class="btn btn btn-danger" onclick="closeModal('editModal')">Mégse</button>
