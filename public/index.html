@@ -91,25 +91,38 @@
             </form>
         </div>
 
-        <div class="categories-bar" id="categoriesBar"></div>
+        <section class="dashboard-section category-section" aria-label="Kategóriák">
+            <div class="toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</div>
+            <div class="categories-bar" id="categoriesBar"></div>
+        </section>
         <section class="enterprise-toolbar" aria-label="Enterprise tools">
-            <div class="state-filters" aria-label="Könyvjelző állapotok">
+            <div class="toolbar-group">
+                <div class="toolbar-label"><i class="fa-solid fa-list-check"></i> Könyvjelző állapot</div>
+                <div class="state-filters" aria-label="Könyvjelző állapotok">
                 <button class="btn btn-secondary state-filter active" onclick="setBookmarkStateFilter('active')">Aktív</button>
                 <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('starred')">★ Kedvencek</button>
                 <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('read_later')">Olvasás később</button>
                 <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('to_review')">Ellenőrzésre</button>
                 <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('archived')">Archivált</button>
                 <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('trash')">Kuka</button>
+                </div>
             </div>
-            <div class="enterprise-actions">
+            <div class="toolbar-group">
+                <div class="toolbar-label"><i class="fa-solid fa-sliders"></i> Kezelés és adatkezelés</div>
+                <div class="enterprise-actions">
+                <button class="btn btn-secondary" id="manageCategoriesBtn"><i class="fa-solid fa-folder-gear"></i> Kategóriák kezelése</button>
                 <button class="btn btn-secondary" id="manageTagsBtn"><i class="fa-solid fa-tags"></i> Címkék kezelése</button>
                 <button class="btn btn-secondary" id="exportJsonBtn"><i class="fa-solid fa-download"></i> Export JSON</button>
                 <button class="btn btn-secondary" id="exportHtmlBtn"><i class="fa-solid fa-file-export"></i> Export HTML</button>
                 <label class="btn btn-secondary import-label"><i class="fa-solid fa-upload"></i> Import<input id="importBookmarksInput" type="file" accept=".json,.html,text/html,application/json" hidden></label>
+                </div>
             </div>
-            <div class="enterprise-search">
+            <div class="toolbar-group">
+                <div class="toolbar-label"><i class="fa-solid fa-magnifying-glass"></i> Keresés és szűrés</div>
+                <div class="enterprise-search">
                 <input id="bookmarkSearch" type="search" placeholder="Keresés cím, URL, kategória, címke vagy leírás alapján…" />
                 <input id="tagFilter" type="text" placeholder="Címke szűrő" />
+                </div>
             </div>
         </section>
         <div class="bookmark-list-toolbar">

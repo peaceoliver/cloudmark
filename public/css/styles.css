@@ -335,6 +335,10 @@ input:focus, select:focus {
     gap: .7rem;
     margin: 0 0 1rem;
 }
+.dashboard-section { margin-bottom: .75rem; }
+.toolbar-group { width: 100%; }
+.toolbar-label { margin: .15rem 0 .45rem; color: var(--text-secondary); font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.toolbar-label i { margin-right: .35rem; color: var(--accent); }
 .state-filters, .enterprise-actions, .enterprise-search { display: flex; gap: .5rem; flex-wrap: wrap; width: 100%; }
 .enterprise-search input { flex: 1 1 260px; }
 .enterprise-actions { align-items: center; }

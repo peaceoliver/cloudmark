@@ -10,12 +10,10 @@ function renderCategories() {
     }
     container.innerHTML = `<button class="category-chip ${activeCategoryFilter === 'All' ? 'active' : ''}" onclick="filterCategory('All')">Összes</button>`;
     if (select) select.innerHTML = '';
-    if (currentUser) {
-        const manageButton = document.createElement('button');
-        manageButton.className = 'category-chip add-cat-btn';
-        manageButton.innerHTML = '<i class="fa-solid fa-folder-gear"></i> Kategóriák Kezelése';
+    const manageButton = document.getElementById('manageCategoriesBtn');
+    if (manageButton) {
+        manageButton.style.display = currentUser ? '' : 'none';
         manageButton.onclick = () => { openModal('categoryModal'); renderManageCategoriesList(); };
-        container.prepend(manageButton);
     }
     visible.forEach(category => {
         if (select) select.append(new Option(category, category));
