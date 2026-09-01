@@ -1,27 +1,49 @@
 let currentBookmarkView = localStorage.getItem(CloudMark.config.storageKeys.viewMode) || 'grid';
+let showBookmarkImages = localStorage.getItem(config.storageKeys.showImages) !== 'false';
 
 /** Persists the selected bookmark layout and refreshes the grid. */
 function setBookmarkView(viewMode) {
-    currentBookmarkView = viewMode; localStorage.setItem(config.storageKeys.viewMode, viewMode);
-    if (currentUser && typeof api !== 'undefined') api.saveUserSetting('viewMode', viewMode).catch(err => console.warn('Failed to save view mode:', err));
+    const normalizedMode = ['grid', 'compact', 'list'].includes(viewMode) ? viewMode : 'grid';
+    currentBookmarkView = normalizedMode;
+    localStorage.setItem(config.storageKeys.viewMode, normalizedMode);
+    if (currentUser && typeof api !== 'undefined') api.saveUserSetting('viewMode', normalizedMode).catch(err => console.warn('Failed to save view mode:', err));
     document.querySelectorAll('.view-btn').forEach(button => button.classList.remove('active'));
 
     const buttonMap = {
         grid: 'btnViewGrid',
         compact: 'btnViewCompact',
-        list: 'btnViewList',
-        noimage: 'btnViewNoimage'
+        list: 'btnViewList'
     };
 
-    const button = document.getElementById(buttonMap[viewMode] || `btnView${viewMode[0].toUpperCase()}${viewMode.slice(1)}`);
+    const button = document.getElementById(buttonMap[currentBookmarkView]);
     if (button) button.classList.add('active');
+    updateImageToggleButton();
+    renderBookmarks();
+}
+
+function updateImageToggleButton() {
+    const toggleButton = document.getElementById('btnToggleImages');
+    if (!toggleButton) return;
+    toggleButton.classList.toggle('active', !showBookmarkImages);
+    toggleButton.title = showBookmarkImages ? 'Képek elrejtése' : 'Képek megjelenítése';
+    toggleButton.innerHTML = showBookmarkImages
+        ? '<i class="fa-solid fa-image"></i>'
+        : '<i class="fa-solid fa-image-slash"></i>';
+}
+
+function toggleImageVisibility(forceValue) {
+    const nextValue = typeof forceValue === 'boolean' ? forceValue : !showBookmarkImages;
+    showBookmarkImages = nextValue;
+    localStorage.setItem(config.storageKeys.showImages, String(nextValue));
+    updateImageToggleButton();
     renderBookmarks();
 }
 
 /** Filters, sorts, and renders bookmarks visible to the current user. */
 function renderBookmarks() {
     const grid = document.getElementById('bookmarkGrid'); const addPanel = document.getElementById('addPanel');
-    grid.innerHTML = ''; grid.className = `dashboard-grid${currentBookmarkView === 'grid' ? '' : ` view-${currentBookmarkView}`}`;
+    const layoutClass = currentBookmarkView === 'grid' ? '' : ` view-${currentBookmarkView}`;
+    grid.innerHTML = ''; grid.className = `dashboard-grid${layoutClass}`;
     if (addPanel) addPanel.style.display = currentUser ? 'block' : 'none';
     const userId = currentUser ? currentUser.username : 'demo';
     let visible = !currentUser ? bookmarks.filter(bookmark => bookmark.userId === 'admin' || bookmark.userId === 'demo' || bookmark.category === 'MAIN') : currentUser.isSuperuser ? [...bookmarks] : bookmarks.filter(bookmark => bookmark.userId === userId || bookmark.userId === 'demo');
@@ -36,18 +58,19 @@ function createBookmarkCard(bookmark) {
     const card = document.createElement('div'); card.className = 'card';
     const fetchMetadataTitleEnabled = localStorage.getItem(config.storageKeys.fetchMetadataTitle) !== 'false';
     const fetchMetadataImageEnabled = localStorage.getItem(config.storageKeys.fetchMetadataImage) !== 'false';
-    const shouldShowImage = currentBookmarkView !== 'noimage' && fetchMetadataImageEnabled && bookmark.imageUrl;
+    const primaryTitle = (bookmark.title && String(bookmark.title).trim()) || (bookmark.metadataTitle && String(bookmark.metadataTitle).trim()) || 'Névtelen könyvjelző';
+    const shouldShowImage = showBookmarkImages && fetchMetadataImageEnabled && bookmark.imageUrl;
     if (shouldShowImage) {
-        const image = document.createElement('img'); image.className = 'card-cover'; image.src = bookmark.imageUrl; image.alt = bookmark.metadataTitle || bookmark.title;
+        const image = document.createElement('img'); image.className = 'card-cover'; image.src = bookmark.imageUrl; image.alt = primaryTitle;
         image.loading = 'lazy'; image.onerror = () => image.remove(); card.appendChild(image);
     }
     const left = document.createElement('div'); const header = document.createElement('div'); header.className = 'card-header';
-    const title = document.createElement('a'); title.href = bookmark.url; title.target = '_blank'; title.className = 'card-title'; title.textContent = bookmark.title;
+    const title = document.createElement('a'); title.href = bookmark.url; title.target = '_blank'; title.className = 'card-title'; title.textContent = primaryTitle;
     title.onclick = event => { event.preventDefault(); trackClickAndOpen(bookmark.id, bookmark.url); };
     const titleContainer = document.createElement('div'); titleContainer.style.cssText = 'display:flex; align-items:center; gap:0.5rem; overflow:hidden;'; titleContainer.appendChild(title);
     const category = document.createElement('span'); category.className = 'card-category'; category.textContent = bookmark.category; header.append(titleContainer, category);
     const url = document.createElement('div'); url.className = 'card-url'; url.textContent = bookmark.url; left.append(header, url);
-    if (fetchMetadataTitleEnabled && bookmark.metadataTitle && bookmark.metadataTitle !== bookmark.title) {
+    if (fetchMetadataTitleEnabled && bookmark.metadataTitle && bookmark.metadataTitle.trim() && bookmark.metadataTitle.trim() !== primaryTitle.trim()) {
         const articleTitle = document.createElement('div'); articleTitle.className = 'card-metadata-title'; articleTitle.textContent = bookmark.metadataTitle; left.appendChild(articleTitle);
     }
     const footer = document.createElement('div'); footer.className = 'card-footer'; footer.innerHTML = `<span><i class="fa-regular fa-clock"></i> ${bookmark.createdAt}</span>`;
@@ -92,4 +115,4 @@ document.getElementById('editBookmarkForm').addEventListener('submit', async eve
     renderBookmarks(); closeModal('editModal'); showNotification('A könyvjelző módosítva.', 'success');
 });
 
-window.setBookmarkView = setBookmarkView; window.deleteBookmark = deleteBookmark; window.trackClickAndOpen = trackClickAndOpen; window.openEditModal = openEditModal;
+window.setBookmarkView = setBookmarkView; window.toggleImageVisibility = toggleImageVisibility; window.deleteBookmark = deleteBookmark; window.trackClickAndOpen = trackClickAndOpen; window.openEditModal = openEditModal;

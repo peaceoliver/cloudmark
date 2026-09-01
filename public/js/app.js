@@ -7,6 +7,13 @@ let currentUser = null;
 let activeCategoryFilter = 'All';
 let currentSortMode = localStorage.getItem(config.storageKeys.sortMode) || 'newest';
 
+if (localStorage.getItem(config.storageKeys.viewMode) === 'noimage') {
+    localStorage.setItem(config.storageKeys.viewMode, 'grid');
+}
+if (!localStorage.getItem(config.storageKeys.showImages)) {
+    localStorage.setItem(config.storageKeys.showImages, 'true');
+}
+
 /** Loads the current category list from the server. */
 async function loadCategoriesFromServer() {
     try {
@@ -20,7 +27,7 @@ async function loadBookmarksFromServer() {
     try {
         const rows = await api.getBookmarks();
         bookmarks = Array.isArray(rows) ? rows.map(row => ({
-            id: row.id, userId: row.user_id || row.userId || 'demo', title: row.title,
+            id: row.id, userId: row.user_id || row.userId || 'demo', title: row.title || row.metadata_title || row.url || 'Névtelen könyvjelző',
             url: row.url, category: row.category,
             createdAt: row.created_at ? row.created_at.split('T')[0] : '',
             clicks: row.clicks || row.click_count || 0
@@ -120,6 +127,7 @@ async function initApp() {
     await loadBookmarksFromServer();
     renderCategories();
     updateUserUI();
+    updateImageToggleButton();
     renderBookmarks();
     renderManageCategoriesList();
     checkIncomingBookmarklet();

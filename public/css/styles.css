@@ -586,6 +586,12 @@ input:focus, select:focus {
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
+#btnToggleImages.active {
+    background-color: rgba(56, 189, 248, 0.12);
+    color: var(--accent);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
 /* Shared layout behavior for all bookmark views */
 .dashboard-grid.view-compact,
 .dashboard-grid.view-list,
@@ -663,8 +669,9 @@ input:focus, select:focus {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    text-align: left;
+    justify-content: center;
     gap: 0.15rem;
+    text-align: left;
 }
 
 .dashboard-grid.view-list .card-title {
@@ -674,6 +681,8 @@ input:focus, select:focus {
     text-overflow: ellipsis;
     width: 100%;
     text-align: left;
+    display: block;
+    line-height: 1.35;
 }
 
 .dashboard-grid.view-list .card-url,
@@ -686,6 +695,7 @@ input:focus, select:focus {
     font-size: 0.78rem;
     width: 100%;
     text-align: left;
+    line-height: 1.35;
 }
 
 .dashboard-grid.view-list .card-url {
@@ -710,8 +720,9 @@ input:focus, select:focus {
 }
 
 .dashboard-grid.view-list .card-category {
-    order: -1;
     white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 0.15rem;
 }
 
 .dashboard-grid.view-noimage {

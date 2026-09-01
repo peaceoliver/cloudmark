@@ -239,6 +239,18 @@ async function shouldFetchWebsiteMetadataImage(userId) {
     return normalizeBooleanSetting(value, true);
 }
 
+function resolveBookmarkTitle(title, metadata, url) {
+    const manual = String(title || '').trim();
+    if (manual) return manual;
+    const siteTitle = String(metadata?.title || '').trim();
+    if (siteTitle) return siteTitle;
+    try {
+        return new URL(url).hostname;
+    } catch (err) {
+        return String(url || 'Névtelen könyvjelző').trim() || 'Névtelen könyvjelző';
+    }
+}
+
 /** Fetches lightweight article metadata without making metadata mandatory. */
 async function fetchBookmarkMetadata(url) {
     try {
@@ -481,12 +493,13 @@ app.post('/api/bookmarks', requireAuth, async (req, res) => {
         const fetchTitle = await shouldFetchWebsiteMetadataTitle(req.user.id);
         const fetchImage = await shouldFetchWebsiteMetadataImage(req.user.id);
         const metadata = (fetchTitle || fetchImage) ? await fetchBookmarkMetadata(url) : {};
+        const resolvedTitle = resolveBookmarkTitle(title, metadata, url);
         const result = await pool.query(
             `INSERT INTO bookmarks (user_id, title, url, category, metadata_title, image_url, description, site_name)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
             [
                 req.user.username,
-                title,
+                resolvedTitle,
                 url,
                 category,
                 fetchTitle ? metadata.title : null,
@@ -522,12 +535,13 @@ app.put('/api/bookmarks/:id', requireAuth, async (req, res) => {
         const fetchTitle = await shouldFetchWebsiteMetadataTitle(req.user.id);
         const fetchImage = await shouldFetchWebsiteMetadataImage(req.user.id);
         const metadata = (fetchTitle || fetchImage) ? await fetchBookmarkMetadata(url) : {};
+        const resolvedTitle = resolveBookmarkTitle(title, metadata, url);
         const owner = req.user.role === 'admin' ? '' : ' AND user_id = $9';
         const result = await pool.query(
             `UPDATE bookmarks SET title = $1, url = $2, category = $3, metadata_title = $5, image_url = $6, description = $7, site_name = $8 WHERE id = $4${owner} RETURNING *`,
             req.user.role === 'admin'
-                ? [title, url, category, id, fetchTitle ? metadata.title : null, fetchImage ? metadata.imageUrl : null, metadata.description, metadata.siteName]
-                : [title, url, category, id, fetchTitle ? metadata.title : null, fetchImage ? metadata.imageUrl : null, metadata.description, metadata.siteName, req.user.username]
+                ? [resolvedTitle, url, category, id, fetchTitle ? metadata.title : null, fetchImage ? metadata.imageUrl : null, metadata.description, metadata.siteName]
+                : [resolvedTitle, url, category, id, fetchTitle ? metadata.title : null, fetchImage ? metadata.imageUrl : null, metadata.description, metadata.siteName, req.user.username]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
         res.json(result.rows[0]);
