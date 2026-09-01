@@ -641,11 +641,11 @@ input:focus, select:focus {
     min-height: 76px;
 }
 
-.dashboard-grid.view-list .card > div:first-child {
+.dashboard-grid.view-list .card-content {
     display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1 1 0;
     min-width: 0;
     overflow: hidden;
     text-align: left;
@@ -764,7 +764,7 @@ input:focus, select:focus {
         border-radius: 10px 10px 0 0;
     }
 
-    .dashboard-grid.view-list .card > div:first-child {
+    .dashboard-grid.view-list .card-content {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.25rem;

@@ -76,7 +76,7 @@ function createBookmarkCard(bookmark) {
         const image = document.createElement('img'); image.className = 'card-cover'; image.src = bookmark.imageUrl; image.alt = primaryTitle;
         image.loading = 'lazy'; image.onerror = () => image.remove(); card.appendChild(image);
     }
-    const left = document.createElement('div'); const header = document.createElement('div'); header.className = 'card-header';
+    const left = document.createElement('div'); left.className = 'card-content'; const header = document.createElement('div'); header.className = 'card-header';
     const title = document.createElement('a'); title.href = bookmark.url; title.target = '_blank'; title.className = 'card-title'; title.textContent = primaryTitle;
     title.onclick = event => { event.preventDefault(); trackClickAndOpen(bookmark.id, bookmark.url); };
     const titleContainer = document.createElement('div'); titleContainer.style.cssText = 'display:flex; align-items:center; gap:0.5rem; overflow:hidden;'; titleContainer.appendChild(title);
