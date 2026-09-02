@@ -457,6 +457,36 @@ input:focus, select:focus {
     justify-content: center;
     min-height: 2.6rem;
 }
+.bulk-selection-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: nowrap;
+}
+.bulk-selection-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    min-width: 0;
+}
+.bulk-action-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    flex: 1 1 auto;
+}
+.bulk-category-combo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+}
 .bulk-category-select {
     min-width: 180px;
     width: auto;
@@ -693,7 +723,34 @@ input:focus, select:focus {
     flex-direction: column;
     justify-content: space-between;
     position: relative;
-    text-align: left; /* Egységes balra igazítás */
+    text-align: left;
+}
+
+.card.has-image {
+    display: grid;
+    grid-template-columns: auto 110px minmax(0, 1fr);
+    grid-template-areas: "select image content";
+    gap: 0.75rem 0.9rem;
+    align-items: start;
+}
+
+.card.has-image > .bookmark-select-wrap {
+    grid-area: select;
+    margin: 0;
+    align-self: center;
+}
+
+.card.has-image > .card-cover {
+    grid-area: image;
+    width: 110px;
+    height: 110px;
+    margin: 0;
+    border-radius: 10px;
+}
+
+.card.has-image > .card-content {
+    grid-area: content;
+    min-width: 0;
 }
 
 .card-cover {

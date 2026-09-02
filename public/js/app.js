@@ -142,6 +142,7 @@ async function initApp() {
     await loadCategoriesFromServer();
     await loadBookmarksFromServer();
     renderCategories();
+    if (typeof populateBulkCategorySelect === 'function') populateBulkCategorySelect();
     updateUserUI();
     updateImageToggleButton();
     renderBookmarks();

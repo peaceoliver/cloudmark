@@ -169,25 +169,25 @@
         </div>
         </div>
 
-        <div id="bulkSelectionBar" class="bulk-selection-bar" style="display: none; margin: 1rem 0; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: 12px; background: rgba(148, 163, 184, 0.06); display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between;">
-            <div>
+        <div id="bulkSelectionBar" class="bulk-selection-bar" style="display: none; margin: 1rem 0; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: 12px; background: rgba(148, 163, 184, 0.06);">
+            <div class="bulk-selection-summary">
                 <strong id="bulkSelectionCount">0</strong> kiválasztott könyvjelző
             </div>
-            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
-                <button type="button" class="btn btn-secondary" onclick="selectVisibleBookmarks()">Összes kijelölése</button>
-                <div style="display:flex; align-items:center; gap:0.5rem;">
+            <div class="bulk-action-row">
+                <button type="button" class="btn btn-secondary" onclick="selectVisibleBookmarks()"><i class="fa-solid fa-check-double"></i> Összes kijelölése</button>
+                <div class="bulk-category-combo">
                     <select id="bulkCategorySelect" class="bulk-category-select" aria-label="Kategória módosítása">
                         <option value="">Válassz kategóriát</option>
                     </select>
-                    <button type="button" class="btn btn-secondary" onclick="applyBulkCategoryChange()">Kategória módosítása</button>
+                    <button type="button" class="btn btn-secondary" onclick="applyBulkCategoryChange()"><i class="fa-solid fa-folder-tree"></i> Módosítás</button>
                 </div>
-                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('star')">★ Kedvenc hozzáadás</button>
-                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('unstar')">☆ Kedvenc eltávolítás</button>
-                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('archive')">Archiválás</button>
-                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('restore')">Visszaállítás</button>
-                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('status', { status: 'read_later' })">Olvasás később</button>
-                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('status', { status: 'to_review' })">Ellenőrzésre</button>
-                <button type="button" class="btn btn-danger" onclick="applyBulkAction('trash')">Törlés</button>
+                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('star')"><i class="fa-solid fa-star"></i> Kedvenc hozzáadás</button>
+                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('unstar')"><i class="fa-regular fa-star"></i> Kedvenc eltávolítás</button>
+                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('archive')"><i class="fa-solid fa-box-archive"></i> Archiválás</button>
+                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('restore')"><i class="fa-solid fa-box-open"></i> Visszaállítás</button>
+                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('status', { status: 'read_later' })"><i class="fa-solid fa-clock"></i> Olvasás később</button>
+                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('status', { status: 'to_review' })"><i class="fa-solid fa-flag"></i> Ellenőrzésre</button>
+                <button type="button" class="btn btn-danger" onclick="applyBulkAction('trash')"><i class="fa-solid fa-trash"></i> Kukába helyezés</button>
             </div>
         </div>
 

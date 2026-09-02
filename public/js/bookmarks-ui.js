@@ -254,6 +254,7 @@ function createBookmarkCard(bookmark) {
     const fetchMetadataImageEnabled = localStorage.getItem(bookmarksConfig.storageKeys.fetchMetadataImage) !== 'false';
     const primaryTitle = (bookmark.title && String(bookmark.title).trim()) || (bookmark.metadataTitle && String(bookmark.metadataTitle).trim()) || 'Névtelen könyvjelző';
     const shouldShowImage = showBookmarkImages && fetchMetadataImageEnabled && bookmark.imageUrl;
+    if (shouldShowImage) card.classList.add('has-image');
     let selectionControl = null;
     if (bulkSelectionEnabled) {
         selectionControl = document.createElement('label');
@@ -265,9 +266,7 @@ function createBookmarkCard(bookmark) {
         checkbox.checked = selectedBookmarkIds.has(bookmark.id);
         checkbox.onchange = () => toggleBookmarkSelection(Number(bookmark.id));
         selectionControl.appendChild(checkbox);
-        if (shouldShowImage) {
-            card.appendChild(selectionControl);
-        }
+        card.appendChild(selectionControl);
     }
     if (shouldShowImage) {
         const image = document.createElement('img'); image.className = 'card-cover'; image.src = bookmark.imageUrl; image.alt = primaryTitle;
@@ -418,4 +417,4 @@ document.getElementById('editBookmarkForm').addEventListener('submit', async eve
     renderBookmarks(); closeModal('editModal'); showNotification('A könyvjelző módosítva.', 'success');
 });
 
-window.setBookmarkView = setBookmarkView; window.toggleImageVisibility = toggleImageVisibility; window.deleteBookmark = deleteBookmark; window.updateBookmarkState = updateBookmarkState; window.permanentlyDeleteBookmark = permanentlyDeleteBookmark; window.trackClickAndOpen = trackClickAndOpen; window.openEditModal = openEditModal; window.openPreviewModal = openPreviewModal; window.applyBulkAction = applyBulkAction; window.toggleBookmarkSelection = toggleBookmarkSelection; window.selectVisibleBookmarks = selectVisibleBookmarks;
+window.setBookmarkView = setBookmarkView; window.toggleImageVisibility = toggleImageVisibility; window.deleteBookmark = deleteBookmark; window.updateBookmarkState = updateBookmarkState; window.permanentlyDeleteBookmark = permanentlyDeleteBookmark; window.trackClickAndOpen = trackClickAndOpen; window.openEditModal = openEditModal; window.openPreviewModal = openPreviewModal; window.confirmBulkAction = confirmBulkAction; window.applyBulkAction = applyBulkAction; window.applyBulkCategoryChange = applyBulkCategoryChange; window.populateBulkCategorySelect = populateBulkCategorySelect; window.toggleBookmarkSelection = toggleBookmarkSelection; window.selectVisibleBookmarks = selectVisibleBookmarks;
