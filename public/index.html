@@ -163,6 +163,22 @@
             </div>
         </div>
 
+        <div id="bulkSelectionBar" class="bulk-selection-bar" style="display: none; margin: 1rem 0; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: 12px; background: rgba(148, 163, 184, 0.06); display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between;">
+            <div>
+                <strong id="bulkSelectionCount">0</strong> kiválasztott könyvjelző
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary" onclick="selectVisibleBookmarks()">Összes kijelölése</button>
+                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('star')">★ Kedvenc</button>
+                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('unstar')">☆ Eltávolítás</button>
+                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('archive')">Archiválás</button>
+                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('restore')">Visszaállítás</button>
+                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('status', { status: 'read_later' })">Olvasás később</button>
+                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('status', { status: 'to_review' })">Ellenőrzésre</button>
+                <button type="button" class="btn btn-danger" onclick="applyBulkAction('delete')">Törlés</button>
+            </div>
+        </div>
+
         <!-- Bookmarks Dashboard -->
         <div class="dashboard-grid" id="bookmarkGrid">
             <!-- Dynamic Cards -->
@@ -415,6 +431,19 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="previewModal">
+        <div class="modal">
+            <div class="modal-title">
+                <i class="fa-solid fa-eye"></i> Könyvjelző előnézet
+            </div>
+            <div id="previewBookmarkContent" class="modal-form"></div>
+            <div style="display:flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem;">
+                <button type="button" class="btn btn btn-danger" onclick="closeModal('previewModal')">Bezárás</button>
+                <a id="previewBookmarkOpen" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Megnyitás</a>
+            </div>
         </div>
     </div>
     <script src="/js/config.js?v=20260902-mobile-state-fix"></script>

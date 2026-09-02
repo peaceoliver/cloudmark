@@ -119,6 +119,13 @@ apiNamespace.api = {
     deleteBookmark(id) {
         return requestJson(`/api/bookmarks/${id}`, { method: 'DELETE' });
     },
+    bulkBookmarkAction(ids, action, extra = {}) {
+        return requestJson('/api/bookmarks/bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, action, ...extra })
+        });
+    },
     updateBookmarkState(id, state) {
         return requestJson(`/api/bookmarks/${id}/state`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state) });
     },

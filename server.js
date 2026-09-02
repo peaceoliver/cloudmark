@@ -109,6 +109,18 @@ async function initDatabase() {
         `);
 
         await client.query(`
+            CREATE TABLE IF NOT EXISTS audit_events (
+                id BIGSERIAL PRIMARY KEY,
+                user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                action VARCHAR(80) NOT NULL,
+                entity_type VARCHAR(60) NOT NULL,
+                entity_id BIGINT,
+                details JSONB NOT NULL DEFAULT '{}',
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        `);
+
+        await client.query(`
             CREATE TABLE IF NOT EXISTS settings_app (
                 key VARCHAR(100) PRIMARY KEY,
                 value JSONB NOT NULL,
@@ -514,6 +526,27 @@ async function requireTeamAdmin(req, res, next) {
     });
 }
 
+function getRequestContext(req) {
+    return {
+        ip: req?.ip || req?.socket?.remoteAddress || null,
+        userAgent: req?.headers?.['user-agent'] || null,
+        method: req?.method || null,
+        path: req?.originalUrl || req?.url || null
+    };
+}
+
+async function recordAuditEvent({ userId, action, entityType, entityId = null, details = {}, req = null }) {
+    try {
+        await pool.query(
+            `INSERT INTO audit_events (user_id, action, entity_type, entity_id, details)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [userId ?? null, action, entityType, entityId ?? null, JSON.stringify({ ...details, ...(req ? getRequestContext(req) : {}) })]
+        );
+    } catch (err) {
+        console.warn('Audit event logging failed:', err.message);
+    }
+}
+
 async function createDefaultTeamForUser(userId, username) {
     const existing = await pool.query('SELECT id FROM teams WHERE owner_user_id = $1 LIMIT 1', [userId]);
     if (existing.rowCount) {
@@ -592,6 +625,7 @@ app.post('/api/teams', requireAuth, async (req, res) => {
             'INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
             [teamId, req.user.id, 'team_admin']
         );
+        await recordAuditEvent({ userId: req.user.id, action: 'team_created', entityType: 'team', entityId: teamId, details: { name }, req });
         res.status(201).json(team.rows[0]);
     } catch (err) {
         res.status(500).json({ error: 'A csapat létrehozása nem sikerült.' });
@@ -632,10 +666,168 @@ app.post('/api/teams/:id/members', requireTeamAdmin, async (req, res) => {
             'UPDATE users SET team_id = $1, team_role = $2 WHERE id = $3',
             [teamId, role, user.id]
         );
+        await recordAuditEvent({ userId: req.user.id, action: 'team_member_updated', entityType: 'team_member', entityId: user.id, details: { teamId, username, role }, req });
 
         res.status(201).json({ success: true, userId: user.id, username: username, role });
     } catch (err) {
         res.status(500).json({ error: err.message || 'A felhasználó hozzáadása a csapathoz nem sikerült.' });
+    }
+});
+
+app.get('/api/admin/audit-events', requireAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT ae.*, u.username AS actor_username
+             FROM audit_events ae
+             LEFT JOIN users u ON u.id = ae.user_id
+             ORDER BY ae.created_at DESC LIMIT 200`
+        );
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Az audit log nem tölthető be.' });
+    }
+});
+
+app.get('/api/admin/backup/export', requireAdmin, async (req, res) => {
+    try {
+        const tables = await Promise.all([
+            pool.query('SELECT * FROM users ORDER BY id'),
+            pool.query('SELECT * FROM teams ORDER BY id'),
+            pool.query('SELECT * FROM bookmarks ORDER BY id'),
+            pool.query('SELECT * FROM tags ORDER BY id'),
+            pool.query('SELECT * FROM bookmark_tags ORDER BY bookmark_id, tag_id'),
+            pool.query('SELECT * FROM settings_app ORDER BY key'),
+            pool.query('SELECT * FROM settings_user ORDER BY user_id, setting_key')
+        ]);
+        const payload = {
+            exportedAt: new Date().toISOString(),
+            schemaVersion: 1,
+            data: {
+                users: tables[0].rows,
+                teams: tables[1].rows,
+                bookmarks: tables[2].rows,
+                tags: tables[3].rows,
+                bookmark_tags: tables[4].rows,
+                settings_app: tables[5].rows,
+                settings_user: tables[6].rows
+            }
+        };
+        res.type('application/json').attachment('cloudmark-backup.json').send(JSON.stringify(payload, null, 2));
+        await recordAuditEvent({ userId: req.user.id, action: 'backup_exported', entityType: 'backup', details: { exportRows: payload.data.bookmarks.length }, req });
+    } catch (err) {
+        res.status(500).json({ error: 'A biztonsági mentés exportálása nem sikerült.' });
+    }
+});
+
+app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
+    try {
+        const payload = req.body || {};
+        const data = payload.data || {};
+        if (!data || typeof data !== 'object') return res.status(400).json({ error: 'Érvénytelen mentési csomag.' });
+
+        const tables = ['users', 'teams', 'settings_app', 'settings_user', 'tags', 'bookmarks', 'bookmark_tags'];
+        for (const table of tables) {
+            const rows = Array.isArray(data[table]) ? data[table] : [];
+            if (!rows.length) continue;
+            if (table === 'users') {
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO users (id, username, email, password_hash, role, is_verified, verification_token_hash, verification_expires_at, team_id, team_role, created_at)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                         ON CONFLICT (id) DO UPDATE SET
+                           username = EXCLUDED.username,
+                           email = EXCLUDED.email,
+                           password_hash = EXCLUDED.password_hash,
+                           role = EXCLUDED.role,
+                           is_verified = EXCLUDED.is_verified,
+                           verification_token_hash = EXCLUDED.verification_token_hash,
+                           verification_expires_at = EXCLUDED.verification_expires_at,
+                           team_id = EXCLUDED.team_id,
+                           team_role = EXCLUDED.team_role`,
+                        [row.id, row.username, row.email, row.password_hash, row.role || 'user', Boolean(row.is_verified), row.verification_token_hash, row.verification_expires_at, row.team_id || null, row.team_role || 'member', row.created_at]
+                    );
+                }
+                continue;
+            }
+            if (table === 'teams') {
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO teams (id, name, owner_user_id, created_at) VALUES ($1, $2, $3, $4)
+                         ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, owner_user_id = EXCLUDED.owner_user_id`,
+                        [row.id, row.name, row.owner_user_id, row.created_at]
+                    );
+                }
+                continue;
+            }
+            if (table === 'settings_app') {
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO settings_app (key, value, updated_at) VALUES ($1, $2, $3)
+                         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
+                        [row.key, row.value, row.updated_at]
+                    );
+                }
+                continue;
+            }
+            if (table === 'settings_user') {
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO settings_user (user_id, setting_key, value, updated_at) VALUES ($1, $2, $3, $4)
+                         ON CONFLICT (user_id, setting_key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
+                        [row.user_id, row.setting_key, row.value, row.updated_at]
+                    );
+                }
+                continue;
+            }
+            if (table === 'tags') {
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO tags (id, user_id, name) VALUES ($1, $2, $3)
+                         ON CONFLICT (id) DO UPDATE SET user_id = EXCLUDED.user_id, name = EXCLUDED.name`,
+                        [row.id, row.user_id, row.name]
+                    );
+                }
+                continue;
+            }
+            if (table === 'bookmarks') {
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO bookmarks (id, user_id, title, url, category, clicks, created_at, metadata_title, image_url, description, site_name, archived, starred, status, trashed, normalized_url)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                         ON CONFLICT (id) DO UPDATE SET
+                           user_id = EXCLUDED.user_id,
+                           title = EXCLUDED.title,
+                           url = EXCLUDED.url,
+                           category = EXCLUDED.category,
+                           clicks = EXCLUDED.clicks,
+                           metadata_title = EXCLUDED.metadata_title,
+                           image_url = EXCLUDED.image_url,
+                           description = EXCLUDED.description,
+                           site_name = EXCLUDED.site_name,
+                           archived = EXCLUDED.archived,
+                           starred = EXCLUDED.starred,
+                           status = EXCLUDED.status,
+                           trashed = EXCLUDED.trashed,
+                           normalized_url = EXCLUDED.normalized_url`,
+                        [row.id, row.user_id, row.title, row.url, row.category, row.clicks || 0, row.created_at, row.metadata_title, row.image_url, row.description, row.site_name, Boolean(row.archived), Boolean(row.starred), row.status || 'inbox', Boolean(row.trashed), row.normalized_url]
+                    );
+                }
+                continue;
+            }
+            if (table === 'bookmark_tags') {
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO bookmark_tags (bookmark_id, tag_id) VALUES ($1, $2)
+                         ON CONFLICT (bookmark_id, tag_id) DO NOTHING`,
+                        [row.bookmark_id, row.tag_id]
+                    );
+                }
+            }
+        }
+        await recordAuditEvent({ userId: req.user.id, action: 'backup_imported', entityType: 'backup', details: { importedTables: tables }, req });
+        res.json({ success: true, importedTables: tables });
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'A mentés visszaállítása nem sikerült.' });
     }
 });
 
@@ -666,6 +858,8 @@ app.post('/api/auth/register', async (req, res) => {
         );
         const user = result.rows[0];
         await createDefaultTeamForUser(user.id, user.username);
+        await recordAuditEvent({ userId: user.id, action: 'user_registered', entityType: 'user', entityId: user.id, details: { email }, req });
+
         try {
             const emailSent = await sendVerificationEmail(email, verificationToken);
             res.status(201).json({ verificationRequired: true, email: user.email, emailSent });
@@ -716,6 +910,7 @@ app.post('/api/auth/login', async (req, res) => {
         if (!user.is_verified) return res.status(403).json({ error: 'Előbb erősítsd meg az e-mail címedet.' });
         if (!user.team_id) await createDefaultTeamForUser(user.id, user.username);
         await createSession(user, res);
+        await recordAuditEvent({ userId: user.id, action: 'login', entityType: 'user', entityId: user.id, req });
         res.json({ id: user.id, username: user.username, email: user.email, role: user.role, teamId: user.team_id, teamRole: user.team_role, isSuperuser: user.role === 'admin' });
     } catch (err) {
         res.status(500).json({ error: 'A bejelentkezés nem sikerült.' });
@@ -818,6 +1013,7 @@ app.post('/api/bookmarks', requireAuth, async (req, res) => {
             ]
         );
         await replaceBookmarkTags(result.rows[0].id, req.user.id, tags);
+        await recordAuditEvent({ userId: req.user.id, action: 'bookmark_created', entityType: 'bookmark', entityId: result.rows[0].id, details: { title: resolvedTitle, category, status, url: normalizedUrl }, req });
         res.status(201).json({ ...result.rows[0], tags: normalizeTags(tags) });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -838,6 +1034,7 @@ app.delete('/api/bookmarks/:id', requireAuth, async (req, res) => {
             );
         }
         if (!result.rowCount) return res.status(404).json({ error: 'A könyvjelző nem található.' });
+        await recordAuditEvent({ userId: req.user.id, action: 'bookmark_trashed', entityType: 'bookmark', entityId: Number(id), details: { trashed: true }, req });
         res.json({ message: 'Könyvjelző sikeresen törölve' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -858,8 +1055,9 @@ app.patch('/api/bookmarks/:id/state', requireAuth, async (req, res) => {
         owner = ' AND (LOWER(CAST(user_id AS TEXT)) = LOWER($' + (values.length - 1) + ') OR LOWER(CAST(user_id AS TEXT)) = LOWER($' + values.length + '))';
     }
     try {
-    const result = await pool.query(`UPDATE bookmarks SET ${fields.join(', ')} WHERE id = $1${owner} RETURNING *`, values);
+        const result = await pool.query(`UPDATE bookmarks SET ${fields.join(', ')} WHERE id = $1${owner} RETURNING *`, values);
         if (!result.rowCount) return res.status(404).json({ error: 'Not found' });
+        await recordAuditEvent({ userId: req.user.id, action: 'bookmark_state_updated', entityType: 'bookmark', entityId: Number(req.params.id), details: { fields: Object.keys(req.body), archived, trashed, starred, status }, req });
         res.json(result.rows[0]);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -869,8 +1067,53 @@ app.delete('/api/bookmarks/:id/permanent', requireAuth, async (req, res) => {
         const result = await pool.query('DELETE FROM bookmarks WHERE id = $1 AND trashed = TRUE AND (user_id = $2 OR user_id = $3) RETURNING id', [req.params.id, req.user.username, String(req.user.id)]);
         if (!result.rowCount && req.user.role !== 'admin') return res.status(404).json({ error: 'Not found' });
         if (req.user.role === 'admin') await pool.query('DELETE FROM bookmarks WHERE id = $1 AND trashed = TRUE', [req.params.id]);
+        await recordAuditEvent({ userId: req.user.id, action: 'bookmark_deleted_permanent', entityType: 'bookmark', entityId: Number(req.params.id), details: { permanent: true }, req });
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/bookmarks/bulk', requireAuth, async (req, res) => {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(id => Number(id)).filter(id => Number.isFinite(id) && id > 0) : [];
+    const action = String(req.body?.action || '').trim();
+    if (!ids.length) return res.status(400).json({ error: 'Legalább egy könyvjelző kiválasztása szükséges.' });
+
+    try {
+        let query = '';
+        let params = [ids];
+        const userAwareFilter = req.user.role === 'admin' ? '' : ' AND (LOWER(CAST(user_id AS TEXT)) = LOWER($2) OR LOWER(CAST(user_id AS TEXT)) = LOWER($3))';
+        if (req.user.role !== 'admin') params.push(req.user.username, String(req.user.id));
+
+        if (['archive', 'restore', 'trash', 'star', 'unstar', 'status'].includes(action)) {
+            const fields = [];
+            if (action === 'archive') fields.push('archived = TRUE');
+            if (action === 'restore') fields.push('archived = FALSE', 'trashed = FALSE');
+            if (action === 'trash') fields.push('trashed = TRUE', 'archived = FALSE');
+            if (action === 'star') fields.push('starred = TRUE');
+            if (action === 'unstar') fields.push('starred = FALSE');
+            if (action === 'status') {
+                const status = String(req.body?.status || '').trim();
+                if (!['inbox', 'read_later', 'to_review', 'done'].includes(status)) return res.status(400).json({ error: 'Érvénytelen állapot.' });
+                fields.push(`status = $${params.length + 1}`);
+                params.push(status);
+            }
+            if (!fields.length) return res.status(400).json({ error: 'Nincs módosítandó művelet.' });
+            query = `UPDATE bookmarks SET ${fields.join(', ')} WHERE id = ANY($1)${userAwareFilter} RETURNING *`;
+            const result = await pool.query(query, params);
+            await recordAuditEvent({ userId: req.user.id, action: `bookmark_bulk_${action}`, entityType: 'bookmark', details: { count: result.rowCount, ids }, req });
+            return res.json({ updated: result.rowCount, action });
+        }
+
+        if (action === 'delete') {
+            query = `DELETE FROM bookmarks WHERE id = ANY($1)${userAwareFilter} RETURNING id`;
+            const result = await pool.query(query, params);
+            await recordAuditEvent({ userId: req.user.id, action: 'bookmark_bulk_delete', entityType: 'bookmark', details: { count: result.rowCount, ids }, req });
+            return res.json({ deleted: result.rowCount, action });
+        }
+
+        return res.status(400).json({ error: 'Ismeretlen tömeges művelet.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 /** Updates a bookmark's title, URL, and category. */
@@ -897,6 +1140,7 @@ app.put('/api/bookmarks/:id', requireAuth, async (req, res) => {
         const result = await pool.query(query, params);
         if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
         await replaceBookmarkTags(result.rows[0].id, req.user.id, tags);
+        await recordAuditEvent({ userId: req.user.id, action: 'bookmark_updated', entityType: 'bookmark', entityId: Number(id), details: { title: resolvedTitle, category, status, url: normalizedUrl, tags: normalizeTags(tags) }, req });
         res.json({ ...result.rows[0], tags: normalizeTags(tags) });
     } catch (err) {
         res.status(500).json({ error: err.message });

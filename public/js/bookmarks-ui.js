@@ -2,6 +2,7 @@ const bookmarksConfig = window.CloudMark && window.CloudMark.config ? window.Clo
 let currentBookmarkView = (bookmarksConfig.storageKeys ? localStorage.getItem(bookmarksConfig.storageKeys.viewMode) : null) || 'grid';
 let showBookmarkImages = bookmarksConfig.storageKeys ? localStorage.getItem(bookmarksConfig.storageKeys.showImages) !== 'false' : true;
 const tagInputState = new Map();
+const selectedBookmarkIds = new Set();
 
 function initTagInputs() {
     document.querySelectorAll('[data-tag-input]').forEach(wrapper => {
@@ -128,6 +129,30 @@ function toggleImageVisibility(forceValue) {
 }
 
 /** Filters, sorts, and renders bookmarks visible to the current user. */
+function renderSelectionToolbar() {
+    const bar = document.getElementById('bulkSelectionBar');
+    const countNode = document.getElementById('bulkSelectionCount');
+    if (!bar || !countNode) return;
+    const count = selectedBookmarkIds.size;
+    bar.style.display = count ? 'flex' : 'none';
+    countNode.textContent = String(count);
+}
+
+function toggleBookmarkSelection(id) {
+    if (selectedBookmarkIds.has(id)) selectedBookmarkIds.delete(id);
+    else selectedBookmarkIds.add(id);
+    renderSelectionToolbar();
+}
+
+function selectVisibleBookmarks() {
+    const visibleIds = Array.from(document.querySelectorAll('.bookmark-select-input')).map(input => Number(input.value)).filter(Number.isFinite);
+    if (!visibleIds.length) return;
+    const allSelected = visibleIds.every(id => selectedBookmarkIds.has(id));
+    visibleIds.forEach(id => { if (allSelected) selectedBookmarkIds.delete(id); else selectedBookmarkIds.add(id); });
+    renderSelectionToolbar();
+    renderBookmarks();
+}
+
 function renderBookmarks() {
     const grid = document.getElementById('bookmarkGrid'); const addPanel = document.getElementById('addPanel');
     const layoutClass = currentBookmarkView === 'grid' ? '' : ` view-${currentBookmarkView}`;
@@ -157,8 +182,9 @@ function renderBookmarks() {
     if (search) visible = visible.filter(bookmark => [bookmark.title, bookmark.url, bookmark.category, bookmark.description, ...(bookmark.tags || [])].join(' ').toLowerCase().includes(search));
     if (tagFilter) visible = visible.filter(bookmark => (bookmark.tags || []).some(tag => tag.toLowerCase().includes(tagFilter)));
     visible.sort((a, b) => currentSortMode === 'abc' ? (a.title || '').localeCompare(b.title || '', 'hu') : currentSortMode === 'oldest' ? new Date(a.createdAt || 0) - new Date(b.createdAt || 0) : currentSortMode === 'frequency' ? (b.clicks || 0) - (a.clicks || 0) : new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-    if (!visible.length) { grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-secondary)"><i class="fa-solid fa-folder-open" style="font-size:2.5rem"></i><p>Nincs megjeleníthető könyvjelző ebben a kategóriában.</p></div>'; return; }
+    if (!visible.length) { grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-secondary)"><i class="fa-solid fa-folder-open" style="font-size:2.5rem"></i><p>Nincs megjeleníthető könyvjelző ebben a kategóriában.</p></div>'; renderSelectionToolbar(); return; }
     visible.forEach(bookmark => grid.appendChild(createBookmarkCard(bookmark)));
+    renderSelectionToolbar();
 }
 
 /** Builds a bookmark card and wires its actions. */
@@ -173,10 +199,13 @@ function createBookmarkCard(bookmark) {
         image.loading = 'lazy'; image.onerror = () => image.remove(); card.appendChild(image);
     }
     const left = document.createElement('div'); left.className = 'card-content'; const header = document.createElement('div'); header.className = 'card-header';
+    const selectWrap = document.createElement('label'); selectWrap.style.display = 'inline-flex'; selectWrap.style.alignItems = 'center'; selectWrap.style.gap = '0.5rem';
+    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.className = 'bookmark-select-input'; checkbox.value = String(bookmark.id); checkbox.checked = selectedBookmarkIds.has(bookmark.id); checkbox.onchange = () => toggleBookmarkSelection(Number(bookmark.id));
+    selectWrap.appendChild(checkbox);
     const title = document.createElement('a'); title.href = bookmark.url; title.target = '_blank'; title.className = 'card-title'; title.textContent = primaryTitle;
     title.onclick = event => { event.preventDefault(); trackClickAndOpen(bookmark.id, bookmark.url); };
     const titleContainer = document.createElement('div'); titleContainer.className = 'card-title-container'; titleContainer.appendChild(title);
-    const category = document.createElement('span'); category.className = 'card-category'; category.textContent = bookmark.category; header.append(titleContainer, category);
+    const category = document.createElement('span'); category.className = 'card-category'; category.textContent = bookmark.category; header.append(selectWrap, titleContainer, category);
     if (bookmark.tags && bookmark.tags.length) {
         const tags = document.createElement('div'); tags.className = 'card-tags'; tags.textContent = bookmark.tags.map(tag => `#${tag}`).join(' '); left.appendChild(tags);
     }
@@ -190,9 +219,10 @@ function createBookmarkCard(bookmark) {
     const later = document.createElement('button'); later.className = 'action-btn' + (bookmark.status === 'read_later' ? ' is-read-later' : ''); later.title = 'Olvasás később'; later.innerHTML = '<i class="fa-solid fa-clock"></i>'; later.onclick = () => updateBookmarkState(bookmark.id, { status: bookmark.status === 'read_later' ? 'inbox' : 'read_later' });
     const review = document.createElement('button'); review.className = 'action-btn' + (bookmark.status === 'to_review' ? ' is-to-review' : ''); review.title = 'Ellenőrzésre'; review.innerHTML = '<i class="fa-solid fa-flag"></i>'; review.onclick = () => updateBookmarkState(bookmark.id, { status: bookmark.status === 'to_review' ? 'inbox' : 'to_review' });
     const archive = document.createElement('button'); archive.className = 'action-btn'; archive.title = bookmark.trashed || bookmark.archived ? 'Visszaállítás' : 'Archiválás'; archive.innerHTML = `<i class="fa-solid fa-box-${bookmark.archived ? 'open' : 'archive'}"></i>`; archive.onclick = () => updateBookmarkState(bookmark.id, bookmark.trashed ? { trashed: false } : { archived: !bookmark.archived });
+    const preview = document.createElement('button'); preview.className = 'action-btn'; preview.title = 'Előnézet'; preview.innerHTML = '<i class="fa-solid fa-eye"></i>'; preview.onclick = () => openPreviewModal(bookmark);
     const edit = document.createElement('button'); edit.className = 'action-btn'; edit.title = 'Szerkesztés'; edit.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>'; edit.onclick = () => openEditModal(bookmark.id);
     const share = document.createElement('button'); share.className = 'action-btn'; share.title = 'Megosztás'; share.innerHTML = '<i class="fa-solid fa-share-nodes"></i>'; share.onclick = async () => { try { const result = await api.shareBookmark(bookmark.id); await navigator.clipboard.writeText(result.url); showNotification('Megosztási hivatkozás a vágólapra másolva.', 'success'); } catch (err) { showNotification('A megosztás nem sikerült.', 'error'); } };
-    const remove = document.createElement('button'); remove.className = 'action-btn'; remove.title = bookmark.trashed ? 'Végleges törlés' : 'Kukába helyezés'; remove.innerHTML = '<i class="fa-solid fa-trash"></i>'; remove.onclick = () => bookmark.trashed ? permanentlyDeleteBookmark(bookmark.id) : deleteBookmark(bookmark.id); actions.append(star, later, review, archive, edit, share, remove); footer.appendChild(actions); card.append(left, footer); return card;
+    const remove = document.createElement('button'); remove.className = 'action-btn'; remove.title = bookmark.trashed ? 'Végleges törlés' : 'Kukába helyezés'; remove.innerHTML = '<i class="fa-solid fa-trash"></i>'; remove.onclick = () => bookmark.trashed ? permanentlyDeleteBookmark(bookmark.id) : deleteBookmark(bookmark.id); actions.append(star, later, review, archive, preview, edit, share, remove); footer.appendChild(actions); card.append(left, footer); return card;
 }
 
 /** Populates a category select while preserving a valid selection. */
@@ -215,6 +245,58 @@ async function deleteBookmark(id) {
 }
 async function updateBookmarkState(id, state) { try { await api.updateBookmarkState(id, state); await loadBookmarksFromServer(); renderBookmarks(); } catch (err) { showNotification(err.message || 'Állapot mentése sikertelen.', 'error'); } }
 async function permanentlyDeleteBookmark(id) { if (!confirm('Véglegesen törlöd ezt a könyvjelzőt?')) return; try { await api.permanentlyDeleteBookmark(id); await loadBookmarksFromServer(); renderBookmarks(); } catch (err) { showNotification('A végleges törlés sikertelen.', 'error'); } }
+
+async function applyBulkAction(action, extra = {}) {
+    if (!selectedBookmarkIds.size) { showNotification('Előbb válassz ki legalább egy könyvjelzőt.', 'error'); return; }
+    const ids = [...selectedBookmarkIds];
+    try {
+        await api.bulkBookmarkAction(ids, action, extra);
+        selectedBookmarkIds.clear();
+        await loadBookmarksFromServer();
+        renderBookmarks();
+        renderSelectionToolbar();
+        showNotification('A tömeges művelet elkészült.', 'success');
+    } catch (err) {
+        showNotification(err.message || 'A tömeges művelet nem sikerült.', 'error');
+    }
+}
+
+function openPreviewModal(bookmark) {
+    const content = document.getElementById('previewBookmarkContent');
+    const openLink = document.getElementById('previewBookmarkOpen');
+    const primaryTitle = bookmark.title || bookmark.metadataTitle || 'Névtelen könyvjelző';
+    const tags = (bookmark.tags || []).map(tag => `#${tag}`).join(', ') || 'Nincs címke';
+    content.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:1rem;">
+            <div>
+                <div style="font-size:0.8rem; color: var(--text-secondary); margin-bottom:0.25rem; text-transform: uppercase; letter-spacing: 0.08rem;">Cím</div>
+                <h3 style="margin:0;">${primaryTitle}</h3>
+            </div>
+            <div>
+                <div style="font-size:0.8rem; color: var(--text-secondary); margin-bottom:0.25rem; text-transform: uppercase; letter-spacing: 0.08rem;">URL</div>
+                <a href="${bookmark.url}" target="_blank" rel="noopener noreferrer" style="word-break: break-all; color: var(--accent);">${bookmark.url}</a>
+            </div>
+            <div>
+                <div style="font-size:0.8rem; color: var(--text-secondary); margin-bottom:0.25rem; text-transform: uppercase; letter-spacing: 0.08rem;">Kategória</div>
+                <div>${bookmark.category || 'Inbox'}</div>
+            </div>
+            <div>
+                <div style="font-size:0.8rem; color: var(--text-secondary); margin-bottom:0.25rem; text-transform: uppercase; letter-spacing: 0.08rem;">Állapot</div>
+                <div>${bookmark.status || 'inbox'} • ${bookmark.starred ? 'Kedvenc' : 'Nem kedvenc'}</div>
+            </div>
+            <div>
+                <div style="font-size:0.8rem; color: var(--text-secondary); margin-bottom:0.25rem; text-transform: uppercase; letter-spacing: 0.08rem;">Leírás</div>
+                <div>${bookmark.description || 'Nincs leírás'}</div>
+            </div>
+            <div>
+                <div style="font-size:0.8rem; color: var(--text-secondary); margin-bottom:0.25rem; text-transform: uppercase; letter-spacing: 0.08rem;">Címkék</div>
+                <div>${tags}</div>
+            </div>
+        </div>
+    `;
+    openLink.href = bookmark.url;
+    openModal('previewModal');
+}
 
 /** Records a click locally and remotely before opening the bookmark. */
 async function trackClickAndOpen(id, url) {
@@ -244,4 +326,4 @@ document.getElementById('editBookmarkForm').addEventListener('submit', async eve
     renderBookmarks(); closeModal('editModal'); showNotification('A könyvjelző módosítva.', 'success');
 });
 
-window.setBookmarkView = setBookmarkView; window.toggleImageVisibility = toggleImageVisibility; window.deleteBookmark = deleteBookmark; window.updateBookmarkState = updateBookmarkState; window.permanentlyDeleteBookmark = permanentlyDeleteBookmark; window.trackClickAndOpen = trackClickAndOpen; window.openEditModal = openEditModal;
+window.setBookmarkView = setBookmarkView; window.toggleImageVisibility = toggleImageVisibility; window.deleteBookmark = deleteBookmark; window.updateBookmarkState = updateBookmarkState; window.permanentlyDeleteBookmark = permanentlyDeleteBookmark; window.trackClickAndOpen = trackClickAndOpen; window.openEditModal = openEditModal; window.openPreviewModal = openPreviewModal; window.applyBulkAction = applyBulkAction; window.toggleBookmarkSelection = toggleBookmarkSelection; window.selectVisibleBookmarks = selectVisibleBookmarks;
