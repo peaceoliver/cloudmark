@@ -437,14 +437,90 @@ input:focus, select:focus {
 .state-filters, .enterprise-actions, .enterprise-search { display: flex; gap: .5rem; flex-wrap: wrap; width: 100%; }
 .enterprise-search input { flex: 1 1 260px; }
 .enterprise-actions { align-items: center; }
-.bookmark-list-toolbar { display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin: 0 0 1rem; }
-.bookmark-list-toolbar select { width: auto; min-width: 190px; padding: .4rem .8rem; font-size: .85rem; }
+.bookmark-list-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+    margin: 0 0 1rem;
+    flex-wrap: nowrap;
+}
+.bookmark-list-toolbar select {
+    width: auto;
+    min-width: 190px;
+    padding: .4rem .8rem;
+    font-size: .85rem;
+}
+.bulk-toggle-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.6rem;
+}
+.bulk-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    height: 2.6rem;
+    border: 1px solid var(--border-color);
+    background: rgba(148, 163, 184, 0.06);
+    color: var(--text-secondary);
+    border-radius: 999px;
+    padding: 0.4rem 0.8rem 0.4rem 0.9rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1;
+}
+.bulk-toggle-btn.is-enabled {
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.35);
+    color: var(--accent);
+}
+.bulk-toggle-text {
+    min-width: 4.2rem;
+    text-align: left;
+    color: inherit;
+}
+.bulk-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 2.7rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.25);
+    border: 1px solid var(--border-color);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    flex-shrink: 0;
+}
+.bulk-toggle-switch::after {
+    content: "";
+    position: absolute;
+    top: 0.15rem;
+    left: 0.15rem;
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+    transition: transform 0.2s ease;
+}
+.bulk-toggle-btn.is-enabled .bulk-toggle-switch {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+.bulk-toggle-btn.is-enabled .bulk-toggle-switch::after {
+    transform: translateX(1.2rem);
+}
 .bookmark-state-group {
     display: flex;
     align-items: center;
     justify-content: flex-start;
     gap: .5rem;
     flex: 1 1 auto;
+    min-height: 2.6rem;
     padding: .3rem .45rem;
     border: 1px solid var(--border-color);
     border-radius: 999px;
@@ -638,9 +714,35 @@ input:focus, select:focus {
 .card-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
+    gap: 0.6rem;
     margin-bottom: 0.75rem;
     width: 100%;
+}
+
+.bookmark-select-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.45rem;
+    height: 1.45rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+
+.card > .bookmark-select-wrap {
+    margin: 0 0 0.5rem;
+    align-self: flex-start;
+}
+
+.bookmark-select-input {
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0;
+    accent-color: var(--accent);
+    border-radius: 0.35rem;
+    cursor: pointer;
+    vertical-align: middle;
 }
 
 .card-title {

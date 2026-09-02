@@ -3,6 +3,7 @@ let currentBookmarkView = (bookmarksConfig.storageKeys ? localStorage.getItem(bo
 let showBookmarkImages = bookmarksConfig.storageKeys ? localStorage.getItem(bookmarksConfig.storageKeys.showImages) !== 'false' : true;
 const tagInputState = new Map();
 const selectedBookmarkIds = new Set();
+let bulkSelectionEnabled = false;
 
 function initTagInputs() {
     document.querySelectorAll('[data-tag-input]').forEach(wrapper => {
@@ -129,22 +130,48 @@ function toggleImageVisibility(forceValue) {
 }
 
 /** Filters, sorts, and renders bookmarks visible to the current user. */
+function updateBulkSelectionToggleUI() {
+    const button = document.getElementById('bulkSelectionToggleBtn');
+    if (!button) return;
+    const text = button.querySelector('.bulk-toggle-text');
+    const isEnabled = bulkSelectionEnabled;
+    button.classList.toggle('is-enabled', isEnabled);
+    button.setAttribute('aria-pressed', String(isEnabled));
+    if (text) text.textContent = isEnabled ? 'Bulk ON' : 'Bulk OFF';
+}
+
+updateBulkSelectionToggleUI();
+
+function toggleBulkSelectionMode(forceValue) {
+    const nextValue = typeof forceValue === 'boolean' ? forceValue : !bulkSelectionEnabled;
+    bulkSelectionEnabled = nextValue;
+    if (!bulkSelectionEnabled) {
+        selectedBookmarkIds.clear();
+    }
+    renderSelectionToolbar();
+    updateBulkSelectionToggleUI();
+    renderBookmarks();
+}
+
 function renderSelectionToolbar() {
     const bar = document.getElementById('bulkSelectionBar');
     const countNode = document.getElementById('bulkSelectionCount');
     if (!bar || !countNode) return;
     const count = selectedBookmarkIds.size;
-    bar.style.display = count ? 'flex' : 'none';
+    const shouldShow = bulkSelectionEnabled;
+    bar.style.display = shouldShow ? 'flex' : 'none';
     countNode.textContent = String(count);
 }
 
 function toggleBookmarkSelection(id) {
+    if (!bulkSelectionEnabled) return;
     if (selectedBookmarkIds.has(id)) selectedBookmarkIds.delete(id);
     else selectedBookmarkIds.add(id);
     renderSelectionToolbar();
 }
 
 function selectVisibleBookmarks() {
+    if (!bulkSelectionEnabled) return;
     const visibleIds = Array.from(document.querySelectorAll('.bookmark-select-input')).map(input => Number(input.value)).filter(Number.isFinite);
     if (!visibleIds.length) return;
     const allSelected = visibleIds.every(id => selectedBookmarkIds.has(id));
@@ -194,18 +221,38 @@ function createBookmarkCard(bookmark) {
     const fetchMetadataImageEnabled = localStorage.getItem(bookmarksConfig.storageKeys.fetchMetadataImage) !== 'false';
     const primaryTitle = (bookmark.title && String(bookmark.title).trim()) || (bookmark.metadataTitle && String(bookmark.metadataTitle).trim()) || 'Névtelen könyvjelző';
     const shouldShowImage = showBookmarkImages && fetchMetadataImageEnabled && bookmark.imageUrl;
+    let selectionControl = null;
+    if (bulkSelectionEnabled) {
+        selectionControl = document.createElement('label');
+        selectionControl.className = 'bookmark-select-wrap';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'bookmark-select-input';
+        checkbox.value = String(bookmark.id);
+        checkbox.checked = selectedBookmarkIds.has(bookmark.id);
+        checkbox.onchange = () => toggleBookmarkSelection(Number(bookmark.id));
+        selectionControl.appendChild(checkbox);
+        if (shouldShowImage) {
+            card.appendChild(selectionControl);
+        }
+    }
     if (shouldShowImage) {
         const image = document.createElement('img'); image.className = 'card-cover'; image.src = bookmark.imageUrl; image.alt = primaryTitle;
         image.loading = 'lazy'; image.onerror = () => image.remove(); card.appendChild(image);
     }
     const left = document.createElement('div'); left.className = 'card-content'; const header = document.createElement('div'); header.className = 'card-header';
-    const selectWrap = document.createElement('label'); selectWrap.style.display = 'inline-flex'; selectWrap.style.alignItems = 'center'; selectWrap.style.gap = '0.5rem';
-    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.className = 'bookmark-select-input'; checkbox.value = String(bookmark.id); checkbox.checked = selectedBookmarkIds.has(bookmark.id); checkbox.onchange = () => toggleBookmarkSelection(Number(bookmark.id));
-    selectWrap.appendChild(checkbox);
     const title = document.createElement('a'); title.href = bookmark.url; title.target = '_blank'; title.className = 'card-title'; title.textContent = primaryTitle;
     title.onclick = event => { event.preventDefault(); trackClickAndOpen(bookmark.id, bookmark.url); };
     const titleContainer = document.createElement('div'); titleContainer.className = 'card-title-container'; titleContainer.appendChild(title);
-    const category = document.createElement('span'); category.className = 'card-category'; category.textContent = bookmark.category; header.append(selectWrap, titleContainer, category);
+    const category = document.createElement('span'); category.className = 'card-category'; category.textContent = bookmark.category;
+    if (bulkSelectionEnabled) {
+        if (!shouldShowImage) {
+            header.appendChild(selectionControl);
+        }
+        header.append(titleContainer, category);
+    } else {
+        header.append(titleContainer, category);
+    }
     if (bookmark.tags && bookmark.tags.length) {
         const tags = document.createElement('div'); tags.className = 'card-tags'; tags.textContent = bookmark.tags.map(tag => `#${tag}`).join(' '); left.appendChild(tags);
     }

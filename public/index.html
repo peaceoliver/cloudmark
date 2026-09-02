@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20260902-mobile-state-fix">
+    <link rel="stylesheet" href="/css/styles.css?v=20260902-bulk-toggle-fix">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -141,26 +141,32 @@
             </div>
         </section>
         <div class="bookmark-list-toolbar">
-            <select id="sortSelect" onchange="changeSortMode(this.value)">
-                <option value="newest">🕒 Legújabb elöl</option>
-                <option value="oldest">⏳ Legrégebbi elöl</option>
-                <option value="abc">🔤 ABC sorrend (Cím)</option>
-                <option value="frequency">🔥 Leggyakrabban kattintott</option>
-            </select>
-            <div class="bookmark-state-group" aria-label="Könyvjelző állapotok">
-                <button class="btn btn-secondary state-filter active" onclick="setBookmarkStateFilter('active')">Aktív</button>
-                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('starred')">★ Kedvencek</button>
-                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('read_later')">Olvasás később</button>
-                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('to_review')">Ellenőrzésre</button>
-                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('archived')">Archivált</button>
-                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('trash')">Kuka</button>
+        <select id="sortSelect" onchange="changeSortMode(this.value)">
+            <option value="newest">🕒 Legújabb elöl</option>
+            <option value="oldest">⏳ Legrégebbi elöl</option>
+            <option value="abc">🔤 ABC sorrend (Cím)</option>
+            <option value="frequency">🔥 Leggyakrabban kattintott</option>
+        </select>
+        <div class="bulk-toggle-wrap">
+            <button type="button" id="bulkSelectionToggleBtn" class="bulk-toggle-btn" aria-pressed="false" onclick="toggleBulkSelectionMode()">
+                <span class="bulk-toggle-text">Bulk OFF</span>
+                <span class="bulk-toggle-switch" aria-hidden="true"></span>
+            </button>
+        </div>
+        <div class="bookmark-state-group" aria-label="Könyvjelző állapotok">
+            <button class="btn btn-secondary state-filter active" onclick="setBookmarkStateFilter('active')">Aktív</button>
+            <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('starred')">★ Kedvencek</button>
+            <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('read_later')">Olvasás később</button>
+            <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('to_review')">Ellenőrzésre</button>
+            <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('archived')">Archivált</button>
+            <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('trash')">Kuka</button>
             </div>
-            <div class="view-switcher">
-                <button class="view-btn active" id="btnViewGrid" onclick="setBookmarkView('grid')" title="Normál Kártyák"><i class="fa-solid fa-border-all"></i></button>
-                <button class="view-btn" id="btnViewCompact" onclick="setBookmarkView('compact')" title="Kompakt Kártyák"><i class="fa-solid fa-grip"></i></button>
-                <button class="view-btn" id="btnViewList" onclick="setBookmarkView('list')" title="Lista Nézet"><i class="fa-solid fa-list"></i></button>
-                <button class="view-btn" id="btnToggleImages" onclick="toggleImageVisibility()" title="Képek elrejtése"><i class="fa-solid fa-image"></i></button>
-            </div>
+        <div class="view-switcher">
+            <button class="view-btn active" id="btnViewGrid" onclick="setBookmarkView('grid')" title="Normál Kártyák"><i class="fa-solid fa-border-all"></i></button>
+            <button class="view-btn" id="btnViewCompact" onclick="setBookmarkView('compact')" title="Kompakt Kártyák"><i class="fa-solid fa-grip"></i></button>
+            <button class="view-btn" id="btnViewList" onclick="setBookmarkView('list')" title="Lista Nézet"><i class="fa-solid fa-list"></i></button>
+            <button class="view-btn" id="btnToggleImages" onclick="toggleImageVisibility()" title="Képek elrejtése"><i class="fa-solid fa-image"></i></button>
+        </div>
         </div>
 
         <div id="bulkSelectionBar" class="bulk-selection-bar" style="display: none; margin: 1rem 0; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: 12px; background: rgba(148, 163, 184, 0.06); display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between;">
@@ -575,14 +581,14 @@
             </div>
         </div>
     </div>
-    <script src="/js/config.js?v=20260902-mobile-state-fix"></script>
-    <script src="/js/api.js?v=20260902-team-lifecycle"></script>
-    <script src="/js/notifications.js?v=20260902-team-lifecycle"></script>
-    <script src="/js/modal.js?v=20260902-team-lifecycle"></script>
-    <script src="/js/categories-ui.js?v=20260902-team-lifecycle"></script>
-    <script src="/js/bookmarks-ui.js?v=20260902-team-lifecycle"></script>
-    <script src="/js/enterprise.js?v=20260902-team-lifecycle"></script>
-    <script src="/js/auth.js?v=20260902-team-lifecycle"></script>
-    <script src="/js/app.js?v=20260902-team-lifecycle"></script>
+    <script src="/js/config.js?v=20260902-bulk-toggle-fix"></script>
+    <script src="/js/api.js?v=20260902-bulk-toggle-fix"></script>
+    <script src="/js/notifications.js?v=20260902-bulk-toggle-fix"></script>
+    <script src="/js/modal.js?v=20260902-bulk-toggle-fix"></script>
+    <script src="/js/categories-ui.js?v=20260902-bulk-toggle-fix"></script>
+    <script src="/js/bookmarks-ui.js?v=20260902-bulk-toggle-fix"></script>
+    <script src="/js/enterprise.js?v=20260902-bulk-toggle-fix"></script>
+    <script src="/js/auth.js?v=20260902-bulk-toggle-fix"></script>
+    <script src="/js/app.js?v=20260902-bulk-toggle-fix"></script>
 </body>
 </html>
