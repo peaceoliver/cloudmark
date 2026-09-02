@@ -254,7 +254,6 @@ function createBookmarkCard(bookmark) {
     const fetchMetadataImageEnabled = localStorage.getItem(bookmarksConfig.storageKeys.fetchMetadataImage) !== 'false';
     const primaryTitle = (bookmark.title && String(bookmark.title).trim()) || (bookmark.metadataTitle && String(bookmark.metadataTitle).trim()) || 'Névtelen könyvjelző';
     const shouldShowImage = showBookmarkImages && fetchMetadataImageEnabled && bookmark.imageUrl;
-    if (shouldShowImage) card.classList.add('has-image');
     let selectionControl = null;
     if (bulkSelectionEnabled) {
         selectionControl = document.createElement('label');
