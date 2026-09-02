@@ -729,6 +729,17 @@ app.post('/api/bookmarks/:id/click', async (req, res) => {
     }
 });
 
+app.post('/api/tags', requireAuth, async (req, res) => {
+    const name = String(req.body.name || '').trim();
+    if (!name || name.length > 80) return res.status(400).json({ error: 'Érvénytelen címke név' });
+    try {
+        const existing = await pool.query('SELECT id FROM tags WHERE user_id = $1 AND LOWER(name) = LOWER($2)', [req.user.id, name]);
+        if (existing.rowCount) return res.status(409).json({ error: 'A címke már létezik' });
+        const result = await pool.query('INSERT INTO tags (user_id, name) VALUES ($1, $2) RETURNING name', [req.user.id, name]);
+        res.status(201).json(result.rows[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/tags', requireAuth, async (req, res) => {
     try {
         const result = await pool.query('SELECT name FROM tags WHERE user_id = $1 ORDER BY name', [req.user.id]);

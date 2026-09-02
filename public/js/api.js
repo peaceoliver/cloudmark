@@ -164,6 +164,13 @@ apiNamespace.api = {
         });
     },
     getTags() { return requestJson('/api/tags'); },
+    createTag(name) {
+        return requestJson('/api/tags', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+    },
     renameTag(name, newName) {
         return requestJson(`/api/tags/${encodeURIComponent(name)}`, {
             method: 'PUT',

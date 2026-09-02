@@ -18,6 +18,18 @@ function categoryTree() {
     return result;
 }
 
+function initCategoryTreeToggle() {
+    const toggle = document.querySelector('.category-section-toggle');
+    const panel = document.getElementById('categoryTreePanelContent');
+    if (!toggle || !panel) return;
+    const setExpanded = expanded => {
+        toggle.setAttribute('aria-expanded', String(expanded));
+        panel.classList.toggle('is-collapsed', !expanded);
+    };
+    toggle.addEventListener('click', () => setExpanded(toggle.getAttribute('aria-expanded') !== 'true'));
+    setExpanded(true);
+}
+
 function renderCategories() {
     const container = document.getElementById('categoriesBar');
     const select = document.getElementById('bmCategory');
@@ -121,3 +133,4 @@ async function createNewCategory() {
 
 window.filterCategory = filterCategory;
 window.createNewCategory = createNewCategory;
+initCategoryTreeToggle();

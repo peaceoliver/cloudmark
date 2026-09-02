@@ -351,6 +351,38 @@ input:focus, select:focus {
 .toolbar-group { width: 100%; }
 .toolbar-label { margin: .15rem 0 .45rem; color: var(--text-secondary); font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 .toolbar-label i { margin-right: .35rem; color: var(--accent); }
+.category-section-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: rgba(148, 163, 184, 0.04);
+    color: var(--text-primary);
+    cursor: pointer;
+    text-align: left;
+}
+.category-section-toggle .toolbar-label {
+    margin: 0;
+}
+.category-section-toggle i:last-child {
+    color: var(--text-secondary);
+    transition: transform 0.2s ease;
+}
+.category-section-toggle[aria-expanded="false"] i:last-child {
+    transform: rotate(180deg);
+}
+.category-tree-panel-content {
+    display: block;
+    margin-top: 0.75rem;
+    padding-top: 0.2rem;
+}
+.category-tree-panel-content.is-collapsed {
+    display: none;
+}
 .state-filters, .enterprise-actions, .enterprise-search { display: flex; gap: .5rem; flex-wrap: wrap; width: 100%; }
 .enterprise-search input { flex: 1 1 260px; }
 .enterprise-actions { align-items: center; }
@@ -432,6 +464,16 @@ input:focus, select:focus {
 .category-chip:hover:not(.active) {
     background-color: var(--bg-card-hover);
     color: var(--text-primary);
+}
+
+.tag-management-create {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.tag-management-create input {
+    flex: 1;
 }
 
 .category-tree-view {

@@ -35,6 +35,25 @@
             container.appendChild(row);
         });
     }
+
+    async function createNewTag() {
+        const input = document.getElementById('newTagName');
+        const name = input.value.trim();
+        if (!name) {
+            showNotification('Add meg a címke nevét.', 'error');
+            return;
+        }
+        try {
+            await api.createTag(name);
+            input.value = '';
+            await renderTagsManagement();
+            showNotification('A címke létrehozva.', 'success');
+        } catch (err) {
+            showNotification(err.message || 'Nem sikerült létrehozni a címkét.', 'error');
+        }
+    }
+    window.createNewTag = createNewTag;
+
     document.getElementById('manageTagsBtn').onclick = async () => {
         openModal('tagModal');
         try { await renderTagsManagement(); } catch (err) { showNotification('Nem sikerült betölteni a címkéket.', 'error'); }

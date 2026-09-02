@@ -92,9 +92,14 @@
         </div>
 
         <section class="dashboard-section category-section" aria-label="Kategóriák">
-            <div class="toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</div>
-            <div class="categories-bar" id="categoriesBar"></div>
-            <div class="category-tree-view" id="categoryTreeView" aria-label="Kategóriák fa nézet"></div>
+            <button type="button" class="category-section-toggle" data-target="categoryTreePanelContent" aria-expanded="true">
+                <span class="toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</span>
+                <i class="fa-solid fa-chevron-up"></i>
+            </button>
+            <div id="categoryTreePanelContent" class="category-tree-panel-content">
+                <div class="categories-bar" id="categoriesBar"></div>
+                <div class="category-tree-view" id="categoryTreeView" aria-label="Kategóriák fa nézet"></div>
+            </div>
         </section>
         <section class="enterprise-toolbar" aria-label="Enterprise tools">
             <div class="toolbar-group">
@@ -341,6 +346,10 @@
     <div class="modal-overlay" id="tagModal" style="z-index: 2200;">
         <div class="modal">
             <div class="modal-title"><i class="fa-solid fa-tags"></i> Címkék kezelése</div>
+            <div class="tag-management-create" style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                <input type="text" id="newTagName" placeholder="Új címke neve…" aria-label="Új címke neve">
+                <button type="button" class="btn btn-primary" onclick="createNewTag()">Hozzáadás</button>
+            </div>
             <div id="manageTagsList" style="display:flex; flex-direction:column; gap:0.5rem; max-height:300px; overflow-y:auto; margin-bottom:1rem;"></div>
             <button class="btn btn-danger" style="width:100%;" onclick="closeModal('tagModal')">Bezárás</button>
         </div>
