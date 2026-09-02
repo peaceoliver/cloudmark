@@ -92,16 +92,23 @@
         </div>
 
         <section class="dashboard-section category-section" aria-label="Kategóriák">
-            <div class="category-header-row">
-                <div class="toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</div>
-                <button type="button" class="accordion-trigger category-section-toggle" data-target="categoryTreePanelContent" aria-expanded="true">
-                    <span>Fa nézet</span>
-                    <i class="accordion-icon fa-solid fa-chevron-down"></i>
-                </button>
-            </div>
-            <div class="categories-bar" id="categoriesBar"></div>
-            <div id="categoryTreePanelContent" class="accordion-panel">
-                <div class="category-tree-view" id="categoryTreeView" aria-label="Kategóriák fa nézet"></div>
+            <button type="button" class="accordion-trigger category-main-toggle" data-target="categorySectionContent" aria-expanded="true">
+                <span class="toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</span>
+                <i class="accordion-icon fa-solid fa-chevron-down"></i>
+            </button>
+            <div id="categorySectionContent" class="accordion-panel">
+                <div class="category-inner-content">
+                    <div class="category-header-row">
+                        <button type="button" class="accordion-trigger category-section-toggle" data-target="categoryTreePanelContent" aria-expanded="true">
+                            <span>Fa nézet</span>
+                            <i class="accordion-icon fa-solid fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="categories-bar" id="categoriesBar"></div>
+                    <div id="categoryTreePanelContent" class="accordion-panel">
+                        <div class="category-tree-view" id="categoryTreeView" aria-label="Kategóriák fa nézet"></div>
+                    </div>
+                </div>
             </div>
         </section>
         <section class="enterprise-toolbar" aria-label="Enterprise tools">

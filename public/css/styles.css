@@ -414,14 +414,21 @@ input:focus, select:focus {
 .accordion-panel.is-collapsed {
     display: none;
 }
+.category-main-toggle {
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
 .category-section-toggle {
-    width: auto;
+    width: 100%;
     padding: 0.45rem 0.75rem;
     border-radius: 999px;
     background: rgba(148, 163, 184, 0.05);
     color: var(--text-secondary);
     font-size: 0.8rem;
     font-weight: 600;
+}
+.category-inner-content {
+    display: block;
 }
 .category-tree-panel-content {
     display: block;
