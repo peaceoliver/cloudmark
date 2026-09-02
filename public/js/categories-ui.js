@@ -25,20 +25,44 @@ function renderCategories() {
     const visible = !currentUser && names.includes('MAIN') ? categories.filter(c => categoryName(c) === 'MAIN') : categories;
     if (!currentUser && names.includes('MAIN') && activeCategoryFilter !== 'MAIN') activeCategoryFilter = 'MAIN';
     else if (!currentUser && !names.includes('MAIN') && activeCategoryFilter === 'MAIN') activeCategoryFilter = 'All';
-    container.innerHTML = `<button class="category-chip ${activeCategoryFilter === 'All' ? 'active' : ''}" onclick="filterCategory('All')">Összes</button>`;
+    if (container) {
+        container.innerHTML = `<button class="category-chip ${activeCategoryFilter === 'All' ? 'active' : ''}" onclick="filterCategory('All')">Összes</button>`;
+        categoryTree().filter(({ category }) => visible.includes(category)).forEach(({ category, depth }) => {
+            const name = categoryName(category);
+            const button = document.createElement('button');
+            button.className = `category-chip ${activeCategoryFilter === name ? 'active' : ''}`;
+            button.style.marginLeft = `${depth * 0.8}rem`;
+            button.innerHTML = `<i class="fa-solid fa-folder"></i> ${name}`;
+            button.onclick = () => filterCategory(name);
+            container.appendChild(button);
+        });
+    }
     if (select) populateCategorySelect('bmCategory');
     const manageButton = document.getElementById('manageCategoriesBtn');
     if (manageButton) {
         manageButton.style.display = currentUser ? '' : 'none';
         manageButton.onclick = () => { openModal('categoryModal'); renderManageCategoriesList(); };
     }
-    categoryTree().filter(({ category }) => visible.includes(category)).forEach(({ category, depth }) => {
+    renderCategoryTreeView();
+}
+
+function renderCategoryTreeView() {
+    const container = document.getElementById('categoryTreeView');
+    if (!container) return;
+    container.innerHTML = '';
+    const treeItems = categoryTree();
+    if (!treeItems.length) {
+        container.innerHTML = '<div class="empty-state">Nincsenek kategóriák.</div>';
+        return;
+    }
+    treeItems.forEach(({ category, depth }) => {
         const name = categoryName(category);
         const button = document.createElement('button');
-        button.className = `category-chip ${activeCategoryFilter === name ? 'active' : ''}`;
-        button.style.marginLeft = `${depth * 0.8}rem`;
-        button.innerHTML = `<i class="fa-solid fa-folder"></i> ${name}`;
-        button.onclick = () => filterCategory(name);
+        button.type = 'button';
+        button.className = `category-tree-node ${activeCategoryFilter === name ? 'active' : ''}`;
+        button.style.marginLeft = `${depth * 1}rem`;
+        button.innerHTML = `<span>${'— '.repeat(depth)}<i class="fa-solid fa-folder"></i> ${name}</span>`;
+        button.onclick = () => { filterCategory(name); };
         container.appendChild(button);
     });
 }

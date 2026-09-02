@@ -94,19 +94,9 @@
         <section class="dashboard-section category-section" aria-label="Kategóriák">
             <div class="toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</div>
             <div class="categories-bar" id="categoriesBar"></div>
+            <div class="category-tree-view" id="categoryTreeView" aria-label="Kategóriák fa nézet"></div>
         </section>
         <section class="enterprise-toolbar" aria-label="Enterprise tools">
-            <div class="toolbar-group">
-                <div class="toolbar-label"><i class="fa-solid fa-list-check"></i> Könyvjelző állapot</div>
-                <div class="state-filters" aria-label="Könyvjelző állapotok">
-                <button class="btn btn-secondary state-filter active" onclick="setBookmarkStateFilter('active')">Aktív</button>
-                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('starred')">★ Kedvencek</button>
-                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('read_later')">Olvasás később</button>
-                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('to_review')">Ellenőrzésre</button>
-                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('archived')">Archivált</button>
-                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('trash')">Kuka</button>
-                </div>
-            </div>
             <div class="toolbar-group">
                 <div class="toolbar-label"><i class="fa-solid fa-sliders"></i> Kezelés és adatkezelés</div>
                 <div class="enterprise-actions">
@@ -132,6 +122,14 @@
                 <option value="abc">🔤 ABC sorrend (Cím)</option>
                 <option value="frequency">🔥 Leggyakrabban kattintott</option>
             </select>
+            <div class="bookmark-state-group" aria-label="Könyvjelző állapotok">
+                <button class="btn btn-secondary state-filter active" onclick="setBookmarkStateFilter('active')">Aktív</button>
+                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('starred')">★ Kedvencek</button>
+                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('read_later')">Olvasás később</button>
+                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('to_review')">Ellenőrzésre</button>
+                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('archived')">Archivált</button>
+                <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('trash')">Kuka</button>
+            </div>
             <div class="view-switcher">
                 <button class="view-btn active" id="btnViewGrid" onclick="setBookmarkView('grid')" title="Normál Kártyák"><i class="fa-solid fa-border-all"></i></button>
                 <button class="view-btn" id="btnViewCompact" onclick="setBookmarkView('compact')" title="Kompakt Kártyák"><i class="fa-solid fa-grip"></i></button>

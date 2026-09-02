@@ -155,13 +155,14 @@ header {
 }
 
 .btn-secondary {
-    background-color: transparent;
+    background-color: rgba(148, 163, 184, 0.08);
     border-color: var(--border-color);
-    color: var(--text-primary);
+    color: var(--text-secondary);
 }
 
 .btn-secondary:hover {
     background-color: var(--bg-card-hover);
+    color: var(--text-primary);
 }
 
 .btn-danger {
@@ -282,8 +283,19 @@ main {
     .add-form-grid {
         grid-template-columns: 1fr;
     }
-    .bookmark-list-toolbar { align-items: stretch; flex-direction: column; }
-    .bookmark-list-toolbar select { width: 100%; }
+    .bookmark-list-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .bookmark-list-toolbar select,
+    .bookmark-state-group,
+    .view-switcher {
+        width: 100%;
+    }
+    .bookmark-state-group {
+        justify-content: flex-start;
+        overflow-x: auto;
+    }
 }
 
 .form-control {
@@ -344,7 +356,35 @@ input:focus, select:focus {
 .enterprise-actions { align-items: center; }
 .bookmark-list-toolbar { display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin: 0 0 1rem; }
 .bookmark-list-toolbar select { width: auto; min-width: 190px; padding: .4rem .8rem; font-size: .85rem; }
-.state-filter.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.bookmark-state-group {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    flex: 1 1 auto;
+    padding: .3rem .45rem;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.06);
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.04);
+}
+.state-filter {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: transparent;
+    padding: .45rem .8rem;
+    border-radius: 999px;
+    font-weight: 600;
+}
+.state-filter:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+}
+.state-filter.active {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-color: rgba(56, 189, 248, 0.32);
+}
 .action-btn.is-starred { color: var(--warning); }
 .action-btn.is-read-later { color: var(--accent); }
 .action-btn.is-to-review { color: var(--warning); }
@@ -371,7 +411,7 @@ input:focus, select:focus {
 .category-chip {
     padding: 0.5rem 1rem;
     border-radius: 30px;
-    background-color: var(--bg-card);
+    background-color: rgba(148, 163, 184, 0.08);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
     font-size: 0.85rem;
@@ -392,6 +432,45 @@ input:focus, select:focus {
 .category-chip:hover:not(.active) {
     background-color: var(--bg-card-hover);
     color: var(--text-primary);
+}
+
+.category-tree-view {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-card);
+    margin-bottom: 1rem;
+}
+
+.category-tree-node {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: flex-start;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-secondary);
+    text-align: left;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.category-tree-node:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.category-tree-node.active {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-color: rgba(56, 189, 248, 0.24);
 }
 
 .add-cat-btn {
