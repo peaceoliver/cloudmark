@@ -632,6 +632,119 @@ app.post('/api/teams', requireAuth, async (req, res) => {
     }
 });
 
+app.patch('/api/teams/:id/transfer-owner', requireAuth, async (req, res) => {
+    const teamId = Number(req.params.id);
+    const newOwnerUserId = Number(req.body.userId ?? req.body.newOwnerUserId ?? req.body.newOwnerId);
+    if (!teamId || !newOwnerUserId) return res.status(400).json({ error: 'Érvénytelen csapat vagy új tulajdonos azonosító.' });
+
+    try {
+        const team = await pool.query('SELECT id, owner_user_id, name FROM teams WHERE id = $1', [teamId]);
+        if (!team.rowCount) return res.status(404).json({ error: 'A csapat nem található.' });
+        if (team.rows[0].owner_user_id !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Csak a csapat tulajdonosa adhatja át a jogokat.' });
+        }
+        if (team.rows[0].owner_user_id === newOwnerUserId) {
+            return res.status(400).json({ error: 'A jelenlegi tulajdonos már a csapat tulajdonosa.' });
+        }
+
+        const member = await pool.query(
+            'SELECT u.id, u.username FROM users u JOIN team_members tm ON tm.user_id = u.id WHERE tm.team_id = $1 AND u.id = $2',
+            [teamId, newOwnerUserId]
+        );
+        if (!member.rowCount) return res.status(404).json({ error: 'A kiválasztott felhasználó nem tagja a csapatnak.' });
+
+        await pool.query(
+            `UPDATE team_members
+             SET role = CASE WHEN user_id = $1 THEN 'team_admin' WHEN user_id = $2 THEN 'member' ELSE role END
+             WHERE team_id = $3`,
+            [newOwnerUserId, req.user.id, teamId]
+        );
+        await pool.query(
+            `UPDATE users
+             SET team_role = CASE WHEN id = $1 THEN 'team_admin' WHEN id = $2 THEN 'member' ELSE team_role END
+             WHERE id IN ($1, $2)`,
+            [newOwnerUserId, req.user.id]
+        );
+        await pool.query('UPDATE teams SET owner_user_id = $1 WHERE id = $2', [newOwnerUserId, teamId]);
+        await recordAuditEvent({
+            userId: req.user.id,
+            action: 'team_owner_transferred',
+            entityType: 'team',
+            entityId: teamId,
+            details: { teamName: team.rows[0].name, previousOwnerId: req.user.id, newOwnerId: newOwnerUserId, newOwnerUsername: member.rows[0].username },
+            req
+        });
+
+        res.json({ success: true, teamId, newOwnerUserId, previousOwnerUserId: req.user.id });
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'A tulajdonjog átadása nem sikerült.' });
+    }
+});
+
+app.post('/api/teams/:id/leave', requireAuth, async (req, res) => {
+    const teamId = Number(req.params.id);
+    if (!teamId) return res.status(400).json({ error: 'Érvénytelen csapat azonosító.' });
+
+    try {
+        const team = await pool.query('SELECT id, owner_user_id, name FROM teams WHERE id = $1', [teamId]);
+        if (!team.rowCount) return res.status(404).json({ error: 'A csapat nem található.' });
+        if (team.rows[0].owner_user_id === req.user.id) {
+            return res.status(400).json({ error: 'A csapat tulajdonosa nem léphet ki a csapatból. Adja át a tulajdonjogot vagy törölje a csapatot.' });
+        }
+
+        const membership = await pool.query(
+            'SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2',
+            [teamId, req.user.id]
+        );
+        if (!membership.rowCount) return res.status(404).json({ error: 'Nem vagy tagja ennek a csapatnak.' });
+
+        await pool.query('DELETE FROM team_members WHERE team_id = $1 AND user_id = $2', [teamId, req.user.id]);
+        await pool.query(
+            `UPDATE users
+             SET team_id = CASE WHEN team_id = $1 THEN NULL ELSE team_id END,
+                 team_role = CASE WHEN team_id = $1 THEN 'member' ELSE team_role END
+             WHERE id = $2`,
+            [teamId, req.user.id]
+        );
+        await recordAuditEvent({ userId: req.user.id, action: 'team_left', entityType: 'team', entityId: teamId, details: { teamName: team.rows[0].name }, req });
+
+        res.json({ success: true, teamId });
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'A csapatból való kilépés nem sikerült.' });
+    }
+});
+
+app.delete('/api/teams/:id', requireAuth, async (req, res) => {
+    const teamId = Number(req.params.id);
+    if (!teamId) return res.status(400).json({ error: 'Érvénytelen csapat azonosító.' });
+
+    try {
+        const team = await pool.query('SELECT id, owner_user_id, name FROM teams WHERE id = $1', [teamId]);
+        if (!team.rowCount) return res.status(404).json({ error: 'A csapat nem található.' });
+        if (team.rows[0].owner_user_id !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Csak a csapat tulajdonosa törölheti a csapatot.' });
+        }
+
+        const members = await pool.query('SELECT user_id FROM team_members WHERE team_id = $1', [teamId]);
+        await pool.query('DELETE FROM teams WHERE id = $1', [teamId]);
+
+        for (const member of members.rows) {
+            await pool.query(
+                `UPDATE users
+                 SET team_id = CASE WHEN team_id = $1 THEN NULL ELSE team_id END,
+                     team_role = CASE WHEN team_id = $1 THEN 'member' ELSE team_role END
+                 WHERE id = $2`,
+                [teamId, member.user_id]
+            );
+        }
+
+        await recordAuditEvent({ userId: req.user.id, action: 'team_deleted', entityType: 'team', entityId: teamId, details: { teamName: team.rows[0].name, membersRemoved: members.rows.length }, req });
+        res.json({ success: true, teamId });
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'A csapat törlése nem sikerült.' });
+    }
+});
+
 app.post('/api/teams/:id/members', requireTeamAdmin, async (req, res) => {
     const teamId = Number(req.params.id);
     const username = String(req.body.username || '').trim();
@@ -671,6 +784,82 @@ app.post('/api/teams/:id/members', requireTeamAdmin, async (req, res) => {
         res.status(201).json({ success: true, userId: user.id, username: username, role });
     } catch (err) {
         res.status(500).json({ error: err.message || 'A felhasználó hozzáadása a csapathoz nem sikerült.' });
+    }
+});
+
+app.get('/api/teams/:id/members', requireAuth, async (req, res) => {
+    const teamId = Number(req.params.id);
+    if (!teamId) return res.status(400).json({ error: 'Érvénytelen csapat azonosító.' });
+
+    try {
+        const hasAccess = req.user.role === 'admin' || await pool.query(
+            'SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2',
+            [teamId, req.user.id]
+        ).then(result => result.rowCount > 0);
+
+        if (!hasAccess) return res.status(403).json({ error: 'Nincs jogosultságod a csapat tagjainak megtekintéséhez.' });
+
+        const result = await pool.query(
+            `SELECT u.id AS user_id, u.username, tm.role
+             FROM team_members tm
+             JOIN users u ON u.id = tm.user_id
+             WHERE tm.team_id = $1
+             ORDER BY u.username ASC`,
+            [teamId]
+        );
+
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'A csapat tagjainak betöltése nem sikerült.' });
+    }
+});
+
+app.patch('/api/teams/:id/members/:userId', requireTeamAdmin, async (req, res) => {
+    const teamId = Number(req.params.id);
+    const userId = Number(req.params.userId);
+    const role = ['member', 'team_admin'].includes(String(req.body.role || 'member')) ? String(req.body.role || 'member') : 'member';
+
+    if (!teamId || !userId) return res.status(400).json({ error: 'Érvénytelen csapat vagy felhasználó azonosító.' });
+
+    try {
+        const targetUser = await pool.query('SELECT id, username FROM users WHERE id = $1', [userId]);
+        if (!targetUser.rowCount) return res.status(404).json({ error: 'A felhasználó nem található.' });
+
+        await pool.query(
+            'UPDATE team_members SET role = $1 WHERE team_id = $2 AND user_id = $3',
+            [role, teamId, userId]
+        );
+        await pool.query(
+            'UPDATE users SET team_id = $1, team_role = $2 WHERE id = $3',
+            [teamId, role, userId]
+        );
+        await recordAuditEvent({ userId: req.user.id, action: 'team_member_role_changed', entityType: 'team_member', entityId: userId, details: { teamId, username: targetUser.rows[0].username, role }, req });
+
+        res.json({ success: true, userId, role });
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'A szerep frissítése nem sikerült.' });
+    }
+});
+
+app.delete('/api/teams/:id/members/:userId', requireTeamAdmin, async (req, res) => {
+    const teamId = Number(req.params.id);
+    const userId = Number(req.params.userId);
+
+    if (!teamId || !userId) return res.status(400).json({ error: 'Érvénytelen csapat vagy felhasználó azonosító.' });
+
+    try {
+        const team = await pool.query('SELECT owner_user_id FROM teams WHERE id = $1', [teamId]);
+        if (!team.rowCount) return res.status(404).json({ error: 'A csapat nem található.' });
+        if (team.rows[0].owner_user_id === userId) return res.status(400).json({ error: 'A csapat tulajdonosa nem távolítható el.' });
+
+        const targetUser = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+        await pool.query('DELETE FROM team_members WHERE team_id = $1 AND user_id = $2', [teamId, userId]);
+        await pool.query('UPDATE users SET team_id = NULL, team_role = $1 WHERE id = $2', ['member', userId]);
+        await recordAuditEvent({ userId: req.user.id, action: 'team_member_removed', entityType: 'team_member', entityId: userId, details: { teamId, username: targetUser.rows[0]?.username || null }, req });
+
+        res.json({ success: true, userId });
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'A tag eltávolítása nem sikerült.' });
     }
 });
 

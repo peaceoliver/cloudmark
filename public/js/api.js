@@ -105,12 +105,56 @@ apiNamespace.api = {
         });
     },
 
+    /** Transfers ownership of a team to another member. */
+    transferTeamOwnership(teamId, userId) {
+        return requestJson(`/api/teams/${encodeURIComponent(teamId)}/transfer-owner`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+    },
+
+    /** Lets a non-owner leave a team they belong to. */
+    leaveTeam(teamId) {
+        return requestJson(`/api/teams/${encodeURIComponent(teamId)}/leave`, {
+            method: 'POST'
+        });
+    },
+
+    /** Deletes a team owned by the current user. */
+    deleteTeam(teamId) {
+        return requestJson(`/api/teams/${encodeURIComponent(teamId)}`, {
+            method: 'DELETE'
+        });
+    },
+
     /** Adds a user to a team or updates their team role. */
     addTeamMember(teamId, username, role) {
         return requestJson(`/api/teams/${encodeURIComponent(teamId)}/members`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, role })
+        });
+    },
+
+    /** Lists team members for the selected team. */
+    getTeamMembers(teamId) {
+        return requestJson(`/api/teams/${encodeURIComponent(teamId)}/members`);
+    },
+
+    /** Updates a team member's role within a team. */
+    updateTeamMemberRole(teamId, userId, role) {
+        return requestJson(`/api/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role })
+        });
+    },
+
+    /** Removes a user from a team. */
+    removeTeamMember(teamId, userId) {
+        return requestJson(`/api/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`, {
+            method: 'DELETE'
         });
     },
 

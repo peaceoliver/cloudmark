@@ -332,6 +332,59 @@
         </div>
     </div>
 
+    <!-- Modal: Team Manager -->
+    <div class="modal-overlay" id="teamManagerModal">
+        <div class="modal" style="max-width: 760px; width: min(92vw, 760px);">
+            <div class="modal-title" style="color: var(--accent);">
+                <i class="fa-solid fa-users-rectangle"></i> Team kezelő
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <div>
+                    <div class="section-divider"><i class="fa-solid fa-people-group"></i> Csapat létrehozása</div>
+                    <form id="teamManagerCreateForm" class="add-form-grid" style="grid-template-columns: 1fr auto; align-items: end; margin: 0;">
+                        <div class="form-control" style="margin: 0;">
+                            <label>Csapat neve</label>
+                            <input type="text" id="teamManagerName" placeholder="Pl. Design Team" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Létrehozás</button>
+                    </form>
+                </div>
+
+                <div>
+                    <div class="section-divider"><i class="fa-solid fa-user-plus"></i> Tag hozzáadása egy csapathoz</div>
+                    <form id="teamManagerMemberForm" class="add-form-grid" style="grid-template-columns: 1.2fr 1fr 0.8fr auto; align-items: end; margin: 0;">
+                        <div class="form-control" style="margin: 0;">
+                            <label>Csapat</label>
+                            <select id="teamManagerSelect" data-team-manager-select></select>
+                        </div>
+                        <div class="form-control" style="margin: 0;">
+                            <label>Felhasználónév</label>
+                            <input type="text" id="teamManagerUsername" placeholder="pl. anna" required>
+                        </div>
+                        <div class="form-control" style="margin: 0;">
+                            <label>Szerep</label>
+                            <select id="teamManagerRole">
+                                <option value="member">member</option>
+                                <option value="team_admin">team_admin</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Hozzáadás</button>
+                    </form>
+                </div>
+
+                <div>
+                    <div class="section-divider"><i class="fa-solid fa-list"></i> Csapatok</div>
+                    <div id="teamManagerList" style="display:flex; flex-direction: column; gap: 0.5rem; max-height: 220px; overflow-y: auto;"></div>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; margin-top: 1rem;">
+                <button type="button" class="btn btn-danger" onclick="closeModal('teamManagerModal')">Bezárás</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal: Admin Panel -->
     <div class="modal-overlay" id="adminPanelModal">
         <div class="modal" style="max-width: 980px; width: min(96vw, 980px);">
@@ -523,13 +576,13 @@
         </div>
     </div>
     <script src="/js/config.js?v=20260902-mobile-state-fix"></script>
-    <script src="/js/api.js?v=20260902-mobile-state-fix"></script>
-    <script src="/js/notifications.js?v=20260902-mobile-state-fix"></script>
-    <script src="/js/modal.js?v=20260902-mobile-state-fix"></script>
-    <script src="/js/categories-ui.js?v=20260902-mobile-state-fix"></script>
-    <script src="/js/bookmarks-ui.js?v=20260902-mobile-state-fix"></script>
-    <script src="/js/enterprise.js?v=20260902-mobile-state-fix"></script>
-    <script src="/js/auth.js?v=20260902-mobile-state-fix"></script>
-    <script src="/js/app.js?v=20260902-mobile-state-fix"></script>
+    <script src="/js/api.js?v=20260902-team-lifecycle"></script>
+    <script src="/js/notifications.js?v=20260902-team-lifecycle"></script>
+    <script src="/js/modal.js?v=20260902-team-lifecycle"></script>
+    <script src="/js/categories-ui.js?v=20260902-team-lifecycle"></script>
+    <script src="/js/bookmarks-ui.js?v=20260902-team-lifecycle"></script>
+    <script src="/js/enterprise.js?v=20260902-team-lifecycle"></script>
+    <script src="/js/auth.js?v=20260902-team-lifecycle"></script>
+    <script src="/js/app.js?v=20260902-team-lifecycle"></script>
 </body>
 </html>
