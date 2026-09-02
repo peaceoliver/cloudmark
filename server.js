@@ -83,9 +83,30 @@ async function initDatabase() {
             );
         `);
 
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS teams (
+                id BIGSERIAL PRIMARY KEY,
+                name VARCHAR(120) NOT NULL,
+                owner_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        `);
+
         await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE');
         await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_hash CHAR(64)');
         await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires_at TIMESTAMPTZ');
+        await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS team_id BIGINT REFERENCES teams(id) ON DELETE SET NULL');
+        await client.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS team_role VARCHAR(25) NOT NULL DEFAULT 'member'");
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS team_members (
+                team_id BIGINT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+                user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                role VARCHAR(25) NOT NULL DEFAULT 'member',
+                joined_at TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (team_id, user_id)
+            );
+        `);
 
         await client.query(`
             CREATE TABLE IF NOT EXISTS settings_app (
@@ -126,6 +147,25 @@ async function initDatabase() {
              ON CONFLICT (username) DO UPDATE SET role = 'admin', is_verified = TRUE`,
             [adminPasswordHash]
         );
+
+        const adminUser = await client.query('SELECT id, username FROM users WHERE username = $1', ['admin']);
+        if (adminUser.rowCount) {
+            const adminTeam = await client.query('SELECT id FROM teams WHERE owner_user_id = $1 LIMIT 1', [adminUser.rows[0].id]);
+            if (!adminTeam.rowCount) {
+                const defaultTeam = await client.query(
+                    'INSERT INTO teams (name, owner_user_id) VALUES ($1, $2) RETURNING id',
+                    ['admin workspace', adminUser.rows[0].id]
+                );
+                await client.query(
+                    'UPDATE users SET team_id = $1, team_role = $2 WHERE id = $3',
+                    [defaultTeam.rows[0].id, 'team_admin', adminUser.rows[0].id]
+                );
+                await client.query(
+                    'INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+                    [defaultTeam.rows[0].id, adminUser.rows[0].id, 'team_admin']
+                );
+            }
+        }
 
         await client.query(`
             CREATE TABLE IF NOT EXISTS sessions (
@@ -233,10 +273,24 @@ function normalizeTags(tags) {
 
 /** Canonicalizes a URL for duplicate detection without changing the stored URL. */
 function normalizeBookmarkUrl(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+
+    let candidate = raw;
+    if (!/^https?:\/\//i.test(candidate)) {
+        candidate = `https://${candidate}`;
+    }
+
     try {
-        const parsed = new URL(String(value || '').trim());
+        const parsed = new URL(candidate);
+        if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+
+        const hostname = parsed.hostname.toLowerCase().replace(/\.$/, '');
+        // Treat common www/ww variants and bare domains as the same bookmark target.
+        const canonicalHost = hostname.replace(/^ww\./, 'www.').replace(/^www\./, '');
+
         parsed.protocol = parsed.protocol.toLowerCase();
-        parsed.hostname = parsed.hostname.toLowerCase();
+        parsed.hostname = canonicalHost;
         if ((parsed.protocol === 'http:' && parsed.port === '80') || (parsed.protocol === 'https:' && parsed.port === '443')) parsed.port = '';
         parsed.hash = '';
         ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'].forEach(key => parsed.searchParams.delete(key));
@@ -422,7 +476,7 @@ async function getAuthenticatedUser(req) {
     const token = getCookie(req, SESSION_COOKIE);
     if (!token) return null;
     const result = await pool.query(`
-        SELECT u.id, u.username, u.email, u.role
+        SELECT u.id, u.username, u.email, u.role, u.team_id, u.team_role
         FROM sessions s
         JOIN users u ON u.id = s.user_id
         WHERE s.token_hash = $1 AND s.expires_at > NOW()
@@ -449,6 +503,34 @@ async function requireAdmin(req, res, next) {
     });
 }
 
+/** Requires either a platform admin or a designated team administrator. */
+async function requireTeamAdmin(req, res, next) {
+    await requireAuth(req, res, () => {
+        if (req.user.role === 'admin' || req.user.team_role === 'team_admin') {
+            next();
+            return;
+        }
+        res.status(403).json({ error: 'Team admin jogosultság szükséges' });
+    });
+}
+
+async function createDefaultTeamForUser(userId, username) {
+    const existing = await pool.query('SELECT id FROM teams WHERE owner_user_id = $1 LIMIT 1', [userId]);
+    if (existing.rowCount) {
+        await pool.query('UPDATE users SET team_id = $1, team_role = $2 WHERE id = $3', [existing.rows[0].id, 'team_admin', userId]);
+        return existing.rows[0].id;
+    }
+
+    const team = await pool.query(
+        'INSERT INTO teams (name, owner_user_id) VALUES ($1, $2) RETURNING id',
+        [`${username} workspace`, userId]
+    );
+    const teamId = team.rows[0].id;
+    await pool.query('UPDATE users SET team_id = $1, team_role = $2 WHERE id = $3', [teamId, 'team_admin', userId]);
+    await pool.query('INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [teamId, userId, 'team_admin']);
+    return teamId;
+}
+
 // --------------------------------------------------------------------------
 // API ENDPOINTOK A FRONTENDHEZ
 // --------------------------------------------------------------------------
@@ -457,9 +539,103 @@ async function requireAdmin(req, res, next) {
 app.get('/api/auth/me', async (req, res) => {
     try {
         const user = await getAuthenticatedUser(req);
-        res.json(user ? { id: user.id, username: user.username, email: user.email, isSuperuser: user.role === 'admin' } : null);
+        res.json(user ? {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            teamId: user.team_id,
+            teamRole: user.team_role,
+            isSuperuser: user.role === 'admin'
+        } : null);
     } catch (err) {
         res.status(500).json({ error: 'Hitelesítési hiba' });
+    }
+});
+
+app.get('/api/teams', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const isAdmin = req.user.role === 'admin';
+        const result = await pool.query(
+            isAdmin
+                ? `SELECT t.*, u.username AS owner_username FROM teams t JOIN users u ON u.id = t.owner_user_id ORDER BY t.created_at DESC`
+                : `SELECT t.*, u.username AS owner_username
+                   FROM team_members tm
+                   JOIN teams t ON t.id = tm.team_id
+                   JOIN users u ON u.id = t.owner_user_id
+                   WHERE tm.user_id = $1
+                   ORDER BY t.created_at DESC`,
+            isAdmin ? [] : [userId]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'A team adatok betöltése nem sikerült.' });
+    }
+});
+
+app.post('/api/teams', requireAuth, async (req, res) => {
+    const name = String(req.body.name || '').trim();
+    if (!name || name.length < 2) return res.status(400).json({ error: 'A csapat neve legalább 2 karakter hosszú legyen.' });
+
+    try {
+        const team = await pool.query(
+            'INSERT INTO teams (name, owner_user_id) VALUES ($1, $2) RETURNING *',
+            [name, req.user.id]
+        );
+        const teamId = team.rows[0].id;
+        await pool.query(
+            'UPDATE users SET team_id = $1, team_role = $2 WHERE id = $3',
+            [teamId, 'team_admin', req.user.id]
+        );
+        await pool.query(
+            'INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+            [teamId, req.user.id, 'team_admin']
+        );
+        res.status(201).json(team.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: 'A csapat létrehozása nem sikerült.' });
+    }
+});
+
+app.post('/api/teams/:id/members', requireTeamAdmin, async (req, res) => {
+    const teamId = Number(req.params.id);
+    const username = String(req.body.username || '').trim();
+    const role = ['member', 'team_admin'].includes(String(req.body.role || 'member')) ? String(req.body.role || 'member') : 'member';
+    if (!teamId || !username) return res.status(400).json({ error: 'A csapat azonosítója és a felhasználónév kötelező.' });
+
+    try {
+        const member = await pool.query(
+            'SELECT id, team_id, team_role FROM users WHERE LOWER(username) = LOWER($1)',
+            [username]
+        );
+        if (!member.rowCount) return res.status(404).json({ error: 'A felhasználó nem található.' });
+
+        const user = member.rows[0];
+        const teamAccess = await pool.query(
+            'SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2',
+            [teamId, user.id]
+        );
+        if (!teamAccess.rowCount) {
+            await pool.query(
+                'INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+                [teamId, user.id, role]
+            );
+        } else {
+            await pool.query(
+                'UPDATE team_members SET role = $1 WHERE team_id = $2 AND user_id = $3',
+                [role, teamId, user.id]
+            );
+        }
+
+        await pool.query(
+            'UPDATE users SET team_id = $1, team_role = $2 WHERE id = $3',
+            [teamId, role, user.id]
+        );
+
+        res.status(201).json({ success: true, userId: user.id, username: username, role });
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'A felhasználó hozzáadása a csapathoz nem sikerült.' });
     }
 });
 
@@ -489,6 +665,7 @@ app.post('/api/auth/register', async (req, res) => {
             [username, email, passwordHash, hashVerificationToken(verificationToken), verificationExpiresAt]
         );
         const user = result.rows[0];
+        await createDefaultTeamForUser(user.id, user.username);
         try {
             const emailSent = await sendVerificationEmail(email, verificationToken);
             res.status(201).json({ verificationRequired: true, email: user.email, emailSent });
@@ -529,7 +706,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     try {
         const result = await pool.query(
-            'SELECT id, username, email, password_hash, role, is_verified FROM users WHERE LOWER(username) = LOWER($1)',
+            'SELECT id, username, email, password_hash, role, team_id, team_role, is_verified FROM users WHERE LOWER(username) = LOWER($1)',
             [username]
         );
         const user = result.rows[0];
@@ -537,8 +714,9 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ error: 'Hibás felhasználónév vagy jelszó.' });
         }
         if (!user.is_verified) return res.status(403).json({ error: 'Előbb erősítsd meg az e-mail címedet.' });
+        if (!user.team_id) await createDefaultTeamForUser(user.id, user.username);
         await createSession(user, res);
-        res.json({ id: user.id, username: user.username, email: user.email, isSuperuser: user.role === 'admin' });
+        res.json({ id: user.id, username: user.username, email: user.email, role: user.role, teamId: user.team_id, teamRole: user.team_role, isSuperuser: user.role === 'admin' });
     } catch (err) {
         res.status(500).json({ error: 'A bejelentkezés nem sikerült.' });
     }
