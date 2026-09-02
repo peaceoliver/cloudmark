@@ -161,6 +161,39 @@ function renderSelectionToolbar() {
     const shouldShow = bulkSelectionEnabled;
     bar.style.display = shouldShow ? 'flex' : 'none';
     countNode.textContent = String(count);
+    const bulkSelect = document.getElementById('bulkCategorySelect');
+    if (bulkSelect && !bulkSelect.value) {
+        bulkSelect.value = bulkSelect.options[0]?.value || '';
+    }
+}
+
+function populateBulkCategorySelect() {
+    const select = document.getElementById('bulkCategorySelect');
+    if (!select) return;
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">Válassz kategóriát</option>';
+    const treeItems = categoryTree ? categoryTree() : [];
+    treeItems.forEach(({ category, depth }) => {
+        const name = categoryName(category);
+        select.add(new Option(`${'— '.repeat(depth)}${name}`, name));
+    });
+    if (categories && categories.length && currentValue && categories.some(category => categoryName(category) === currentValue)) {
+        select.value = currentValue;
+    }
+}
+
+function confirmBulkAction(action, extra = {}) {
+    const labels = {
+        star: 'biztosan hozzáadsz kedvencnek',
+        unstar: 'biztosan eltávolítod a kedvencek közül',
+        archive: 'biztosan archiválod',
+        restore: 'biztosan visszaállítod',
+        status: `biztosan állapotot állítasz be erre: ${extra.status === 'read_later' ? 'Olvasás később' : extra.status === 'to_review' ? 'Ellenőrzésre' : extra.status || 'állapot'}`,
+        category: `biztosan kategóriát módosítasz erre: ${extra.category || 'kategória'}`,
+        trash: 'biztosan a kukába helyezed'
+    };
+    const label = labels[action] || 'biztosan végrehajtod';
+    return window.confirm(`A kiválasztott könyvjelzőkön elvégzi ezt a műveletet?\n\n${label}`);
 }
 
 function toggleBookmarkSelection(id) {
@@ -295,6 +328,7 @@ async function permanentlyDeleteBookmark(id) { if (!confirm('Véglegesen törlö
 
 async function applyBulkAction(action, extra = {}) {
     if (!selectedBookmarkIds.size) { showNotification('Előbb válassz ki legalább egy könyvjelzőt.', 'error'); return; }
+    if (!confirmBulkAction(action, extra)) return;
     const ids = [...selectedBookmarkIds];
     try {
         await api.bulkBookmarkAction(ids, action, extra);
@@ -306,6 +340,17 @@ async function applyBulkAction(action, extra = {}) {
     } catch (err) {
         showNotification(err.message || 'A tömeges művelet nem sikerült.', 'error');
     }
+}
+
+function applyBulkCategoryChange() {
+    const select = document.getElementById('bulkCategorySelect');
+    if (!select) return;
+    const category = String(select.value || '').trim();
+    if (!category) {
+        showNotification('Válassz ki egy kategóriát a módosításhoz.', 'error');
+        return;
+    }
+    applyBulkAction('category', { category });
 }
 
 function openPreviewModal(bookmark) {

@@ -173,15 +173,21 @@
             <div>
                 <strong id="bulkSelectionCount">0</strong> kiválasztott könyvjelző
             </div>
-            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
                 <button type="button" class="btn btn-secondary" onclick="selectVisibleBookmarks()">Összes kijelölése</button>
-                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('star')">★ Kedvenc</button>
-                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('unstar')">☆ Eltávolítás</button>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <select id="bulkCategorySelect" class="bulk-category-select" aria-label="Kategória módosítása">
+                        <option value="">Válassz kategóriát</option>
+                    </select>
+                    <button type="button" class="btn btn-secondary" onclick="applyBulkCategoryChange()">Kategória módosítása</button>
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('star')">★ Kedvenc hozzáadás</button>
+                <button type="button" class="btn btn-secondary" onclick="applyBulkAction('unstar')">☆ Kedvenc eltávolítás</button>
                 <button type="button" class="btn btn-secondary" onclick="applyBulkAction('archive')">Archiválás</button>
                 <button type="button" class="btn btn-secondary" onclick="applyBulkAction('restore')">Visszaállítás</button>
                 <button type="button" class="btn btn-secondary" onclick="applyBulkAction('status', { status: 'read_later' })">Olvasás később</button>
                 <button type="button" class="btn btn-secondary" onclick="applyBulkAction('status', { status: 'to_review' })">Ellenőrzésre</button>
-                <button type="button" class="btn btn-danger" onclick="applyBulkAction('delete')">Törlés</button>
+                <button type="button" class="btn btn-danger" onclick="applyBulkAction('trash')">Törlés</button>
             </div>
         </div>
 

@@ -457,6 +457,13 @@ input:focus, select:focus {
     justify-content: center;
     min-height: 2.6rem;
 }
+.bulk-category-select {
+    min-width: 180px;
+    width: auto;
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+}
 .bulk-toggle-btn {
     display: inline-flex;
     align-items: center;

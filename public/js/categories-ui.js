@@ -68,6 +68,7 @@ function renderCategories() {
         });
     }
     if (select) populateCategorySelect('bmCategory');
+    if (typeof populateBulkCategorySelect === 'function') populateBulkCategorySelect();
     const manageButton = document.getElementById('manageCategoriesBtn');
     if (manageButton) {
         manageButton.style.display = currentUser ? '' : 'none';

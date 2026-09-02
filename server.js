@@ -1272,11 +1272,11 @@ app.post('/api/bookmarks/bulk', requireAuth, async (req, res) => {
         const userAwareFilter = req.user.role === 'admin' ? '' : ' AND (LOWER(CAST(user_id AS TEXT)) = LOWER($2) OR LOWER(CAST(user_id AS TEXT)) = LOWER($3))';
         if (req.user.role !== 'admin') params.push(req.user.username, String(req.user.id));
 
-        if (['archive', 'restore', 'trash', 'star', 'unstar', 'status'].includes(action)) {
+        if (['archive', 'restore', 'trash', 'star', 'unstar', 'status', 'category', 'delete'].includes(action)) {
             const fields = [];
             if (action === 'archive') fields.push('archived = TRUE');
             if (action === 'restore') fields.push('archived = FALSE', 'trashed = FALSE');
-            if (action === 'trash') fields.push('trashed = TRUE', 'archived = FALSE');
+            if (action === 'trash' || action === 'delete') fields.push('trashed = TRUE', 'archived = FALSE');
             if (action === 'star') fields.push('starred = TRUE');
             if (action === 'unstar') fields.push('starred = FALSE');
             if (action === 'status') {
@@ -1285,18 +1285,17 @@ app.post('/api/bookmarks/bulk', requireAuth, async (req, res) => {
                 fields.push(`status = $${params.length + 1}`);
                 params.push(status);
             }
+            if (action === 'category') {
+                const category = String(req.body?.category || '').trim();
+                if (!category) return res.status(400).json({ error: 'Kategória megadása kötelező.' });
+                fields.push(`category = $${params.length + 1}`);
+                params.push(category);
+            }
             if (!fields.length) return res.status(400).json({ error: 'Nincs módosítandó művelet.' });
             query = `UPDATE bookmarks SET ${fields.join(', ')} WHERE id = ANY($1)${userAwareFilter} RETURNING *`;
             const result = await pool.query(query, params);
-            await recordAuditEvent({ userId: req.user.id, action: `bookmark_bulk_${action}`, entityType: 'bookmark', details: { count: result.rowCount, ids }, req });
-            return res.json({ updated: result.rowCount, action });
-        }
-
-        if (action === 'delete') {
-            query = `DELETE FROM bookmarks WHERE id = ANY($1)${userAwareFilter} RETURNING id`;
-            const result = await pool.query(query, params);
-            await recordAuditEvent({ userId: req.user.id, action: 'bookmark_bulk_delete', entityType: 'bookmark', details: { count: result.rowCount, ids }, req });
-            return res.json({ deleted: result.rowCount, action });
+            await recordAuditEvent({ userId: req.user.id, action: `bookmark_bulk_${action === 'delete' ? 'trash' : action}`, entityType: 'bookmark', details: { count: result.rowCount, ids, category: req.body?.category }, req });
+            return res.json({ updated: result.rowCount, action: action === 'delete' ? 'trash' : action });
         }
 
         return res.status(400).json({ error: 'Ismeretlen tömeges művelet.' });
