@@ -121,8 +121,16 @@
                     <div class="enterprise-actions">
                     <button class="btn btn-secondary" id="manageCategoriesBtn"><i class="fa-solid fa-folder-gear"></i> Kategóriák kezelése</button>
                     <button class="btn btn-secondary" id="manageTagsBtn"><i class="fa-solid fa-tags"></i> Címkék kezelése</button>
+                    <select id="exportModeSelect" style="max-width: 220px; min-width: 180px;">
+                        <option value="visible">Csak a látható könyvjelzők</option>
+                        <option value="filtered">Minden egyező szűrés szerint</option>
+                        <option value="all">Az összes könyvjelző</option>
+                    </select>
                     <button class="btn btn-secondary" id="exportJsonBtn"><i class="fa-solid fa-download"></i> Export JSON</button>
                     <button class="btn btn-secondary" id="exportHtmlBtn"><i class="fa-solid fa-file-export"></i> Export HTML</button>
+                    <select id="importBookmarkTargetCategory" style="max-width: 180px; min-width: 140px;">
+                        <option value="">Import célkategória (opcionális)</option>
+                    </select>
                     <label class="btn btn-secondary import-label"><i class="fa-solid fa-upload"></i> Import<input id="importBookmarksInput" type="file" accept=".json,.html,text/html,application/json" hidden></label>
                     </div>
                 </div>

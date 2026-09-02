@@ -150,7 +150,9 @@ function toggleBulkSelectionMode(forceValue) {
     }
     renderSelectionToolbar();
     updateBulkSelectionToggleUI();
-    renderBookmarks();
+    if (typeof bookmarks !== 'undefined') {
+        renderBookmarks();
+    }
 }
 
 function renderSelectionToolbar() {
@@ -214,7 +216,11 @@ function selectVisibleBookmarks() {
 }
 
 function renderBookmarks() {
+    if (typeof bookmarks === 'undefined') {
+        bookmarks = [];
+    }
     const grid = document.getElementById('bookmarkGrid'); const addPanel = document.getElementById('addPanel');
+    if (!grid) return;
     const layoutClass = currentBookmarkView === 'grid' ? '' : ` view-${currentBookmarkView}`;
     grid.innerHTML = ''; grid.className = `dashboard-grid${layoutClass}`;
     if (addPanel) addPanel.style.display = currentUser ? 'block' : 'none';
@@ -250,6 +256,7 @@ function renderBookmarks() {
 /** Builds a bookmark card and wires its actions. */
 function createBookmarkCard(bookmark) {
     const card = document.createElement('div'); card.className = 'card';
+    card.dataset.bookmarkId = String(bookmark.id);
     const fetchMetadataTitleEnabled = localStorage.getItem(bookmarksConfig.storageKeys.fetchMetadataTitle) !== 'false';
     const fetchMetadataImageEnabled = localStorage.getItem(bookmarksConfig.storageKeys.fetchMetadataImage) !== 'false';
     const primaryTitle = (bookmark.title && String(bookmark.title).trim()) || (bookmark.metadataTitle && String(bookmark.metadataTitle).trim()) || 'Névtelen könyvjelző';
@@ -265,7 +272,14 @@ function createBookmarkCard(bookmark) {
         checkbox.checked = selectedBookmarkIds.has(bookmark.id);
         checkbox.onchange = () => toggleBookmarkSelection(Number(bookmark.id));
         selectionControl.appendChild(checkbox);
-        card.appendChild(selectionControl);
+        if (shouldShowImage) {
+            const selectionRow = document.createElement('div');
+            selectionRow.className = 'bookmark-selection-row';
+            selectionRow.appendChild(selectionControl);
+            card.appendChild(selectionRow);
+        } else {
+            card.appendChild(selectionControl);
+        }
     }
     if (shouldShowImage) {
         const image = document.createElement('img'); image.className = 'card-cover'; image.src = bookmark.imageUrl; image.alt = primaryTitle;

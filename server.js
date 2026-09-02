@@ -429,7 +429,7 @@ function isRegistrationRateLimited(req) {
 }
 
 /** Sends an account verification link or logs it in local development. */
-async function sendVerificationEmail(email, token) {
+async function sendVerificationEmail(req, email, token) {
     const verificationUrl = `${getPublicBaseUrl(req)}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
     const result = await pool.query("SELECT value FROM settings_app WHERE key = 'smtp'");
     const smtp = result.rows[0]?.value;
@@ -445,15 +445,24 @@ async function sendVerificationEmail(email, token) {
         return false;
     }
     const sender = smtp?.user || process.env.SMTP_USER || smtp?.from || process.env.SMTP_FROM;
-    const info = await transport.sendMail({
-        from: sender,
-        to: email,
-        subject: 'CloudMark e-mail cím megerősítése',
-        text: `A fiókod aktiválásához nyisd meg ezt a linket: ${verificationUrl}`,
-        html: `<p>A fiókod aktiválásához kattints az alábbi linkre:</p><p><a href="${verificationUrl}">E-mail cím megerősítése</a></p>`
-    });
-    console.log(`[MAIL] Verification e-mail elküldve: messageId=${info.messageId}, response=${info.response}`);
-    return true;
+    try {
+        const info = await transport.sendMail({
+            from: sender,
+            to: email,
+            subject: 'CloudMark e-mail cím megerősítése',
+            text: `A fiókod aktiválásához nyisd meg ezt a linket: ${verificationUrl}`,
+            html: `<p>A fiókod aktiválásához kattints az alábbi linkre:</p><p><a href="${verificationUrl}">E-mail cím megerősítése</a></p>`
+        });
+        console.log(`[MAIL] Verification e-mail elküldve: messageId=${info.messageId}, response=${info.response}`);
+        return true;
+    } catch (mailError) {
+        console.error('[MAIL] Verification e-mail send failed:', mailError.message || mailError);
+        if (process.env.NODE_ENV === 'production') {
+            throw mailError;
+        }
+        console.log(`[DEV] Fallback verification link: ${verificationUrl}`);
+        return false;
+    }
 }
 
 /** Returns application settings with safe defaults for missing values. */
@@ -1050,12 +1059,23 @@ app.post('/api/auth/register', async (req, res) => {
         await recordAuditEvent({ userId: user.id, action: 'user_registered', entityType: 'user', entityId: user.id, details: { email }, req });
 
         try {
-            const emailSent = await sendVerificationEmail(email, verificationToken);
-            res.status(201).json({ verificationRequired: true, email: user.email, emailSent });
+            const emailSent = await sendVerificationEmail(req, email, verificationToken);
+            res.status(201).json({
+                verificationRequired: true,
+                email: user.email,
+                emailSent,
+                verificationUrl: !emailSent ? `${getPublicBaseUrl(req)}/api/auth/verify-email?token=${encodeURIComponent(verificationToken)}` : undefined
+            });
             return;
         } catch (mailError) {
-            await pool.query('DELETE FROM users WHERE id = $1', [user.id]);
-            throw mailError;
+            console.error('[AUTH] Registration email delivery failed:', mailError.message || mailError);
+            res.status(201).json({
+                verificationRequired: true,
+                email: user.email,
+                emailSent: false,
+                verificationUrl: `${getPublicBaseUrl(req)}/api/auth/verify-email?token=${encodeURIComponent(verificationToken)}`
+            });
+            return;
         }
     } catch (err) {
         if (err.code === '23505') return res.status(409).json({ error: 'A felhasználónév vagy e-mail már foglalt.' });
@@ -1393,6 +1413,7 @@ app.delete('/api/tags/:name', requireAuth, async (req, res) => {
 
 app.post('/api/bookmarks/import', requireAuth, async (req, res) => {
     const items = Array.isArray(req.body) ? req.body : (req.body.bookmarks || []);
+    const targetCategory = String(req.body.targetCategory || '').trim() || null;
     if (!Array.isArray(items)) return res.status(400).json({ error: 'bookmarks tömb szükséges' });
     let imported = 0;
     try {
@@ -1403,10 +1424,11 @@ app.post('/api/bookmarks/import', requireAuth, async (req, res) => {
             const duplicate = await pool.query('SELECT id FROM bookmarks WHERE user_id = $1 AND normalized_url = $2 AND trashed = FALSE LIMIT 1', [req.user.username, normalizedUrl]);
             if (duplicate.rowCount) continue;
             const title = resolveBookmarkTitle(item.title, {}, item.url);
+            const fallbackCategory = targetCategory || item.category || 'Inbox';
             const row = await pool.query(
                 `INSERT INTO bookmarks (user_id,title,url,category,description,starred,normalized_url,status)
                  VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-                [req.user.username, title, item.url, item.category || 'Inbox', item.description || null, Boolean(item.starred), normalizedUrl, ['inbox', 'read_later', 'to_review', 'done'].includes(item.status) ? item.status : 'inbox']
+                [req.user.username, title, item.url, fallbackCategory, item.description || null, Boolean(item.starred), normalizedUrl, ['inbox', 'read_later', 'to_review', 'done'].includes(item.status) ? item.status : 'inbox']
             );
             await replaceBookmarkTags(row.rows[0].id, req.user.id, item.tags || []);
             imported++;
@@ -1417,16 +1439,64 @@ app.post('/api/bookmarks/import', requireAuth, async (req, res) => {
 
 app.get('/api/bookmarks/export', requireAuth, async (req, res) => {
     try {
+        const idsQuery = String(req.query.ids || '').split(',').map(value => Number(value.trim())).filter(Number.isFinite);
+        const filters = [];
+        const params = [req.user.username, String(req.user.id)];
+        let index = 2;
+
+        if (idsQuery.length) {
+            index += 1;
+            filters.push(`b.id = ANY($${index}::int[])`);
+            params.push(idsQuery);
+        }
+
+        if (req.query.category && String(req.query.category).trim() && String(req.query.category).trim() !== 'All') {
+            index += 1;
+            filters.push(`b.category = $${index}`);
+            params.push(String(req.query.category).trim());
+        }
+
+        if (req.query.state && String(req.query.state).trim() && String(req.query.state).trim() !== 'active') {
+            const stateValue = String(req.query.state).trim();
+            index += 1;
+            if (stateValue === 'starred') {
+                filters.push(`b.starred = TRUE`);
+            } else if (stateValue === 'archived') {
+                filters.push(`b.archived = TRUE`);
+            } else if (stateValue === 'trash') {
+                filters.push(`b.trashed = TRUE`);
+            } else if (['read_later', 'to_review', 'done'].includes(stateValue)) {
+                filters.push(`b.status = $${index}`);
+                params.push(stateValue);
+            }
+        }
+
+        if (req.query.search && String(req.query.search).trim()) {
+            const searchValue = `%${String(req.query.search).trim().toLowerCase()}%`;
+            index += 1;
+            filters.push(`(LOWER(COALESCE(b.title, '')) LIKE $${index} OR LOWER(COALESCE(b.url, '')) LIKE $${index} OR LOWER(COALESCE(b.category, '')) LIKE $${index} OR LOWER(COALESCE(b.description, '')) LIKE $${index})`);
+            params.push(searchValue);
+        }
+
+        if (req.query.tag && String(req.query.tag).trim()) {
+            const tagName = String(req.query.tag).trim();
+            const tagQuery = `EXISTS (SELECT 1 FROM bookmark_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.bookmark_id = b.id AND LOWER(t.name) = LOWER($${index + 1}))`;
+            index += 1;
+            filters.push(tagQuery);
+            params.push(tagName);
+        }
+
+        const whereClause = filters.length ? `AND ${filters.join(' AND ')}` : '';
         const result = await pool.query(
             `SELECT b.*, COALESCE(array_agg(t.name) FILTER (WHERE t.name IS NOT NULL), '{}') tags
              FROM bookmarks b LEFT JOIN bookmark_tags bt ON bt.bookmark_id=b.id
              LEFT JOIN tags t ON t.id=bt.tag_id
-             WHERE LOWER(CAST(b.user_id AS TEXT)) IN (LOWER($1), LOWER($2))
+             WHERE LOWER(CAST(b.user_id AS TEXT)) IN (LOWER($1), LOWER($2)) ${whereClause}
              GROUP BY b.id ORDER BY b.created_at DESC`,
-            [req.user.username, String(req.user.id)]
+            params
         );
         if ((req.query.format || 'json').toLowerCase() === 'html') {
-            const esc = value => String(value || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            const esc = value => String(value || '').replace(/[&<>\"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
             const html = '<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<TITLE>CloudMark export</TITLE><DL><p>\n' +
                 result.rows.map(b => `<DT><A HREF="${esc(b.url)}" ADD_DATE="${Math.floor(new Date(b.created_at).getTime()/1000)}">${esc(b.title)}</A>`).join('\n') + '\n</DL><p>';
             res.type('application/x-netscape-bookmark').attachment('cloudmark-bookmarks.html').send(html);
@@ -1662,7 +1732,7 @@ app.post('/api/auth/resend-verification', async (req, res) => {
             [hashVerificationToken(token), new Date(Date.now() + verificationMinutes * 60 * 1000), username]
         );
         if (!result.rows.length) return res.status(404).json({ error: 'Nincs ilyen megerősítetlen felhasználó.' });
-        const emailSent = await sendVerificationEmail(result.rows[0].email, token);
+        const emailSent = await sendVerificationEmail(req, result.rows[0].email, token);
         res.json({ verificationRequired: true, emailSent });
     } catch (err) {
         console.error('Verification e-mail újraküldése sikertelen:', err.message);

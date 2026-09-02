@@ -286,10 +286,13 @@ apiNamespace.api = {
     deleteTag(name) {
         return requestJson(`/api/tags/${encodeURIComponent(name)}`, { method: 'DELETE' });
     },
-    importBookmarks(bookmarks) {
-        return requestJson('/api/bookmarks/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookmarks }) });
+    importBookmarks(bookmarks, targetCategory = null) {
+        return requestJson('/api/bookmarks/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookmarks, targetCategory }) });
     },
-    exportBookmarks(format) { return fetch(`/api/bookmarks/export?format=${encodeURIComponent(format)}`).then(response => { if (!response.ok) throw new Error('Export failed'); return response.blob(); }); },
+    exportBookmarks(format, params = {}) {
+        const query = new URLSearchParams({ format, ...params });
+        return fetch(`/api/bookmarks/export?${query.toString()}`).then(response => { if (!response.ok) throw new Error('Export failed'); return response.blob(); });
+    },
     shareBookmark(id, permission = 'view') {
         return requestJson(`/api/bookmarks/${id}/share`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permission }) });
     },
@@ -299,3 +302,4 @@ apiNamespace.api = {
 };
 
 window.CloudMark = apiNamespace;
+window.api = apiNamespace.api;

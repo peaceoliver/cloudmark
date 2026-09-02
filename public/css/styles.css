@@ -757,6 +757,14 @@ input:focus, select:focus {
     width: 100%;
 }
 
+.bookmark-selection-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin: 0 0 0.55rem;
+    min-height: 1.45rem;
+}
+
 .bookmark-select-wrap {
     display: inline-flex;
     align-items: center;
@@ -780,6 +788,12 @@ input:focus, select:focus {
     border-radius: 0.35rem;
     cursor: pointer;
     vertical-align: middle;
+}
+
+.card:has(.bookmark-selection-row) .card-cover {
+    width: 100%;
+    margin: 0 0 0.75rem;
+    border-radius: 10px 10px 0 0;
 }
 
 .card-title {
@@ -1018,6 +1032,7 @@ input:focus, select:focus {
     min-height: 76px;
 }
 
+.dashboard-grid.view-list .card > .bookmark-selection-row,
 .dashboard-grid.view-list .card > .bookmark-select-wrap {
     grid-column: 1;
     justify-self: start;
@@ -1040,6 +1055,7 @@ input:focus, select:focus {
     grid-template-columns: 1.3rem 60px minmax(0, 1fr) auto;
 }
 
+.dashboard-grid.view-list .card:has(.card-cover) > .bookmark-selection-row,
 .dashboard-grid.view-list .card:has(.card-cover) > .bookmark-select-wrap {
     grid-column: 1;
 }

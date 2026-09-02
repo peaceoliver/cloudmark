@@ -59,9 +59,101 @@
         try { await renderTagsManagement(); } catch (err) { showNotification('Nem sikerült betölteni a címkéket.', 'error'); }
     };
 
+    function getVisibleBookmarkIds() {
+        return Array.from(document.querySelectorAll('.card[data-bookmark-id]')).map(card => Number(card.dataset.bookmarkId)).filter(Number.isFinite);
+    }
+
+    function getImportTargetCategory() {
+        const select = document.getElementById('importBookmarkTargetCategory');
+        const value = select ? select.value : '';
+        return value && value !== 'all' ? value : null;
+    }
+
+    async function refreshImportTargetCategoryOptions() {
+        const select = document.getElementById('importBookmarkTargetCategory');
+        if (!select) return;
+        const categories = await api.getCategories();
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Import célkategória (opcionális)</option>';
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.name || category;
+            option.textContent = category.name || category;
+            select.appendChild(option);
+        });
+        if (currentValue) select.value = currentValue;
+    }
+
+    function parseHtmlBookmarkFile(text, fallbackCategory = null) {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const items = [];
+
+        function walkList(node, currentCategory) {
+            const nodes = Array.from(node.children || []);
+            for (const child of nodes) {
+                if (child.tagName === 'DT') {
+                    const folderHeading = child.querySelector('H3');
+                    const nestedList = child.querySelector('DL');
+                    if (folderHeading && nestedList) {
+                        const folderName = folderHeading.textContent.trim();
+                        if (folderName) walkList(nestedList, folderName);
+                    }
+                    const link = child.querySelector('A[href]');
+                    if (link) {
+                        const href = link.getAttribute('href');
+                        if (!href) continue;
+                        items.push({
+                            title: link.textContent.trim() || href,
+                            url: href,
+                            category: currentCategory || fallbackCategory || 'Inbox'
+                        });
+                    }
+                    continue;
+                }
+                if (child.tagName === 'DL') {
+                    walkList(child, currentCategory);
+                }
+            }
+        }
+
+        const rootList = doc.querySelector('DL');
+        if (rootList) walkList(rootList, fallbackCategory || 'Inbox');
+        else {
+            [...doc.querySelectorAll('a[href]')].forEach(link => {
+                const href = link.getAttribute('href');
+                if (!href) return;
+                items.push({ title: link.textContent.trim() || href, url: href, category: fallbackCategory || 'Inbox' });
+            });
+        }
+        return items;
+    }
+
     async function download(format) {
         try {
-            const blob = await api.exportBookmarks(format);
+            const params = {};
+            const exportMode = document.getElementById('exportModeSelect')?.value || 'visible';
+
+            if (exportMode === 'visible') {
+                const visibleIds = getVisibleBookmarkIds();
+                if (!visibleIds.length) {
+                    showNotification('Nincsenek látható könyvjelzők az exporthoz.', 'error');
+                    return;
+                }
+                params.ids = visibleIds.join(',');
+            } else if (exportMode === 'filtered') {
+                if (activeCategoryFilter && activeCategoryFilter !== 'All') {
+                    params.category = activeCategoryFilter;
+                }
+                if (bookmarkStateFilter && bookmarkStateFilter !== 'active') {
+                    params.state = bookmarkStateFilter;
+                }
+                const searchValue = String(window.enterpriseSearch || '').trim();
+                const tagValue = String(window.enterpriseTagFilter || '').trim();
+                if (searchValue) params.search = searchValue;
+                if (tagValue) params.tag = tagValue;
+            }
+
+            const blob = await api.exportBookmarks(format, params);
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = `cloudmark-bookmarks.${format === 'html' ? 'html' : 'json'}`;
@@ -69,6 +161,7 @@
             URL.revokeObjectURL(link.href);
         } catch (err) { showNotification('Az exportálás nem sikerült.', 'error'); }
     }
+
     document.getElementById('exportJsonBtn').onclick = () => download('json');
     document.getElementById('exportHtmlBtn').onclick = () => download('html');
 
@@ -77,19 +170,24 @@
         if (!file) return;
         try {
             const text = await file.text();
+            const targetCategory = getImportTargetCategory();
             let items;
             if (file.name.toLowerCase().endsWith('.json')) {
                 const parsed = JSON.parse(text);
-                items = Array.isArray(parsed) ? parsed : parsed.bookmarks;
+                items = Array.isArray(parsed) ? parsed : (parsed.bookmarks || []);
+                if (targetCategory) {
+                    items = items.map(item => ({ ...item, category: item.category || targetCategory }));
+                }
             } else {
-                const doc = new DOMParser().parseFromString(text, 'text/html');
-                items = [...doc.querySelectorAll('a[href]')].map(a => ({ title: a.textContent.trim(), url: a.href, category: 'Inbox' }));
+                items = parseHtmlBookmarkFile(text, targetCategory || 'Inbox');
             }
-            const result = await api.importBookmarks(items || []);
+            const result = await api.importBookmarks(items || [], targetCategory || null);
             await loadBookmarksFromServer();
             renderBookmarks();
             showNotification(`${result.imported} könyvjelző importálva.`, 'success');
         } catch (err) { showNotification('Az importálás sikertelen: érvénytelen fájl.', 'error'); }
         this.value = '';
     });
+
+    refreshImportTargetCategoryOptions();
 })();
