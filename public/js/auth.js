@@ -55,10 +55,60 @@ async function logoutUser() {
 function updateUserUI() {
     const area = document.getElementById('userStateArea');
     if (!currentUser) { area.innerHTML = '<button class="btn btn-primary" onclick="openModal(\'authModal\')"><i class="fa-solid fa-user"></i> Bejelentkezés / Regisztráció</button>'; return; }
-    const admin = currentUser.isSuperuser ? '<button class="btn btn-admin" onclick="openAdminConfig()"><i class="fa-solid fa-sliders"></i> Rendszerbeállítások (Admin)</button>' : '';
+    const admin = currentUser.isSuperuser
+        ? '<div style="display:flex; align-items:center; gap:0.5rem;"><button class="btn btn-admin" onclick="openAdminPanel()"><i class="fa-solid fa-shield-halved"></i> Admin panel</button><button class="btn btn-secondary" onclick="openAdminConfig()"><i class="fa-solid fa-sliders"></i> SMTP</button></div>'
+        : '';
     const statusClass = currentUser.isSuperuser ? 'status-admin' : 'status-verified';
     const statusIcon = currentUser.isSuperuser ? 'fa-crown' : 'fa-check-circle';
     area.innerHTML = `<div style="display:flex; align-items:center; gap:0.75rem;">${admin}<button class="btn-icon" onclick="openUserSettings()" title="Felhasználói beállítások"><i class="fa-solid fa-user-gear"></i></button><span class="status-badge ${statusClass}"><i class="fa-solid ${statusIcon}"></i> ${currentUser.username}</span><button class="btn btn-danger" onclick="logoutUser()"> <i class="fa-solid fa-right-from-bracket"></i> Kilépés</button></div>`;
+}
+
+async function renderAdminPanel() {
+    try {
+        const [teams, auditEvents] = await Promise.all([api.getTeams(), api.getAuditEvents()]);
+        const teamList = document.getElementById('adminTeamList');
+        const teamSelect = document.getElementById('adminTeamMemberTeamSelect');
+        const auditTable = document.getElementById('adminAuditEventsBody');
+
+        teamList.innerHTML = teams.length
+            ? teams.map(team => `
+                <div class="admin-team-item">
+                    <div>
+                        <strong>${team.name}</strong><br>
+                        <small>Owner: ${team.owner_username || 'ismeretlen'} • ID: ${team.id}</small>
+                    </div>
+                    <span class="status-badge ${team.owner_user_id === currentUser.id ? 'status-admin' : 'status-verified'}">${team.owner_user_id === currentUser.id ? 'Tulajdonos' : 'Tag'}</span>
+                </div>
+            `).join('')
+            : '<div class="empty-state">Még nincs csapat.</div>';
+
+        teamSelect.innerHTML = teams.length
+            ? teams.map(team => `<option value="${team.id}">${team.name}</option>`).join('')
+            : '<option value="">Előbb hozz létre egy csapatot</option>';
+
+        auditTable.innerHTML = auditEvents.length
+            ? auditEvents.slice(0, 25).map(event => `
+                <tr>
+                    <td>${event.action || '-'}</td>
+                    <td>${event.actor_username || event.user_id || '-'}</td>
+                    <td>${event.entity_type || '-'}</td>
+                    <td>${event.created_at ? new Date(event.created_at).toLocaleString('hu-HU') : '-'}</td>
+                    <td>${(event.details && typeof event.details === 'object') ? JSON.stringify(event.details).slice(0, 120) : (event.details || '-')}</td>
+                </tr>
+            `).join('')
+            : '<tr><td colspan="5">Nincs audit event.</td></tr>';
+    } catch (err) {
+        showNotification(err.message || 'Az admin panel betöltése sikertelen.', 'error');
+    }
+}
+
+async function openAdminPanel() {
+    if (!currentUser || !currentUser.isSuperuser) {
+        showNotification('Admin jogosultság szükséges a panel megnyitásához.', 'error');
+        return;
+    }
+    await renderAdminPanel();
+    openModal('adminPanelModal');
 }
 
 /** Opens the user settings modal with database values and local fallbacks. */
@@ -138,6 +188,74 @@ document.getElementById('adminConfigForm').addEventListener('submit', async even
     }
 });
 
+document.getElementById('adminCreateTeamForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const teamName = document.getElementById('adminTeamName').value.trim();
+    if (!teamName) {
+        showNotification('A csapat neve kötelező.', 'error');
+        return;
+    }
+    try {
+        await api.createTeam(teamName);
+        document.getElementById('adminTeamName').value = '';
+        await renderAdminPanel();
+        showNotification('A csapat létrehozva.', 'success');
+    } catch (err) {
+        showNotification(err.message || 'A csapat létrehozása nem sikerült.', 'error');
+    }
+});
+
+document.getElementById('adminAddMemberForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const teamId = document.getElementById('adminTeamMemberTeamSelect').value;
+    const username = document.getElementById('adminMemberUsername').value.trim();
+    const role = document.getElementById('adminMemberRole').value;
+    if (!teamId || !username) {
+        showNotification('Válassz csapatot és adj meg felhasználónevet.', 'error');
+        return;
+    }
+    try {
+        await api.addTeamMember(Number(teamId), username, role);
+        document.getElementById('adminMemberUsername').value = '';
+        await renderAdminPanel();
+        showNotification('A felhasználó hozzáadva a csapathoz.', 'success');
+    } catch (err) {
+        showNotification(err.message || 'A felhasználó hozzáadása nem sikerült.', 'error');
+    }
+});
+
+document.getElementById('adminBackupExportBtn').addEventListener('click', async () => {
+    try {
+        const blob = await api.exportBackup();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'cloudmark-backup.json';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showNotification('A biztonsági mentés letöltve.', 'success');
+    } catch (err) {
+        showNotification(err.message || 'A mentés letöltése nem sikerült.', 'error');
+    }
+});
+
+document.getElementById('adminBackupImportInput').addEventListener('change', async event => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    try {
+        const text = await file.text();
+        const payload = JSON.parse(text);
+        await api.importBackup(payload);
+        event.target.value = '';
+        await renderAdminPanel();
+        showNotification('A mentés importálva.', 'success');
+    } catch (err) {
+        showNotification(err.message || 'A mentés importálása nem sikerült.', 'error');
+    }
+});
+
 document.getElementById('userSettingsForm').addEventListener('submit', async event => {
     event.preventDefault();
     const currentPassword = document.getElementById('currentPassword').value;
@@ -187,4 +305,4 @@ document.getElementById('userSettingsForm').addEventListener('submit', async eve
 
 window.toggleAuthMode = toggleAuthMode; window.confirmEmailActivation = confirmEmailActivation;
 window.loginUser = loginUser; window.logoutUser = logoutUser; window.openAdminConfig = openAdminConfig;
-window.openUserSettings = openUserSettings;
+window.openAdminPanel = openAdminPanel; window.openUserSettings = openUserSettings;

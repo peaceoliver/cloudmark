@@ -91,6 +91,60 @@ apiNamespace.api = {
         });
     },
 
+    /** Lists all teams visible to the current user. */
+    getTeams() {
+        return requestJson('/api/teams');
+    },
+
+    /** Creates a new team for the authenticated user. */
+    createTeam(name) {
+        return requestJson('/api/teams', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+    },
+
+    /** Adds a user to a team or updates their team role. */
+    addTeamMember(teamId, username, role) {
+        return requestJson(`/api/teams/${encodeURIComponent(teamId)}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, role })
+        });
+    },
+
+    /** Returns the latest audit records for administrators. */
+    getAuditEvents() {
+        return requestJson('/api/admin/audit-events');
+    },
+
+    /** Downloads a JSON backup export for the current administrator. */
+    exportBackup() {
+        return fetch('/api/admin/backup/export').then(async response => {
+            if (!response.ok) {
+                let message = 'Export failed';
+                try {
+                    const body = await response.json();
+                    if (body.error) message = body.error;
+                } catch (err) {
+                    // ignore body errors and keep status output
+                }
+                throw new Error(message);
+            }
+            return response.blob();
+        });
+    },
+
+    /** Imports a backup payload from JSON. */
+    importBackup(payload) {
+        return requestJson('/api/admin/backup/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    },
+
     /** Returns all bookmarks from the API. */
     getBookmarks(filters = {}) {
         const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && value !== ''));

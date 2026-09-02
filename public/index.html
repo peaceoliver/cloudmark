@@ -332,6 +332,82 @@
         </div>
     </div>
 
+    <!-- Modal: Admin Panel -->
+    <div class="modal-overlay" id="adminPanelModal">
+        <div class="modal" style="max-width: 980px; width: min(96vw, 980px);">
+            <div class="modal-title" style="color: var(--warning);">
+                <i class="fa-solid fa-shield-halved"></i> Admin Panel
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <div>
+                    <div class="section-divider"><i class="fa-solid fa-users"></i> Csapatok</div>
+                    <form id="adminCreateTeamForm" class="add-form-grid" style="grid-template-columns: 1fr auto; align-items: end; margin: 0 0 0.75rem;">
+                        <div class="form-control" style="margin: 0;">
+                            <label>Csapat neve</label>
+                            <input type="text" id="adminTeamName" placeholder="Pl. Marketing Team" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Létrehozás</button>
+                    </form>
+                    <div id="adminTeamList" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 180px; overflow-y: auto;"></div>
+                </div>
+
+                <div>
+                    <div class="section-divider"><i class="fa-solid fa-user-plus"></i> Tag hozzáadása</div>
+                    <form id="adminAddMemberForm" class="add-form-grid" style="grid-template-columns: 1.2fr 1fr 0.8fr auto; align-items: end; margin: 0;">
+                        <div class="form-control" style="margin: 0;">
+                            <label>Csapat</label>
+                            <select id="adminTeamMemberTeamSelect"></select>
+                        </div>
+                        <div class="form-control" style="margin: 0;">
+                            <label>Felhasználónév</label>
+                            <input type="text" id="adminMemberUsername" placeholder="pl. bob" required>
+                        </div>
+                        <div class="form-control" style="margin: 0;">
+                            <label>Szerep</label>
+                            <select id="adminMemberRole">
+                                <option value="member">member</option>
+                                <option value="team_admin">team_admin</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Hozzáadás</button>
+                    </form>
+                </div>
+
+                <div>
+                    <div class="section-divider"><i class="fa-solid fa-clipboard-list"></i> Audit log</div>
+                    <div style="max-height: 260px; overflow: auto; border: 1px solid var(--border-color); border-radius: 12px; background: rgba(148, 163, 184, 0.04);">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                            <thead>
+                                <tr style="background: rgba(148,163,184,0.08);">
+                                    <th style="padding: 0.75rem; text-align: left;">Művelet</th>
+                                    <th style="padding: 0.75rem; text-align: left;">Felhasználó</th>
+                                    <th style="padding: 0.75rem; text-align: left;">Entitás</th>
+                                    <th style="padding: 0.75rem; text-align: left;">Idő</th>
+                                    <th style="padding: 0.75rem; text-align: left;">Részletek</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminAuditEventsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="section-divider"><i class="fa-solid fa-database"></i> Biztonsági mentés</div>
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                        <button type="button" class="btn btn-secondary" id="adminBackupExportBtn"><i class="fa-solid fa-download"></i> Export JSON</button>
+                        <label class="btn btn-secondary" for="adminBackupImportInput"><i class="fa-solid fa-upload"></i> Import JSON</label>
+                        <input type="file" id="adminBackupImportInput" accept=".json,application/json" hidden>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; margin-top: 1rem;">
+                <button type="button" class="btn btn btn-danger" onclick="closeModal('adminPanelModal')">Bezárás</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal: Email Confirmation Simulation -->
     <div class="modal-overlay" id="verifyModal">
         <div class="modal">
