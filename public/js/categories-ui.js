@@ -22,16 +22,29 @@ function initAccordions() {
     document.querySelectorAll('.accordion-trigger').forEach(trigger => {
         const target = document.getElementById(trigger.dataset.target);
         if (!target) return;
-        const syncState = () => {
-            const expanded = trigger.getAttribute('aria-expanded') === 'true';
-            target.classList.toggle('is-collapsed', !expanded);
+        const storageKey = trigger.dataset.storageKey ? `cloudmark.accordion.${trigger.dataset.storageKey}` : null;
+        const readState = () => {
+            if (storageKey && sessionStorage.getItem(storageKey) !== null) {
+                return sessionStorage.getItem(storageKey) === 'true';
+            }
+            return trigger.getAttribute('aria-expanded') === 'true';
         };
+        const persistState = expanded => {
+            if (storageKey) {
+                sessionStorage.setItem(storageKey, String(expanded));
+            }
+        };
+        const syncState = expanded => {
+            trigger.setAttribute('aria-expanded', String(expanded));
+            target.classList.toggle('is-collapsed', !expanded);
+            persistState(expanded);
+        };
+        const initialExpanded = readState();
+        syncState(initialExpanded);
         trigger.addEventListener('click', () => {
             const nextExpanded = trigger.getAttribute('aria-expanded') !== 'true';
-            trigger.setAttribute('aria-expanded', String(nextExpanded));
-            target.classList.toggle('is-collapsed', !nextExpanded);
+            syncState(nextExpanded);
         });
-        syncState();
     });
 }
 

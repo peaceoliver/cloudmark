@@ -8,7 +8,20 @@ const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+app.set('trust proxy', true);
 const SESSION_COOKIE = 'cloudmark_session';
+
+function getPublicBaseUrl(req = null) {
+    if (process.env.APP_URL && process.env.APP_URL.trim()) {
+        return process.env.APP_URL.trim().replace(/\/+$/, '');
+    }
+    if (req) {
+        const forwardedProto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+        const forwardedHost = req.headers['x-forwarded-host'] || req.headers.host;
+        if (forwardedHost) return `${Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto}://${forwardedHost}`;
+    }
+    return `http://localhost:${PORT}`;
+}
 const DEFAULT_APP_SETTINGS = {
     sessionDays: 30,
     verificationMinutes: 30
@@ -351,7 +364,7 @@ function isRegistrationRateLimited(req) {
 
 /** Sends an account verification link or logs it in local development. */
 async function sendVerificationEmail(email, token) {
-    const verificationUrl = `${process.env.APP_URL || `http://localhost:${PORT}`}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+    const verificationUrl = `${getPublicBaseUrl(req)}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
     const result = await pool.query("SELECT value FROM settings_app WHERE key = 'smtp'");
     const smtp = result.rows[0]?.value;
     const transport = smtp?.host ? nodemailer.createTransport({
@@ -819,7 +832,7 @@ app.post('/api/bookmarks/:id/share', requireAuth, async (req, res) => {
         if (!owned.rows.length) return res.status(404).json({ error: 'Not found' });
         const token = crypto.randomBytes(32).toString('hex');
         await pool.query('INSERT INTO bookmark_shares (bookmark_id,token,permission,expires_at) VALUES ($1,$2,$3,$4)', [req.params.id, token, req.body.permission === 'edit' ? 'edit' : 'view', req.body.expiresAt || null]);
-        res.status(201).json({ token, url: `${process.env.APP_URL || `http://localhost:${PORT}`}/share/${token}` });
+        res.status(201).json({ token, url: `${getPublicBaseUrl(req)}/share/${token}` });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

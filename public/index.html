@@ -92,14 +92,14 @@
         </div>
 
         <section class="dashboard-section category-section" aria-label="Kategóriák">
-            <button type="button" class="accordion-trigger category-main-toggle" data-target="categorySectionContent" aria-expanded="true">
+            <button type="button" class="accordion-trigger category-main-toggle" data-target="categorySectionContent" data-storage-key="category-main" aria-expanded="true">
                 <span class="toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</span>
                 <i class="accordion-icon fa-solid fa-chevron-down"></i>
             </button>
             <div id="categorySectionContent" class="accordion-panel">
                 <div class="category-inner-content">
                     <div class="category-header-row">
-                        <button type="button" class="accordion-trigger category-section-toggle" data-target="categoryTreePanelContent" aria-expanded="true">
+                        <button type="button" class="accordion-trigger category-section-toggle" data-target="categoryTreePanelContent" data-storage-key="category-tree" aria-expanded="false">
                             <span>Fa nézet</span>
                             <i class="accordion-icon fa-solid fa-chevron-down"></i>
                         </button>
@@ -113,7 +113,7 @@
         </section>
         <section class="enterprise-toolbar" aria-label="Enterprise tools">
             <div class="toolbar-group accordion-group">
-                <button type="button" class="accordion-trigger" data-target="managementPanelContent" aria-expanded="true">
+                <button type="button" class="accordion-trigger" data-target="managementPanelContent" data-storage-key="management-panel" aria-expanded="true">
                     <span class="toolbar-label"><i class="fa-solid fa-sliders"></i> Kezelés és adatkezelés</span>
                     <i class="accordion-icon fa-solid fa-chevron-down"></i>
                 </button>
@@ -128,7 +128,7 @@
                 </div>
             </div>
             <div class="toolbar-group accordion-group">
-                <button type="button" class="accordion-trigger" data-target="searchPanelContent" aria-expanded="true">
+                <button type="button" class="accordion-trigger" data-target="searchPanelContent" data-storage-key="search-panel" aria-expanded="true">
                     <span class="toolbar-label"><i class="fa-solid fa-magnifying-glass"></i> Keresés és szűrés</span>
                     <i class="accordion-icon fa-solid fa-chevron-down"></i>
                 </button>
