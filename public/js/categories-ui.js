@@ -18,16 +18,21 @@ function categoryTree() {
     return result;
 }
 
-function initCategoryTreeToggle() {
-    const toggle = document.querySelector('.category-section-toggle');
-    const panel = document.getElementById('categoryTreePanelContent');
-    if (!toggle || !panel) return;
-    const setExpanded = expanded => {
-        toggle.setAttribute('aria-expanded', String(expanded));
-        panel.classList.toggle('is-collapsed', !expanded);
-    };
-    toggle.addEventListener('click', () => setExpanded(toggle.getAttribute('aria-expanded') !== 'true'));
-    setExpanded(false);
+function initAccordions() {
+    document.querySelectorAll('.accordion-trigger').forEach(trigger => {
+        const target = document.getElementById(trigger.dataset.target);
+        if (!target) return;
+        const syncState = () => {
+            const expanded = trigger.getAttribute('aria-expanded') === 'true';
+            target.classList.toggle('is-collapsed', !expanded);
+        };
+        trigger.addEventListener('click', () => {
+            const nextExpanded = trigger.getAttribute('aria-expanded') !== 'true';
+            trigger.setAttribute('aria-expanded', String(nextExpanded));
+            target.classList.toggle('is-collapsed', !nextExpanded);
+        });
+        syncState();
+    });
 }
 
 function renderCategories() {
@@ -139,4 +144,4 @@ async function createNewCategory() {
 
 window.filterCategory = filterCategory;
 window.createNewCategory = createNewCategory;
-initCategoryTreeToggle();
+initAccordions();

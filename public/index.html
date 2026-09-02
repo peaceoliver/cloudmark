@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20260901-list-alignment-fix">
+    <link rel="stylesheet" href="/css/styles.css?v=20260902-mobile-state-fix">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -93,33 +93,43 @@
 
         <section class="dashboard-section category-section" aria-label="Kategóriák">
             <div class="category-header-row">
-                <span class="toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</span>
-                <button type="button" class="category-section-toggle" data-target="categoryTreePanelContent" aria-expanded="false">
-                    Fa nézet
-                    <i class="fa-solid fa-chevron-down"></i>
+                <div class="toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</div>
+                <button type="button" class="accordion-trigger category-section-toggle" data-target="categoryTreePanelContent" aria-expanded="true">
+                    <span>Fa nézet</span>
+                    <i class="accordion-icon fa-solid fa-chevron-down"></i>
                 </button>
             </div>
             <div class="categories-bar" id="categoriesBar"></div>
-            <div id="categoryTreePanelContent" class="category-tree-panel-content is-collapsed">
+            <div id="categoryTreePanelContent" class="accordion-panel">
                 <div class="category-tree-view" id="categoryTreeView" aria-label="Kategóriák fa nézet"></div>
             </div>
         </section>
         <section class="enterprise-toolbar" aria-label="Enterprise tools">
-            <div class="toolbar-group">
-                <div class="toolbar-label"><i class="fa-solid fa-sliders"></i> Kezelés és adatkezelés</div>
-                <div class="enterprise-actions">
-                <button class="btn btn-secondary" id="manageCategoriesBtn"><i class="fa-solid fa-folder-gear"></i> Kategóriák kezelése</button>
-                <button class="btn btn-secondary" id="manageTagsBtn"><i class="fa-solid fa-tags"></i> Címkék kezelése</button>
-                <button class="btn btn-secondary" id="exportJsonBtn"><i class="fa-solid fa-download"></i> Export JSON</button>
-                <button class="btn btn-secondary" id="exportHtmlBtn"><i class="fa-solid fa-file-export"></i> Export HTML</button>
-                <label class="btn btn-secondary import-label"><i class="fa-solid fa-upload"></i> Import<input id="importBookmarksInput" type="file" accept=".json,.html,text/html,application/json" hidden></label>
+            <div class="toolbar-group accordion-group">
+                <button type="button" class="accordion-trigger" data-target="managementPanelContent" aria-expanded="true">
+                    <span class="toolbar-label"><i class="fa-solid fa-sliders"></i> Kezelés és adatkezelés</span>
+                    <i class="accordion-icon fa-solid fa-chevron-down"></i>
+                </button>
+                <div id="managementPanelContent" class="accordion-panel">
+                    <div class="enterprise-actions">
+                    <button class="btn btn-secondary" id="manageCategoriesBtn"><i class="fa-solid fa-folder-gear"></i> Kategóriák kezelése</button>
+                    <button class="btn btn-secondary" id="manageTagsBtn"><i class="fa-solid fa-tags"></i> Címkék kezelése</button>
+                    <button class="btn btn-secondary" id="exportJsonBtn"><i class="fa-solid fa-download"></i> Export JSON</button>
+                    <button class="btn btn-secondary" id="exportHtmlBtn"><i class="fa-solid fa-file-export"></i> Export HTML</button>
+                    <label class="btn btn-secondary import-label"><i class="fa-solid fa-upload"></i> Import<input id="importBookmarksInput" type="file" accept=".json,.html,text/html,application/json" hidden></label>
+                    </div>
                 </div>
             </div>
-            <div class="toolbar-group">
-                <div class="toolbar-label"><i class="fa-solid fa-magnifying-glass"></i> Keresés és szűrés</div>
-                <div class="enterprise-search">
-                <input id="bookmarkSearch" type="search" placeholder="Keresés cím, URL, kategória, címke vagy leírás alapján…" />
-                <input id="tagFilter" type="text" placeholder="Címke szűrő" />
+            <div class="toolbar-group accordion-group">
+                <button type="button" class="accordion-trigger" data-target="searchPanelContent" aria-expanded="true">
+                    <span class="toolbar-label"><i class="fa-solid fa-magnifying-glass"></i> Keresés és szűrés</span>
+                    <i class="accordion-icon fa-solid fa-chevron-down"></i>
+                </button>
+                <div id="searchPanelContent" class="accordion-panel">
+                    <div class="enterprise-search">
+                    <input id="bookmarkSearch" type="search" placeholder="Keresés cím, URL, kategória, címke vagy leírás alapján…" />
+                    <input id="tagFilter" type="text" placeholder="Címke szűrő" />
+                    </div>
                 </div>
             </div>
         </section>
@@ -400,14 +410,14 @@
             </form>
         </div>
     </div>
-    <script src="/js/config.js"></script>
-    <script src="/js/api.js"></script>
-    <script src="/js/notifications.js"></script>
-    <script src="/js/modal.js"></script>
-    <script src="/js/categories-ui.js"></script>
-    <script src="/js/bookmarks-ui.js"></script>
-    <script src="/js/enterprise.js"></script>
-    <script src="/js/auth.js"></script>
-    <script src="/js/app.js"></script>
+    <script src="/js/config.js?v=20260902-mobile-state-fix"></script>
+    <script src="/js/api.js?v=20260902-mobile-state-fix"></script>
+    <script src="/js/notifications.js?v=20260902-mobile-state-fix"></script>
+    <script src="/js/modal.js?v=20260902-mobile-state-fix"></script>
+    <script src="/js/categories-ui.js?v=20260902-mobile-state-fix"></script>
+    <script src="/js/bookmarks-ui.js?v=20260902-mobile-state-fix"></script>
+    <script src="/js/enterprise.js?v=20260902-mobile-state-fix"></script>
+    <script src="/js/auth.js?v=20260902-mobile-state-fix"></script>
+    <script src="/js/app.js?v=20260902-mobile-state-fix"></script>
 </body>
 </html>

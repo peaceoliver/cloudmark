@@ -134,15 +134,23 @@ header {
 }
 
 .btn {
-    padding: 0.6rem 1.2rem;
-    border-radius: 8px;
+    min-height: 2.7rem;
+    padding: 0.65rem 1rem;
+    border-radius: 10px;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    line-height: 1.1;
     cursor: pointer;
     border: 1px solid transparent;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
 }
 
 .btn-primary {
@@ -187,12 +195,17 @@ header {
 }
 
 .btn-icon {
+    min-height: 2.7rem;
+    width: 2.7rem;
     padding: 0.6rem;
-    border-radius: 8px;
+    border-radius: 10px;
     background: transparent;
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-icon:hover {
@@ -295,6 +308,11 @@ main {
     .bookmark-state-group {
         justify-content: flex-start;
         overflow-x: auto;
+        padding: .35rem .5rem;
+    }
+    .state-filter {
+        padding: .45rem .7rem;
+        font-size: .8rem;
     }
 }
 
@@ -358,36 +376,56 @@ input:focus, select:focus {
     gap: 0.75rem;
     margin-bottom: 0.75rem;
 }
-.category-section-toggle {
+.accordion-trigger {
     display: inline-flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.5rem;
-    padding: 0.45rem 0.75rem;
+    width: 100%;
+    padding: 0.7rem 0.9rem;
     border: 1px solid var(--border-color);
-    border-radius: 999px;
-    background: rgba(148, 163, 184, 0.05);
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-.category-section-toggle:hover {
-    background: var(--bg-card-hover);
+    border-radius: 12px;
+    background: rgba(148, 163, 184, 0.04);
     color: var(--text-primary);
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
-.category-section-toggle i:last-child {
+.accordion-trigger:hover {
+    background: var(--bg-card-hover);
+    border-color: rgba(148, 163, 184, 0.24);
+}
+.accordion-trigger .toolbar-label {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+}
+.accordion-icon {
     color: var(--text-secondary);
     transition: transform 0.2s ease;
 }
-.category-section-toggle[aria-expanded="true"] i:last-child {
+.accordion-trigger[aria-expanded="true"] .accordion-icon {
     transform: rotate(180deg);
+}
+.accordion-panel {
+    display: block;
+    margin-top: 0.6rem;
+}
+.accordion-panel.is-collapsed {
+    display: none;
+}
+.category-section-toggle {
+    width: auto;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.05);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
 }
 .category-tree-panel-content {
     display: block;
     margin-top: 0.5rem;
-}
-.category-tree-panel-content.is-collapsed {
-    display: none;
 }
 .state-filters, .enterprise-actions, .enterprise-search { display: flex; gap: .5rem; flex-wrap: wrap; width: 100%; }
 .enterprise-search input { flex: 1 1 260px; }
@@ -397,7 +435,7 @@ input:focus, select:focus {
 .bookmark-state-group {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: .5rem;
     flex: 1 1 auto;
     padding: .3rem .45rem;
@@ -405,8 +443,13 @@ input:focus, select:focus {
     border-radius: 999px;
     background: rgba(148, 163, 184, 0.06);
     box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.04);
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: thin;
 }
 .state-filter {
+    flex: 0 0 auto;
+    min-height: 2.5rem;
     background: transparent;
     color: var(--text-secondary);
     border-color: transparent;
@@ -750,16 +793,17 @@ input:focus, select:focus {
 
 .view-btn {
     background: transparent;
-    border: none;
+    border: 1px solid transparent;
     color: var(--text-secondary);
     padding: 0.45rem 0.7rem;
-    border-radius: 6px;
+    border-radius: 10px;
     cursor: pointer;
     font-size: 0.85rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 2.4rem;
+    min-width: 2.6rem;
+    min-height: 2.5rem;
 }
 
 .view-btn:hover {
