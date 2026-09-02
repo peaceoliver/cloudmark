@@ -27,7 +27,7 @@ function initCategoryTreeToggle() {
         panel.classList.toggle('is-collapsed', !expanded);
     };
     toggle.addEventListener('click', () => setExpanded(toggle.getAttribute('aria-expanded') !== 'true'));
-    setExpanded(true);
+    setExpanded(false);
 }
 
 function renderCategories() {
@@ -72,8 +72,14 @@ function renderCategoryTreeView() {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = `category-tree-node ${activeCategoryFilter === name ? 'active' : ''}`;
-        button.style.marginLeft = `${depth * 1}rem`;
-        button.innerHTML = `<span>${'— '.repeat(depth)}<i class="fa-solid fa-folder"></i> ${name}</span>`;
+        button.style.paddingLeft = `${depth * 1.1 + 0.5}rem`;
+        button.innerHTML = `
+            <span class="category-tree-label">
+                <span class="category-tree-arrow">${depth > 0 ? '▸' : '•'}</span>
+                <i class="fa-solid fa-folder"></i>
+                <span>${name}</span>
+            </span>
+        `;
         button.onclick = () => { filterCategory(name); };
         container.appendChild(button);
     });

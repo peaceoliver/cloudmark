@@ -92,12 +92,15 @@
         </div>
 
         <section class="dashboard-section category-section" aria-label="Kategóriák">
-            <button type="button" class="category-section-toggle" data-target="categoryTreePanelContent" aria-expanded="true">
+            <div class="category-header-row">
                 <span class="toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</span>
-                <i class="fa-solid fa-chevron-up"></i>
-            </button>
-            <div id="categoryTreePanelContent" class="category-tree-panel-content">
-                <div class="categories-bar" id="categoriesBar"></div>
+                <button type="button" class="category-section-toggle" data-target="categoryTreePanelContent" aria-expanded="false">
+                    Fa nézet
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="categories-bar" id="categoriesBar"></div>
+            <div id="categoryTreePanelContent" class="category-tree-panel-content is-collapsed">
                 <div class="category-tree-view" id="categoryTreeView" aria-label="Kategóriák fa nézet"></div>
             </div>
         </section>
