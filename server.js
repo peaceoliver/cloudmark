@@ -44,6 +44,7 @@ const mailTransport = process.env.SMTP_HOST ? nodemailer.createTransport({
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD
     },
+    family: 4,
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000
@@ -441,6 +442,7 @@ async function sendVerificationEmail(req, email, token) {
         port: Number(smtp.port || 587),
         secure: Boolean(smtp.secure),
         auth: { user: smtp.user, pass: smtp.password },
+        family: 4,
         connectionTimeout: 10000,
         greetingTimeout: 10000,
         socketTimeout: 15000
@@ -1652,6 +1654,7 @@ app.post('/api/admin/smtp-test', requireAdmin, async (req, res) => {
             port: Number(settings.port),
             secure: Boolean(settings.secure),
             auth: { user: settings.user, pass: settings.password },
+            family: 4,
             connectionTimeout: 10000,
             greetingTimeout: 10000,
             socketTimeout: 15000
