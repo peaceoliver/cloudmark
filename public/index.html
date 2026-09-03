@@ -96,33 +96,41 @@
                     <i class="fa-solid fa-arrow-down"></i> Bookmarkletből beérkezett adatok!
                 </span>
             </div>
-            <form id="bookmarkForm" class="add-form-grid">
-                <div class="form-control">
-                    <label>Cím</label>
-                    <input type="text" id="bmTitle" placeholder="Pl. GitHub Repó" required>
+            <form id="bookmarkForm" class="add-form-grid" style="display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-control">
+                        <label>Cím</label>
+                        <input type="text" id="bmTitle" placeholder="Pl. GitHub Repó" required>
+                    </div>
+                    <div class="form-control">
+                        <label>URL Cím</label>
+                        <input type="url" id="bmUrl" placeholder="https://example.com" required>
+                    </div>
                 </div>
-                <div class="form-control">
-                    <label>URL Cím</label>
-                    <input type="url" id="bmUrl" placeholder="https://example.com" required>
-                </div>
-                <div class="form-control">
-                    <label>Kategória</label>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <select id="bmCategory" required></select>
-                        <button type="button" class="btn btn btn-secondary" onclick="openModal('categoryModal'); renderManageCategoriesList()" title="Új kategória hozzáadása">
-                            <i class="fa-solid fa-plus"></i>
-                        </button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-control">
+                        <label>Kategória</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <select id="bmCategory" required></select>
+                            <button type="button" class="btn btn btn-secondary" onclick="openModal('categoryModal'); renderManageCategoriesList()" title="Új kategória hozzáadása">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label>Címkék</label>
+                        <div class="tag-input" data-tag-input="bmTags">
+                            <div class="tag-chips"></div>
+                            <input type="text" class="tag-entry" placeholder="Címke hozzáadása…">
+                            <div class="tag-suggestions"></div>
+                        </div>
                     </div>
                 </div>
                 <div class="form-control">
-                    <label>Címkék</label>
-                    <div class="tag-input" data-tag-input="bmTags">
-                        <div class="tag-chips"></div>
-                        <input type="text" class="tag-entry" placeholder="Címke hozzáadása…">
-                        <div class="tag-suggestions"></div>
-                    </div>
+                    <label>Leírás (opcionális)</label>
+                    <textarea id="bmDescription" placeholder="Írj leírást a könyvjelzőről..." style="width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-input); color: var(--text-primary); font-family: inherit; font-size: 0.9rem; outline: none; min-height: 80px; resize: vertical;"></textarea>
                 </div>
-                <div class="form-control" style="justify-content: flex-end;">
+                <div class="form-control" style="align-items: flex-end;">
                     <button type="submit" class="btn btn-primary">
                         <i class="fa-solid fa-save"></i> Mentés
                     </button>
@@ -607,32 +615,40 @@
             <div class="modal-title">
                 <i class="fa-solid fa-pen-to-square"></i> Könyvjelző Szerkesztése
             </div>
-            <form id="editBookmarkForm" class="modal-form">
+            <form id="editBookmarkForm" class="modal-form" style="display: flex; flex-direction: column; gap: 1rem;">
                 <input type="hidden" id="editBmId">
-                <div class="form-control">
-                    <label>Cím</label>
-                    <input type="text" id="editBmTitle" required>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-control">
+                        <label>Cím</label>
+                        <input type="text" id="editBmTitle" required>
+                    </div>
+                    <div class="form-control">
+                        <label>URL Cím</label>
+                        <input type="url" id="editBmUrl" required>
+                    </div>
                 </div>
-                <div class="form-control">
-                    <label>URL Cím</label>
-                    <input type="url" id="editBmUrl" required>
-                </div>
-                <div class="form-control">
-                    <label>Kategória</label>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <select id="editBmCategory" required></select>
-                        <button type="button" class="btn btn btn-secondary" onclick="openModal('categoryModal'); renderManageCategoriesList()" title="Új kategória hozzáadása">
-                            <i class="fa-solid fa-plus"></i>
-                        </button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-control">
+                        <label>Kategória</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <select id="editBmCategory" required></select>
+                            <button type="button" class="btn btn btn-secondary" onclick="openModal('categoryModal'); renderManageCategoriesList()" title="Új kategória hozzáadása">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label>Címkék</label>
+                        <div class="tag-input" data-tag-input="editBmTags">
+                            <div class="tag-chips"></div>
+                            <input type="text" class="tag-entry" placeholder="Címke hozzáadása…">
+                            <div class="tag-suggestions"></div>
+                        </div>
                     </div>
                 </div>
                 <div class="form-control">
-                    <label>Címkék</label>
-                    <div class="tag-input" data-tag-input="editBmTags">
-                        <div class="tag-chips"></div>
-                        <input type="text" class="tag-entry" placeholder="Címke hozzáadása…">
-                        <div class="tag-suggestions"></div>
-                    </div>
+                    <label>Leírás (opcionális)</label>
+                    <textarea id="editBmDescription" placeholder="Írj leírást a könyvjelzőről..." style="width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-input); color: var(--text-primary); font-family: inherit; font-size: 0.9rem; outline: none; min-height: 80px; resize: vertical;"></textarea>
                 </div>
                 <div style="display:flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
                     <button type="button" class="btn btn btn-danger" onclick="closeModal('editModal')">Mégse</button>

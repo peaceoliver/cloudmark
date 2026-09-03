@@ -1338,7 +1338,7 @@ app.get('/api/bookmarks', async (req, res) => {
 
 /** Creates a bookmark for the requested user. */
 app.post('/api/bookmarks', requireAuth, async (req, res) => {
-    const { title, url, category, tags = [], status = 'inbox', starred = false } = req.body;
+    const { title, url, category, tags = [], status = 'inbox', starred = false, description } = req.body;
     const normalizedUrl = normalizeBookmarkUrl(url);
     if (!normalizedUrl) return res.status(400).json({ error: 'Érvénytelen URL.' });
     if (!['inbox', 'read_later', 'to_review', 'done'].includes(status)) return res.status(400).json({ error: 'Érvénytelen állapot.' });
@@ -1349,6 +1349,7 @@ app.post('/api/bookmarks', requireAuth, async (req, res) => {
         const fetchImage = await shouldFetchWebsiteMetadataImage(req.user.id);
         const metadata = (fetchTitle || fetchImage) ? await fetchBookmarkMetadata(url) : {};
         const resolvedTitle = resolveBookmarkTitle(title, metadata, url);
+        const resolvedDescription = String(description || '').trim() || metadata.description || null;
         const result = await pool.query(
             `INSERT INTO bookmarks (user_id, title, url, category, metadata_title, image_url, description, site_name, status, starred, normalized_url)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
@@ -1359,7 +1360,7 @@ app.post('/api/bookmarks', requireAuth, async (req, res) => {
                 category,
                 fetchTitle ? metadata.title : null,
                 fetchImage ? metadata.imageUrl : null,
-                metadata.description,
+                resolvedDescription,
                 metadata.siteName,
                 status,
                 Boolean(starred),
@@ -1472,7 +1473,7 @@ app.post('/api/bookmarks/bulk', requireAuth, async (req, res) => {
 /** Updates a bookmark's title, URL, and category. */
 app.put('/api/bookmarks/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
-    const { title, url, category, tags = [], status, starred } = req.body;
+    const { title, url, category, tags = [], status, starred, description } = req.body;
     const normalizedUrl = normalizeBookmarkUrl(url);
     if (!normalizedUrl) return res.status(400).json({ error: 'Érvénytelen URL.' });
     try {
@@ -1480,10 +1481,22 @@ app.put('/api/bookmarks/:id', requireAuth, async (req, res) => {
         const fetchImage = await shouldFetchWebsiteMetadataImage(req.user.id);
         const metadata = (fetchTitle || fetchImage) ? await fetchBookmarkMetadata(url) : {};
         const resolvedTitle = resolveBookmarkTitle(title, metadata, url);
-        let query = `UPDATE bookmarks SET title = $1, url = $2, category = $3, metadata_title = $5, image_url = $6, description = $7, site_name = $8, normalized_url = $9`;
-        let params = [resolvedTitle, url, category, id, fetchTitle ? metadata.title : null, fetchImage ? metadata.imageUrl : null, metadata.description, metadata.siteName, normalizedUrl];
-        if (status !== undefined) { if (!['inbox', 'read_later', 'to_review', 'done'].includes(status)) return res.status(400).json({ error: 'Érvénytelen állapot.' }); query += ', status = $10'; params.push(status); }
+        const resolvedDescription = description !== undefined ? (String(description || '').trim() || null) : undefined;
+        
+        let query = `UPDATE bookmarks SET title = $1, url = $2, category = $3, metadata_title = $5, image_url = $6, site_name = $7, normalized_url = $8`;
+        let params = [resolvedTitle, url, category, id, fetchTitle ? metadata.title : null, fetchImage ? metadata.imageUrl : null, metadata.siteName, normalizedUrl];
+        
+        if (resolvedDescription !== undefined) {
+            query += `, description = $${params.length + 1}`;
+            params.push(resolvedDescription);
+        } else if (metadata.description) {
+            query += `, description = COALESCE(description, $${params.length + 1})`;
+            params.push(metadata.description);
+        }
+
+        if (status !== undefined) { if (!['inbox', 'read_later', 'to_review', 'done'].includes(status)) return res.status(400).json({ error: 'Érvénytelen állapot.' }); query += `, status = $${params.length + 1}`; params.push(status); }
         if (starred !== undefined) { query += `, starred = $${params.length + 1}`; params.push(Boolean(starred)); }
+        
         query += ' WHERE id = $4';
         if (req.user.role !== 'admin') {
             query += ` AND (LOWER(CAST(user_id AS TEXT)) = LOWER($${params.length + 1}) OR LOWER(CAST(user_id AS TEXT)) = LOWER($${params.length + 2}))`;

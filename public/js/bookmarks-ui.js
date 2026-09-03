@@ -334,6 +334,13 @@ function createBookmarkCard(bookmark) {
         const tags = document.createElement('div'); tags.className = 'card-tags'; tags.textContent = bookmark.tags.map(tag => `#${tag}`).join(' '); left.appendChild(tags);
     }
     const url = document.createElement('div'); url.className = 'card-url'; url.textContent = bookmark.url; left.append(header, url);
+    if (bookmark.description && bookmark.description.trim()) {
+        const desc = document.createElement('div');
+        desc.className = 'card-description';
+        desc.style.cssText = 'font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.35rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;';
+        desc.textContent = bookmark.description;
+        left.appendChild(desc);
+    }
     if (fetchMetadataTitleEnabled && bookmark.metadataTitle && bookmark.metadataTitle.trim() && bookmark.metadataTitle.trim() !== primaryTitle.trim()) {
         const articleTitle = document.createElement('div'); articleTitle.className = 'card-metadata-title'; articleTitle.textContent = bookmark.metadataTitle; left.appendChild(articleTitle);
     }
@@ -447,19 +454,58 @@ function openEditModal(id) {
     document.getElementById('editBmId').value = bookmark.id;
     document.getElementById('editBmTitle').value = bookmark.title;
     document.getElementById('editBmUrl').value = bookmark.url;
+    const descField = document.getElementById('editBmDescription');
+    if (descField) descField.value = bookmark.description || '';
     setTagInputValues('editBmTags', bookmark.tags || []);
     populateCategorySelect('editBmCategory', bookmark.category); openModal('editModal');
 }
 
 document.getElementById('bookmarkForm').addEventListener('submit', async event => {
-    event.preventDefault(); const title = document.getElementById('bmTitle'); const url = document.getElementById('bmUrl'); const category = document.getElementById('bmCategory');
-    try { await api.createBookmark({ userId: currentUser ? currentUser.username : 'demo', title: title.value, url: url.value, category: category.value, tags: getTagInputValues('bmTags') }); await loadBookmarksFromServer(); event.target.reset(); setTagInputValues('bmTags', []); history.replaceState({}, document.title, location.pathname); document.getElementById('incomingAlert').style.display = 'none'; document.getElementById('addPanel').style.borderColor = 'var(--border-color)'; renderBookmarks(); showNotification('A könyvjelző mentve.', 'success'); } catch (err) { showNotification('Hiba történt a mentés során.', 'error'); }
+    event.preventDefault(); const title = document.getElementById('bmTitle'); const url = document.getElementById('bmUrl'); const category = document.getElementById('bmCategory'); const description = document.getElementById('bmDescription');
+    try {
+        await api.createBookmark({
+            userId: currentUser ? currentUser.username : 'demo',
+            title: title.value,
+            url: url.value,
+            category: category.value,
+            tags: getTagInputValues('bmTags'),
+            description: description ? description.value.trim() : ''
+        });
+        await loadBookmarksFromServer();
+        event.target.reset();
+        setTagInputValues('bmTags', []);
+        if (description) description.value = '';
+        history.replaceState({}, document.title, location.pathname);
+        document.getElementById('incomingAlert').style.display = 'none';
+        document.getElementById('addPanel').style.borderColor = 'var(--border-color)';
+        renderBookmarks();
+        showNotification('A könyvjelző mentve.', 'success');
+    } catch (err) {
+        showNotification(err.message || 'Hiba történt a mentés során.', 'error');
+    }
 });
 
 document.getElementById('editBookmarkForm').addEventListener('submit', async event => {
-    event.preventDefault(); const id = Number(document.getElementById('editBmId').value); const data = { title: document.getElementById('editBmTitle').value.trim(), url: document.getElementById('editBmUrl').value.trim(), category: document.getElementById('editBmCategory').value, tags: getTagInputValues('editBmTags') };
-    try { await api.updateBookmark(id, data); await loadBookmarksFromServer(); } catch (err) { const bookmark = bookmarks.find(item => item.id === id); if (bookmark) Object.assign(bookmark, data); }
-    renderBookmarks(); closeModal('editModal'); showNotification('A könyvjelző módosítva.', 'success');
+    event.preventDefault();
+    const id = Number(document.getElementById('editBmId').value);
+    const descField = document.getElementById('editBmDescription');
+    const data = {
+        title: document.getElementById('editBmTitle').value.trim(),
+        url: document.getElementById('editBmUrl').value.trim(),
+        category: document.getElementById('editBmCategory').value,
+        tags: getTagInputValues('editBmTags'),
+        description: descField ? descField.value.trim() : ''
+    };
+    try {
+        await api.updateBookmark(id, data);
+        await loadBookmarksFromServer();
+    } catch (err) {
+        const bookmark = bookmarks.find(item => item.id === id);
+        if (bookmark) Object.assign(bookmark, data);
+    }
+    renderBookmarks();
+    closeModal('editModal');
+    showNotification('A könyvjelző módosítva.', 'success');
 });
 
 window.setBookmarkView = setBookmarkView; window.toggleImageVisibility = toggleImageVisibility; window.deleteBookmark = deleteBookmark; window.updateBookmarkState = updateBookmarkState; window.permanentlyDeleteBookmark = permanentlyDeleteBookmark; window.trackClickAndOpen = trackClickAndOpen; window.openEditModal = openEditModal; window.openPreviewModal = openPreviewModal; window.confirmBulkAction = confirmBulkAction; window.applyBulkAction = applyBulkAction; window.applyBulkCategoryChange = applyBulkCategoryChange; window.populateBulkCategorySelect = populateBulkCategorySelect; window.toggleBookmarkSelection = toggleBookmarkSelection; window.selectVisibleBookmarks = selectVisibleBookmarks;
