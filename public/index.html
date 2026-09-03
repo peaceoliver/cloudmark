@@ -50,7 +50,7 @@
                                     <div class="bookmarklet-info">
                                         <p>Húzd ki a gombot a böngésződ Könyvjelzők sávjára. Bármelyik oldalon jársz, 1 kattintással ide mentheted!</p>
                                     </div>
-                                    <a href="javascript:(function(){var t=encodeURIComponent(document.title);var u=encodeURIComponent(window.location.href);window.open(window.location.origin+window.location.pathname+'?url='+u+'&title='+t,'_blank');})();"
+                                    <a href="javascript:(function(){var t=encodeURIComponent(document.title);var u=encodeURIComponent(window.location.href);window.open(`https://cloudmark.onrender.com/bookmark?url=${u}&title=${t}`,%27_blank%27);})();"
                                        class="bookmarklet-link" onclick="event.preventDefault(); alert('Húzd ezt a gombot a böngésződ könyvjelző sávjára!')">
                                         <i class="fa-solid fa-plus-circle"></i> + Mentés CloudMarkba
                                     </a>
