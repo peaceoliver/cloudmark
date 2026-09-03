@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20260904-email-provider">
+    <link rel="stylesheet" href="/css/styles.css?v=20260905-main-menu">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -22,32 +22,65 @@
             </a>
             
             <div class="nav-actions">
-                <button class="btn-icon" id="themeToggle" title="Téma váltása">
-                    <i class="fa-solid fa-moon"></i>
-                </button>
-
-                <!-- Dynamic User / Superuser Menu Area -->
-                <div id="userStateArea">
-                    <button class="btn btn-primary" onclick="openModal('authModal')">
-                        <i class="fa-solid fa-user"></i> Bejelentkezés / Regisztráció
+                <div class="menu-wrapper">
+                    <button class="btn-icon menu-toggle" id="mainMenuToggle" aria-haspopup="true" aria-expanded="false" title="Menü">
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
                     </button>
+                    <div class="menu-backdrop" id="mainMenuBackdrop"></div>
+                    <div class="menu-panel" id="mainMenuPanel" role="menu" aria-label="Fő menü">
+                        <div class="menu-panel-header">
+                            <span><i class="fa-solid fa-bars"></i> Menü</span>
+                            <button class="btn-icon menu-close" id="mainMenuClose" title="Bezárás"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div class="menu-panel-body">
+                            <div class="menu-section">
+                                <div class="menu-section-title">Fiók</div>
+                                <button class="menu-item" id="themeToggle" title="Téma váltása">
+                                    <i class="fa-solid fa-moon"></i> <span>Téma váltása</span>
+                                </button>
+                                <!-- Dynamic User / Superuser Menu Area -->
+                                <div id="userStateArea"></div>
+                            </div>
+
+                            <div class="menu-section">
+                                <div class="menu-section-title"><i class="fa-solid fa-bolt"></i> Gyors Könyvjelzőzés</div>
+                                <div class="bookmarklet-banner">
+                                    <div class="bookmarklet-info">
+                                        <p>Húzd ki a gombot a böngésződ Könyvjelzők sávjára. Bármelyik oldalon jársz, 1 kattintással ide mentheted!</p>
+                                    </div>
+                                    <a href="javascript:(function(){var t=encodeURIComponent(document.title);var u=encodeURIComponent(window.location.href);window.open(window.location.origin+window.location.pathname+'?url='+u+'&title='+t,'_blank');})();"
+                                       class="bookmarklet-link" onclick="event.preventDefault(); alert('Húzd ezt a gombot a böngésződ könyvjelző sávjára!')">
+                                        <i class="fa-solid fa-plus-circle"></i> + Mentés CloudMarkba
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="menu-section">
+                                <div class="menu-section-title"><i class="fa-solid fa-sliders"></i> Kezelés és adatkezelés</div>
+                                <div class="enterprise-actions">
+                                    <button class="btn btn-secondary" id="manageCategoriesBtn"><i class="fa-solid fa-folder-gear"></i> Kategóriák kezelése</button>
+                                    <button class="btn btn-secondary" id="manageTagsBtn"><i class="fa-solid fa-tags"></i> Címkék kezelése</button>
+                                    <select id="exportModeSelect" style="max-width: 220px; min-width: 180px;">
+                                        <option value="visible">Csak a látható könyvjelzők</option>
+                                        <option value="filtered">Minden egyező szűrés szerint</option>
+                                        <option value="all">Az összes könyvjelző</option>
+                                    </select>
+                                    <button class="btn btn-secondary" id="exportJsonBtn"><i class="fa-solid fa-download"></i> Export JSON</button>
+                                    <button class="btn btn-secondary" id="exportHtmlBtn"><i class="fa-solid fa-file-export"></i> Export HTML</button>
+                                    <select id="importBookmarkTargetCategory" style="max-width: 180px; min-width: 140px;">
+                                        <option value="">Import célkategória (opcionális)</option>
+                                    </select>
+                                    <label class="btn btn-secondary import-label"><i class="fa-solid fa-upload"></i> Import<input id="importBookmarksInput" type="file" accept=".json,.html,text/html,application/json" style="display:none;"></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </header>
 
     <main>
-        <!-- Bookmarklet Quick Helper -->
-        <div class="bookmarklet-banner">
-            <div class="bookmarklet-info">
-                <h3><i class="fa-solid fa-bolt"></i> Gyors Könyvjelzőzés (Bookmarklet)</h3>
-                <p>Húzd ki a gombot a böngésződ Könyvjelzők sávjára. Bármelyik oldalon jársz, 1 kattintással ide mentheted!</p>
-            </div>
-            <a href="javascript:(function(){var t=encodeURIComponent(document.title);var u=encodeURIComponent(window.location.href);window.open(window.location.origin+window.location.pathname+'?url='+u+'&title='+t,'_blank');})();" 
-               class="bookmarklet-link" onclick="event.preventDefault(); alert('Húzd ezt a gombot a böngésződ könyvjelző sávjára!')">
-                <i class="fa-solid fa-plus-circle"></i> + Mentés CloudMarkba
-            </a>
-        </div>
 
         <!-- Manual Add Bookmark Panel -->
         <div class="control-panel" id="addPanel" style="display: none;">
@@ -112,29 +145,6 @@
             </div>
         </section>
         <section class="enterprise-toolbar" aria-label="Enterprise tools">
-            <div class="toolbar-group accordion-group">
-                <button type="button" class="accordion-trigger" data-target="managementPanelContent" data-storage-key="management-panel" aria-expanded="true">
-                    <span class="toolbar-label"><i class="fa-solid fa-sliders"></i> Kezelés és adatkezelés</span>
-                    <i class="accordion-icon fa-solid fa-chevron-down"></i>
-                </button>
-                <div id="managementPanelContent" class="accordion-panel">
-                    <div class="enterprise-actions">
-                    <button class="btn btn-secondary" id="manageCategoriesBtn"><i class="fa-solid fa-folder-gear"></i> Kategóriák kezelése</button>
-                    <button class="btn btn-secondary" id="manageTagsBtn"><i class="fa-solid fa-tags"></i> Címkék kezelése</button>
-                    <select id="exportModeSelect" style="max-width: 220px; min-width: 180px;">
-                        <option value="visible">Csak a látható könyvjelzők</option>
-                        <option value="filtered">Minden egyező szűrés szerint</option>
-                        <option value="all">Az összes könyvjelző</option>
-                    </select>
-                    <button class="btn btn-secondary" id="exportJsonBtn"><i class="fa-solid fa-download"></i> Export JSON</button>
-                    <button class="btn btn-secondary" id="exportHtmlBtn"><i class="fa-solid fa-file-export"></i> Export HTML</button>
-                    <select id="importBookmarkTargetCategory" style="max-width: 180px; min-width: 140px;">
-                        <option value="">Import célkategória (opcionális)</option>
-                    </select>
-                    <label class="btn btn-secondary import-label"><i class="fa-solid fa-upload"></i> Import<input id="importBookmarksInput" type="file" accept=".json,.html,text/html,application/json" hidden></label>
-                    </div>
-                </div>
-            </div>
             <div class="toolbar-group accordion-group">
                 <button type="button" class="accordion-trigger" data-target="searchPanelContent" data-storage-key="search-panel" aria-expanded="true">
                     <span class="toolbar-label"><i class="fa-solid fa-magnifying-glass"></i> Keresés és szűrés</span>
@@ -618,14 +628,15 @@
             </div>
         </div>
     </div>
-    <script src="/js/config.js?v=20260904-email-provider"></script>
-    <script src="/js/api.js?v=20260904-email-provider"></script>
-    <script src="/js/notifications.js?v=20260904-email-provider"></script>
-    <script src="/js/modal.js?v=20260904-email-provider"></script>
-    <script src="/js/categories-ui.js?v=20260904-email-provider"></script>
-    <script src="/js/bookmarks-ui.js?v=20260904-email-provider"></script>
-    <script src="/js/enterprise.js?v=20260904-email-provider"></script>
-    <script src="/js/auth.js?v=20260904-email-provider"></script>
-    <script src="/js/app.js?v=20260904-email-provider"></script>
+    <script src="/js/config.js?v=20260905-main-menu"></script>
+    <script src="/js/api.js?v=20260905-main-menu"></script>
+    <script src="/js/notifications.js?v=20260905-main-menu"></script>
+    <script src="/js/modal.js?v=20260905-main-menu"></script>
+    <script src="/js/categories-ui.js?v=20260905-main-menu"></script>
+    <script src="/js/bookmarks-ui.js?v=20260905-main-menu"></script>
+    <script src="/js/enterprise.js?v=20260905-main-menu"></script>
+    <script src="/js/auth.js?v=20260905-main-menu"></script>
+    <script src="/js/app.js?v=20260905-main-menu"></script>
+    <script src="/js/main-menu.js?v=20260905-main-menu"></script>
 </body>
 </html>

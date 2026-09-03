@@ -58,14 +58,20 @@ async function logoutUser() {
 /** Renders the current login state in the navigation area. */
 function updateUserUI() {
     const area = document.getElementById('userStateArea');
-    if (!currentUser) { area.innerHTML = '<button class="btn btn-primary" onclick="openModal(\'authModal\')"><i class="fa-solid fa-user"></i> Bejelentkezés / Regisztráció</button>'; return; }
-    const admin = currentUser.isSuperuser
-        ? '<div style="display:flex; align-items:center; gap:0.5rem;"><button class="btn btn-admin" onclick="openAdminPanel()"><i class="fa-solid fa-shield-halved"></i> Admin panel</button><button class="btn btn-secondary" onclick="openAdminConfig()"><i class="fa-solid fa-sliders"></i> SMTP</button></div>'
-        : '';
-    const teamButton = '<button class="btn btn-secondary" onclick="openTeamManager()"><i class="fa-solid fa-users"></i> Team</button>';
+    if (!currentUser) { area.innerHTML = '<button class="btn btn-primary" onclick="openModal(\'authModal\'); closeMainMenu();"><i class="fa-solid fa-user"></i> Bejelentkezés / Regisztráció</button>'; return; }
     const statusClass = currentUser.isSuperuser ? 'status-admin' : 'status-verified';
     const statusIcon = currentUser.isSuperuser ? 'fa-crown' : 'fa-check-circle';
-    area.innerHTML = `<div style="display:flex; align-items:center; gap:0.75rem;">${admin}${teamButton}<button class="btn-icon" onclick="openUserSettings()" title="Felhasználói beállítások"><i class="fa-solid fa-user-gear"></i></button><span class="status-badge ${statusClass}"><i class="fa-solid ${statusIcon}"></i> ${currentUser.username}</span><button class="btn btn-danger" onclick="logoutUser()"> <i class="fa-solid fa-right-from-bracket"></i> Kilépés</button></div>`;
+    const admin = currentUser.isSuperuser
+        ? `<button class="menu-item" onclick="openAdminPanel(); closeMainMenu();"><i class="fa-solid fa-shield-halved"></i> <span>Admin panel</span></button>
+           <button class="menu-item" onclick="openAdminConfig(); closeMainMenu();"><i class="fa-solid fa-sliders"></i> <span>SMTP</span></button>`
+        : '';
+    area.innerHTML = `
+        <span class="status-badge ${statusClass} menu-status-badge"><i class="fa-solid ${statusIcon}"></i> ${currentUser.username}</span>
+        <button class="menu-item" onclick="openTeamManager(); closeMainMenu();"><i class="fa-solid fa-users"></i> <span>Team</span></button>
+        <button class="menu-item" onclick="openUserSettings(); closeMainMenu();"><i class="fa-solid fa-user-gear"></i> <span>Felhasználói beállítások</span></button>
+        ${admin}
+        <button class="menu-item menu-item-danger" onclick="logoutUser(); closeMainMenu();"><i class="fa-solid fa-right-from-bracket"></i> <span>Kilépés</span></button>
+    `;
 }
 
 async function renderTeamManager() {

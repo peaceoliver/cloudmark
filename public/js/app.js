@@ -99,7 +99,10 @@ function initTheme() {
 /** Updates the theme toggle icon to match the active theme. */
 function updateThemeIcon(theme) {
     const button = document.getElementById('themeToggle');
-    if (button) button.innerHTML = theme === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+    if (!button) return;
+    button.innerHTML = theme === 'dark'
+        ? '<i class="fa-solid fa-sun"></i> <span>Világos téma</span>'
+        : '<i class="fa-solid fa-moon"></i> <span>Sötét téma</span>';
 }
 
 /** Persists the selected bookmark sort mode and refreshes the list. */
