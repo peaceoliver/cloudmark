@@ -55,9 +55,18 @@ async function logoutUser() {
     updateUserUI(); renderCategories(); renderBookmarks(); showNotification('Sikeresen kijelentkeztél.', 'success');
 }
 
+/** Shows/hides elements that only make sense for logged-in users (management tools, bulk actions, state filters). */
+function updateAuthOnlyVisibility() {
+    const visible = !!currentUser;
+    document.querySelectorAll('.auth-only').forEach(el => {
+        el.style.display = visible ? '' : 'none';
+    });
+}
+
 /** Renders the current login state in the navigation area. */
 function updateUserUI() {
     const area = document.getElementById('userStateArea');
+    updateAuthOnlyVisibility();
     if (!currentUser) { area.innerHTML = '<button class="btn btn-primary" onclick="openModal(\'authModal\')"><i class="fa-solid fa-user"></i> Bejelentkezés / Regisztráció</button>'; return; }
     const admin = currentUser.isSuperuser
         ? '<div style="display:flex; align-items:center; gap:0.5rem;"><button class="btn btn-admin" onclick="openAdminPanel()"><i class="fa-solid fa-shield-halved"></i> Admin panel</button><button class="btn btn-secondary" onclick="openAdminConfig()"><i class="fa-solid fa-sliders"></i> SMTP</button></div>'

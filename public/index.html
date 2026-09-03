@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20260905b-main-menu">
+    <link rel="stylesheet" href="/css/styles.css?v=20260905c-main-menu">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -57,7 +57,7 @@
                                 </div>
                             </div>
 
-                            <div class="menu-section">
+                            <div class="menu-section auth-only">
                                 <div class="menu-section-title"><i class="fa-solid fa-sliders"></i> Kezelés és adatkezelés</div>
                                 <div class="enterprise-actions">
                                     <button class="btn btn-secondary" id="manageCategoriesBtn"><i class="fa-solid fa-folder-gear"></i> Kategóriák kezelése</button>
@@ -130,7 +130,7 @@
             </form>
         </div>
 
-        <section class="dashboard-section category-section" aria-label="Kategóriák">
+        <section class="dashboard-section category-section auth-only" aria-label="Kategóriák">
             <button type="button" class="accordion-trigger category-main-toggle" data-target="categorySectionContent" data-storage-key="category-main" aria-expanded="true">
                 <span class="toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</span>
                 <i class="accordion-icon fa-solid fa-chevron-down"></i>
@@ -171,13 +171,13 @@
             <option value="abc">🔤 ABC sorrend (Cím)</option>
             <option value="frequency">🔥 Leggyakrabban kattintott</option>
         </select>
-        <div class="bulk-toggle-wrap">
+        <div class="bulk-toggle-wrap auth-only">
             <button type="button" id="bulkSelectionToggleBtn" class="bulk-toggle-btn" aria-pressed="false" onclick="toggleBulkSelectionMode()">
                 <span class="bulk-toggle-text">Bulk OFF</span>
                 <span class="bulk-toggle-switch" aria-hidden="true"></span>
             </button>
         </div>
-        <div class="bookmark-state-group" aria-label="Könyvjelző állapotok">
+        <div class="bookmark-state-group auth-only" aria-label="Könyvjelző állapotok">
             <button class="btn btn-secondary state-filter active" onclick="setBookmarkStateFilter('active')">Aktív</button>
             <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('starred')">★ Kedvencek</button>
             <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('read_later')">Olvasás később</button>
@@ -634,15 +634,15 @@
             </div>
         </div>
     </div>
-    <script src="/js/config.js?v=20260905b-main-menu"></script>
-    <script src="/js/api.js?v=20260905b-main-menu"></script>
-    <script src="/js/notifications.js?v=20260905b-main-menu"></script>
-    <script src="/js/modal.js?v=20260905b-main-menu"></script>
-    <script src="/js/categories-ui.js?v=20260905b-main-menu"></script>
-    <script src="/js/bookmarks-ui.js?v=20260905b-main-menu"></script>
-    <script src="/js/enterprise.js?v=20260905b-main-menu"></script>
-    <script src="/js/auth.js?v=20260905b-main-menu"></script>
-    <script src="/js/app.js?v=20260905b-main-menu"></script>
-    <script src="/js/main-menu.js?v=20260905b-main-menu"></script>
+    <script src="/js/config.js?v=20260905c-main-menu"></script>
+    <script src="/js/api.js?v=20260905c-main-menu"></script>
+    <script src="/js/notifications.js?v=20260905c-main-menu"></script>
+    <script src="/js/modal.js?v=20260905c-main-menu"></script>
+    <script src="/js/categories-ui.js?v=20260905c-main-menu"></script>
+    <script src="/js/bookmarks-ui.js?v=20260905c-main-menu"></script>
+    <script src="/js/enterprise.js?v=20260905c-main-menu"></script>
+    <script src="/js/auth.js?v=20260905c-main-menu"></script>
+    <script src="/js/app.js?v=20260905c-main-menu"></script>
+    <script src="/js/main-menu.js?v=20260905c-main-menu"></script>
 </body>
 </html>
