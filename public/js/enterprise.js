@@ -2,11 +2,9 @@
 (function () {
     function refresh() {
         window.enterpriseSearch = document.getElementById('bookmarkSearch').value;
-        window.enterpriseTagFilter = document.getElementById('tagFilter').value;
         renderBookmarks();
     }
     document.getElementById('bookmarkSearch').addEventListener('input', refresh);
-    document.getElementById('tagFilter').addEventListener('input', refresh);
 
     async function renderTagsManagement() {
         const container = document.getElementById('manageTagsList');
@@ -148,9 +146,7 @@
                     params.state = bookmarkStateFilter;
                 }
                 const searchValue = String(window.enterpriseSearch || '').trim();
-                const tagValue = String(window.enterpriseTagFilter || '').trim();
                 if (searchValue) params.search = searchValue;
-                if (tagValue) params.tag = tagValue;
             }
 
             const blob = await api.exportBookmarks(format, params);

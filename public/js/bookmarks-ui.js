@@ -244,9 +244,7 @@ function renderBookmarks() {
     else if (['read_later', 'to_review', 'done'].includes(bookmarkStateFilter)) visible = visible.filter(bookmark => bookmark.status === bookmarkStateFilter);
     else visible = visible.filter(bookmark => !bookmark.archived && !bookmark.trashed);
     const search = String(window.enterpriseSearch || '').toLowerCase();
-    const tagFilter = String(window.enterpriseTagFilter || '').toLowerCase();
     if (search) visible = visible.filter(bookmark => [bookmark.title, bookmark.url, bookmark.category, bookmark.description, ...(bookmark.tags || [])].join(' ').toLowerCase().includes(search));
-    if (tagFilter) visible = visible.filter(bookmark => (bookmark.tags || []).some(tag => tag.toLowerCase().includes(tagFilter)));
     visible.sort((a, b) => currentSortMode === 'abc' ? (a.title || '').localeCompare(b.title || '', 'hu') : currentSortMode === 'oldest' ? new Date(a.createdAt || 0) - new Date(b.createdAt || 0) : currentSortMode === 'frequency' ? (b.clicks || 0) - (a.clicks || 0) : new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     if (!visible.length) { grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-secondary)"><i class="fa-solid fa-folder-open" style="font-size:2.5rem"></i><p>Nincs megjeleníthető könyvjelző ebben a kategóriában.</p></div>'; renderSelectionToolbar(); return; }
     visible.forEach(bookmark => grid.appendChild(createBookmarkCard(bookmark)));
