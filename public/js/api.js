@@ -91,6 +91,15 @@ apiNamespace.api = {
         });
     },
 
+    /** Sends a test email through the configured SMTP server. */
+    smtpTest(settings) {
+        return requestJson('/api/admin/smtp-test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+    },
+
     /** Lists all teams visible to the current user. */
     getTeams() {
         return requestJson('/api/teams');

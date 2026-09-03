@@ -12,6 +12,12 @@ function toggleAuthMode(event) {
 }
 
 /** Stores the local session and refreshes user-dependent UI. */
+function buildVerificationFallbackMessage(result) {
+    const fallbackUrl = result && result.verificationUrl ? result.verificationUrl : null;
+    if (!fallbackUrl) return 'A megerősítő e-mail nem érkezett meg. Ellenőrizd a Spam mappát, vagy kérj új megerősítő linket.';
+    return `A megerősítő e-mail nem érkezett meg. A linket itt tudod megnyitni: <a href="${fallbackUrl}" target="_blank" rel="noopener noreferrer">Megerősítés</a>.`;
+}
+
 async function loginUser(username, password) {
     try {
         currentUser = await api.login(username, password);
@@ -21,12 +27,10 @@ async function loginUser(username, password) {
             if (resend) {
                 try {
                     const resendResult = await api.resendVerification(username);
-                    showNotification(
-                        resendResult.emailSent
-                            ? 'Az új megerősítő e-mailt sikeresen elküldtük.'
-                            : 'Fejlesztői módban nincs SMTP-küldés. A megerősítő link a szerver naplójában található.',
-                        resendResult.emailSent ? 'success' : 'info'
-                    );
+                    const message = resendResult.emailSent
+                        ? 'Az új megerősítő e-mailt sikeresen elküldtük.'
+                        : buildVerificationFallbackMessage(resendResult);
+                    showNotification(message, resendResult.emailSent ? 'success' : 'info', 10000);
                 } catch (resendError) {
                     showNotification(resendError.message || 'Az e-mail újraküldése nem sikerült.', 'error');
                 }
@@ -310,6 +314,28 @@ async function openAdminConfig() {
     }
 }
 
+async function testSmtpConnection() {
+    try {
+        const settings = {
+            from: document.getElementById('cfgEmailSender').value.trim(),
+            user: document.getElementById('cfgEmailSender').value.trim(),
+            password: document.getElementById('cfgEmailPassword').value,
+            host: document.getElementById('cfgSmtpServer').value.trim(),
+            port: Number(document.getElementById('cfgSmtpPort').value),
+            secure: Number(document.getElementById('cfgSmtpPort').value) === 465,
+            to: document.getElementById('cfgEmailSender').value.trim()
+        };
+        if (!settings.from || !settings.user || !settings.host || !settings.port || !settings.password) {
+            showNotification('A teszt küldéshez töltsd ki a küldő címet, SMTP szervert, portot és jelszót.', 'error');
+            return;
+        }
+        const result = await api.smtpTest(settings);
+        showNotification(`SMTP teszt sikeres. A teszt e-mail elküldve erre a címre: ${result.to}`, 'success');
+    } catch (err) {
+        showNotification(err.message || 'Az SMTP teszt küldése nem sikerült.', 'error');
+    }
+}
+
 document.getElementById('authForm').addEventListener('submit', async event => {
     event.preventDefault();
     const username = document.getElementById('authUsername').value.trim();
@@ -321,7 +347,7 @@ document.getElementById('authForm').addEventListener('submit', async event => {
             closeModal('authModal');
             const message = registration.emailSent
                 ? 'A megerősítő e-mailt sikeresen elküldtük. Ellenőrizd a beérkező leveleket és a Spam mappát is.'
-                : 'A felhasználó létrejött, de fejlesztői módban nincs SMTP-küldés. A megerősítő link a szerver naplójában található.';
+                : buildVerificationFallbackMessage(registration);
             showNotification(message, registration.emailSent ? 'success' : 'info', 10000);
             return;
         }
@@ -330,6 +356,8 @@ document.getElementById('authForm').addEventListener('submit', async event => {
         showNotification(err.message || 'A hitelesítés nem sikerült.', 'error');
     }
 });
+
+document.getElementById('smtpTestBtn').addEventListener('click', testSmtpConnection);
 
 document.getElementById('adminConfigForm').addEventListener('submit', async event => {
     event.preventDefault();

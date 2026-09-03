@@ -1621,6 +1621,48 @@ app.get('/api/admin/smtp-config', requireAdmin, async (req, res) => {
     }
 });
 
+/** Sends a test email through the configured SMTP server. */
+app.post('/api/admin/smtp-test', requireAdmin, async (req, res) => {
+    try {
+        const incoming = req.body || {};
+        const existing = await pool.query("SELECT value FROM settings_app WHERE key = 'smtp'");
+        const saved = existing.rows[0]?.value || {};
+        const settings = {
+            from: incoming.from || saved.from || incoming.user || saved.user || process.env.SMTP_FROM,
+            user: incoming.user || saved.user || process.env.SMTP_USER,
+            password: incoming.password || saved.password || process.env.SMTP_PASSWORD,
+            host: incoming.host || saved.host || process.env.SMTP_HOST || 'smtp.gmail.com',
+            port: Number(incoming.port ?? saved.port ?? process.env.SMTP_PORT ?? 587),
+            secure: Boolean(incoming.secure ?? saved.secure ?? (String(process.env.SMTP_SECURE || '').toLowerCase() === 'true'))
+        };
+        const to = incoming.to || settings.user || settings.from;
+
+        if (!settings.from || !settings.user || !settings.host || !Number(settings.port) || !settings.password) {
+            return res.status(400).json({ error: 'Az SMTP teszteléshez a küldő, felhasználó, host, port és jelszó megadása kötelező.' });
+        }
+
+        const transport = nodemailer.createTransport({
+            host: settings.host,
+            port: Number(settings.port),
+            secure: Boolean(settings.secure),
+            auth: { user: settings.user, pass: settings.password }
+        });
+
+        const info = await transport.sendMail({
+            from: settings.from,
+            to,
+            subject: 'CloudMark SMTP teszt e-mail',
+            text: 'Ez egy SMTP teszt üzenet a CloudMark alkalmazásból. Ha megérkezett, az SMTP konfiguráció működik.',
+            html: '<p>Ez egy SMTP teszt üzenet a CloudMark alkalmazásból.</p><p>Ha megérkezett, az SMTP konfiguráció működik.</p>'
+        });
+
+        res.json({ success: true, messageId: info.messageId, response: info.response, to });
+    } catch (err) {
+        console.error('[SMTP TEST] failed:', err.message || err);
+        res.status(500).json({ error: err.message || 'Az SMTP teszt küldése nem sikerült.' });
+    }
+});
+
 /** Stores SMTP settings submitted by an authenticated administrator. */
 app.put('/api/admin/smtp-config', requireAdmin, async (req, res) => {
     const { from, user, password, host, port, secure } = req.body;
