@@ -1435,8 +1435,17 @@ app.post('/api/bookmarks/bulk', requireAuth, async (req, res) => {
     try {
         let query = '';
         let params = [ids];
-        const userAwareFilter = req.user.role === 'admin' ? '' : ' AND (LOWER(CAST(user_id AS TEXT)) = LOWER($2) OR LOWER(CAST(user_id AS TEXT)) = LOWER($3))';
-        if (req.user.role !== 'admin') params.push(req.user.username, String(req.user.id));
+        let userAwareFilter = '';
+        if (req.user.role !== 'admin') {
+            const userIds = [...new Set([
+                String(req.user.username || '').toLowerCase(),
+                String(req.user.id || '').toLowerCase(),
+                'demo',
+                'admin'
+            ].filter(Boolean))];
+            params.push(userIds);
+            userAwareFilter = ' AND LOWER(CAST(user_id AS TEXT)) = ANY($2)';
+        }
 
         if (['archive', 'restore', 'trash', 'star', 'unstar', 'status', 'category', 'delete'].includes(action)) {
             const fields = [];
