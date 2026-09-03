@@ -8,7 +8,7 @@ let activeCategoryFilter = 'All';
 let currentSortMode = localStorage.getItem(config.storageKeys.sortMode) || 'newest';
 let bookmarkStateFilter = 'active';
 let currentBookmarkPage = 1;
-const bookmarksPerPage = 60;
+let bookmarksPerPageSetting = 60;
 
 if (localStorage.getItem(config.storageKeys.viewMode) === 'noimage') {
     localStorage.setItem(config.storageKeys.viewMode, 'grid');
@@ -24,6 +24,16 @@ async function loadCategoriesFromServer() {
         if (Array.isArray(data) && data.length) categories = data.map(category =>
             typeof category === 'string' ? { id: category, name: category, parent_id: null } : category);
     } catch (err) { console.error('Failed to fetch categories:', err); }
+}
+
+/** Loads non-sensitive public settings such as the pagination page size. */
+async function loadPublicConfig() {
+    try {
+        const config = await api.getPublicConfig();
+        if (config && Number.isInteger(config.bookmarksPerPage) && config.bookmarksPerPage > 0) {
+            bookmarksPerPageSetting = config.bookmarksPerPage;
+        }
+    } catch (err) { console.error('Failed to fetch public config:', err); }
 }
 
 /** Loads bookmarks and maps database columns to the client model. */
@@ -140,6 +150,7 @@ async function initApp() {
         return;
     }
     document.getElementById('sortSelect').value = currentSortMode;
+    await loadPublicConfig();
     await loadCurrentUser();
     await loadUserSettings();
     await loadCategoriesFromServer();

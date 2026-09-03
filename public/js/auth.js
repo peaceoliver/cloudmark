@@ -375,6 +375,7 @@ async function openAdminConfig() {
         document.getElementById('cfgEmailApiKey').value = '';
         document.getElementById('cfgEmailApiKey').placeholder = smtp.apiKeyConfigured ? 'Mentett API kulcs, üresen hagyva változatlan marad' : 'API kulcs';
         document.getElementById('cfgRequireVerification').checked = appConfig.requireEmailVerification !== false;
+        document.getElementById('cfgBookmarksPerPage').value = appConfig.bookmarksPerPage || 60;
         loadedAppConfig = appConfig;
         updateEmailProviderFields();
         openModal('adminConfigModal');
@@ -460,13 +461,22 @@ document.getElementById('adminConfigForm').addEventListener('submit', async even
     event.preventDefault();
     const settings = readEmailConfigForm();
     const requireEmailVerification = document.getElementById('cfgRequireVerification').checked;
+    const bookmarksPerPage = Number(document.getElementById('cfgBookmarksPerPage').value);
+    if (!Number.isInteger(bookmarksPerPage) || bookmarksPerPage < 5 || bookmarksPerPage > 500) {
+        showNotification('A lapozáshoz megadott érték 5 és 500 között kell legyen.', 'error');
+        return;
+    }
     try {
         await api.saveSmtpConfig(settings);
         await api.saveAppConfig({
             sessionDays: loadedAppConfig.sessionDays || 30,
             verificationMinutes: loadedAppConfig.verificationMinutes || 30,
-            requireEmailVerification
+            requireEmailVerification,
+            bookmarksPerPage
         });
+        bookmarksPerPageSetting = bookmarksPerPage;
+        currentBookmarkPage = 1;
+        renderBookmarks();
         closeModal('adminConfigModal');
         showNotification('E-mail beállítások sikeresen elmentve.', 'success');
     } catch (err) {

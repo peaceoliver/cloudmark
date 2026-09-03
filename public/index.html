@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20260905j-pagination">
+    <link rel="stylesheet" href="/css/styles.css?v=20260905k-pagesize-setting">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -349,6 +349,17 @@
                 </small>
 
                 <div class="section-divider">
+                    <i class="fa-solid fa-table-cells-large"></i> Megjelenítés
+                </div>
+                <div class="form-control">
+                    <label for="cfgBookmarksPerPage">Könyvjelzők száma egy oldalon (lapozás)</label>
+                    <input type="number" id="cfgBookmarksPerPage" min="5" max="500" value="60">
+                    <small style="color: var(--text-secondary); display:block; margin-top:0.25rem;">
+                        Ennyi könyvjelző jelenik meg egy oldalon, mielőtt a "Következő" gombbal kellene lapozni (5–500).
+                    </small>
+                </div>
+
+                <div class="section-divider">
                     <i class="fa-solid fa-envelope"></i> E-mail Küldési Beállítások
                 </div>
 
@@ -645,15 +656,15 @@
             </div>
         </div>
     </div>
-    <script src="/js/config.js?v=20260905j-pagination"></script>
-    <script src="/js/api.js?v=20260905j-pagination"></script>
-    <script src="/js/notifications.js?v=20260905j-pagination"></script>
-    <script src="/js/modal.js?v=20260905j-pagination"></script>
-    <script src="/js/categories-ui.js?v=20260905j-pagination"></script>
-    <script src="/js/bookmarks-ui.js?v=20260905j-pagination"></script>
-    <script src="/js/enterprise.js?v=20260905j-pagination"></script>
-    <script src="/js/auth.js?v=20260905j-pagination"></script>
-    <script src="/js/app.js?v=20260905j-pagination"></script>
-    <script src="/js/main-menu.js?v=20260905j-pagination"></script>
+    <script src="/js/config.js?v=20260905k-pagesize-setting"></script>
+    <script src="/js/api.js?v=20260905k-pagesize-setting"></script>
+    <script src="/js/notifications.js?v=20260905k-pagesize-setting"></script>
+    <script src="/js/modal.js?v=20260905k-pagesize-setting"></script>
+    <script src="/js/categories-ui.js?v=20260905k-pagesize-setting"></script>
+    <script src="/js/bookmarks-ui.js?v=20260905k-pagesize-setting"></script>
+    <script src="/js/enterprise.js?v=20260905k-pagesize-setting"></script>
+    <script src="/js/auth.js?v=20260905k-pagesize-setting"></script>
+    <script src="/js/app.js?v=20260905k-pagesize-setting"></script>
+    <script src="/js/main-menu.js?v=20260905k-pagesize-setting"></script>
 </body>
 </html>

@@ -114,6 +114,11 @@ apiNamespace.api = {
         });
     },
 
+    /** Returns non-sensitive public settings (e.g. page size) available to everyone. */
+    getPublicConfig() {
+        return requestJson('/api/public-config');
+    },
+
     /** Lists every registered user for an authenticated administrator. */
     getUsers() {
         return requestJson('/api/admin/users');

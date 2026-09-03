@@ -253,11 +253,11 @@ function renderBookmarks() {
     }
     visible.sort((a, b) => currentSortMode === 'abc' ? (a.title || '').localeCompare(b.title || '', 'hu') : currentSortMode === 'oldest' ? new Date(a.createdAt || 0) - new Date(b.createdAt || 0) : currentSortMode === 'frequency' ? (b.clicks || 0) - (a.clicks || 0) : new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     const totalCount = visible.length;
-    const totalPages = Math.max(1, Math.ceil(totalCount / bookmarksPerPage));
+    const totalPages = Math.max(1, Math.ceil(totalCount / bookmarksPerPageSetting));
     if (currentBookmarkPage > totalPages) currentBookmarkPage = totalPages;
     if (currentBookmarkPage < 1) currentBookmarkPage = 1;
-    const pageStart = (currentBookmarkPage - 1) * bookmarksPerPage;
-    const pageItems = visible.slice(pageStart, pageStart + bookmarksPerPage);
+    const pageStart = (currentBookmarkPage - 1) * bookmarksPerPageSetting;
+    const pageItems = visible.slice(pageStart, pageStart + bookmarksPerPageSetting);
     if (!visible.length) { grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--text-secondary)"><i class="fa-solid fa-folder-open" style="font-size:2.5rem"></i><p>Nincs megjeleníthető könyvjelző ebben a kategóriában.</p></div>'; renderSelectionToolbar(); renderPaginationBar(0, 1, 1); return; }
     pageItems.forEach(bookmark => grid.appendChild(createBookmarkCard(bookmark)));
     renderSelectionToolbar();
@@ -268,10 +268,10 @@ function renderBookmarks() {
 function renderPaginationBar(totalCount, page, totalPages) {
     const bar = document.getElementById('paginationBar');
     if (!bar) return;
-    if (totalCount <= bookmarksPerPage) { bar.style.display = 'none'; return; }
+    if (totalCount <= bookmarksPerPageSetting) { bar.style.display = 'none'; return; }
     bar.style.display = 'flex';
-    const from = (page - 1) * bookmarksPerPage + 1;
-    const to = Math.min(page * bookmarksPerPage, totalCount);
+    const from = (page - 1) * bookmarksPerPageSetting + 1;
+    const to = Math.min(page * bookmarksPerPageSetting, totalCount);
     document.getElementById('paginationInfo').textContent = `${from}–${to} / ${totalCount} könyvjelző`;
     document.getElementById('paginationPageLabel').textContent = `${page}. / ${totalPages} oldal`;
     document.getElementById('paginationPrevBtn').disabled = page <= 1;

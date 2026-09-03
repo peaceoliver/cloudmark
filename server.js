@@ -26,7 +26,8 @@ function getPublicBaseUrl(req = null) {
 const DEFAULT_APP_SETTINGS = {
     sessionDays: 30,
     verificationMinutes: 30,
-    requireEmailVerification: true
+    requireEmailVerification: true,
+    bookmarksPerPage: 60
 };
 const registrationAttempts = new Map();
 const defaultSmtpConfig = {
@@ -1903,6 +1904,16 @@ app.put('/api/user/settings/:key', requireAuth, async (req, res) => {
     }
 });
 
+/** Returns non-sensitive public app settings for all visitors (e.g. pagination page size). */
+app.get('/api/public-config', async (req, res) => {
+    try {
+        const settings = await getAppSettings();
+        res.json({ bookmarksPerPage: settings.bookmarksPerPage });
+    } catch (err) {
+        res.json({ bookmarksPerPage: DEFAULT_APP_SETTINGS.bookmarksPerPage });
+    }
+});
+
 /** Returns global application settings to an authenticated administrator. */
 app.get('/api/admin/app-config', requireAdmin, async (req, res) => {
     try { res.json(await getAppSettings()); }
@@ -1914,11 +1925,13 @@ app.put('/api/admin/app-config', requireAdmin, async (req, res) => {
     const sessionDays = Number(req.body.sessionDays);
     const verificationMinutes = Number(req.body.verificationMinutes);
     const requireEmailVerification = Boolean(req.body.requireEmailVerification);
-    if (!Number.isInteger(sessionDays) || sessionDays < 1 || sessionDays > 365 || !Number.isInteger(verificationMinutes) || verificationMinutes < 5 || verificationMinutes > 1440) {
+    const bookmarksPerPage = Number(req.body.bookmarksPerPage);
+    if (!Number.isInteger(sessionDays) || sessionDays < 1 || sessionDays > 365 || !Number.isInteger(verificationMinutes) || verificationMinutes < 5 || verificationMinutes > 1440
+        || !Number.isInteger(bookmarksPerPage) || bookmarksPerPage < 5 || bookmarksPerPage > 500) {
         return res.status(400).json({ error: 'Érvénytelen app-beállítási érték.' });
     }
     try {
-        const settings = { sessionDays, verificationMinutes, requireEmailVerification };
+        const settings = { sessionDays, verificationMinutes, requireEmailVerification, bookmarksPerPage };
         await pool.query(
             `INSERT INTO settings_app (key, value, updated_at) VALUES ('app', $1, NOW())
              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
