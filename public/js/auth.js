@@ -106,22 +106,26 @@ async function renderTeamManager() {
                         <div class="team-member-row" style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; padding:0.5rem 0; border-top:1px solid var(--border-color);">
                             <div>
                                 <strong>${member.username}</strong>
-                                <div style="font-size:0.75rem; color:var(--text-secondary);">${member.role}</div>
+                                <div style="font-size:0.75rem; color:var(--text-secondary);">${member.user_id === team.owner_user_id ? 'Tulajdonos' : (member.role === 'team_admin' ? 'Csapat admin' : 'Tag')}</div>
                             </div>
                             <div style="display:flex; align-items:center; gap:0.5rem;">
-                                <select onchange="changeTeamMemberRole(${team.id}, ${member.user_id}, this.value)">
-                                    <option value="member" ${member.role === 'member' ? 'selected' : ''}>member</option>
-                                    <option value="team_admin" ${member.role === 'team_admin' ? 'selected' : ''}>team_admin</option>
-                                </select>
-                                <button type="button" class="btn btn-danger" onclick="removeTeamMember(${team.id}, ${member.user_id})">Eltávolítás</button>
+                                ${member.user_id === team.owner_user_id ? '' : `
+                                    <select onchange="changeTeamMemberRole(${team.id}, ${member.user_id}, this.value)">
+                                        <option value="member" ${member.role === 'member' ? 'selected' : ''}>Tag</option>
+                                        <option value="team_admin" ${member.role === 'team_admin' ? 'selected' : ''}>Csapat admin</option>
+                                    </select>
+                                    <button type="button" class="btn btn-danger" onclick="removeTeamMember(${team.id}, ${member.user_id})">Eltávolítás</button>
+                                `}
                             </div>
                         </div>
                     `).join('')
                     : '<div class="empty-state" style="padding:0.5rem 0;">Nincs tag a csapatban.</div>';
                 const isOwner = Number(team.owner_user_id) === Number(currentUser?.id);
+                const isMember = members.some(member => Number(member.user_id) === Number(currentUser?.id));
                 const transferableMembers = members.filter(member => Number(member.user_id) !== Number(currentUser?.id));
-                const ownerActions = isOwner
-                    ? `
+                let ownerActions = '';
+                if (isOwner) {
+                    ownerActions = `
                         <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid var(--border-color);">
                             ${transferableMembers.length
                                 ? `
@@ -133,21 +137,35 @@ async function renderTeamManager() {
                                 : '<span style="font-size:0.8rem; color:var(--text-secondary);">Nincs más tag, akinek átadható a csapat.</span>'}
                             <button type="button" class="btn btn-danger" onclick="deleteTeam(${team.id})">Csapat törlése</button>
                         </div>
-                    `
-                    : `
+                    `;
+                } else if (isMember) {
+                    ownerActions = `
                         <div style="display:flex; justify-content:flex-end; margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid var(--border-color);">
                             <button type="button" class="btn btn-danger" onclick="leaveTeam(${team.id})">Kilépés a csapatból</button>
                         </div>
                     `;
+                } else if (currentUser?.isSuperuser) {
+                    ownerActions = `
+                        <div style="display:flex; justify-content:flex-end; margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid var(--border-color);">
+                            <button type="button" class="btn btn-danger" onclick="deleteTeam(${team.id})">Csapat törlése (admin)</button>
+                        </div>
+                    `;
+                }
+
+                const roleBadge = isOwner
+                    ? '<span class="status-badge status-admin">Tulajdonos</span>'
+                    : isMember
+                        ? '<span class="status-badge status-verified">Tag</span>'
+                        : '<span class="status-badge" style="background: rgba(148,163,184,0.15); color: var(--text-secondary);">Nem tagja</span>';
 
                 return `
-                    <div class="admin-team-item" style="display:block;">
+                    <div class="admin-team-item" style="display:block; border:1px solid var(--border-color); border-radius:12px; padding:0.85rem 1rem;">
                         <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; margin-bottom:0.5rem;">
                             <div>
                                 <strong>${team.name}</strong><br>
-                                <small>Owner: ${team.owner_username || 'ismeretlen'} • ID: ${team.id}</small>
+                                <small style="color: var(--text-secondary);">Tulajdonos: ${team.owner_username || 'ismeretlen'} · ${members.length} tag</small>
                             </div>
-                            <span class="status-badge ${isOwner ? 'status-admin' : 'status-verified'}">${isOwner ? 'Tulajdonos' : 'Tag'}</span>
+                            ${roleBadge}
                         </div>
                         <div style="display:flex; flex-direction:column; gap:0.25rem;">${memberMarkup}</div>
                         ${ownerActions}
@@ -243,9 +261,7 @@ async function openTeamManager() {
 
 async function renderAdminPanel() {
     try {
-        const [teams, auditEvents, users] = await Promise.all([api.getTeams(), api.getAuditEvents(), api.getUsers()]);
-        const teamList = document.getElementById('adminTeamList');
-        const teamSelect = document.getElementById('adminTeamMemberTeamSelect');
+        const [auditEvents, users] = await Promise.all([api.getAuditEvents(), api.getUsers()]);
         const auditTable = document.getElementById('adminAuditEventsBody');
         const usersBody = document.getElementById('adminUsersBody');
 
@@ -267,22 +283,6 @@ async function renderAdminPanel() {
                 </tr>
             `).join('')
             : '<tr><td colspan="6" style="padding: 0.75rem;">Nincs regisztrált felhasználó.</td></tr>';
-
-        teamList.innerHTML = teams.length
-            ? teams.map(team => `
-                <div class="admin-team-item">
-                    <div>
-                        <strong>${team.name}</strong><br>
-                        <small>Owner: ${team.owner_username || 'ismeretlen'} • ID: ${team.id}</small>
-                    </div>
-                    <span class="status-badge ${team.owner_user_id === currentUser.id ? 'status-admin' : 'status-verified'}">${team.owner_user_id === currentUser.id ? 'Tulajdonos' : 'Tag'}</span>
-                </div>
-            `).join('')
-            : '<div class="empty-state">Még nincs csapat.</div>';
-
-        teamSelect.innerHTML = teams.length
-            ? teams.map(team => `<option value="${team.id}">${team.name}</option>`).join('')
-            : '<option value="">Előbb hozz létre egy csapatot</option>';
 
         auditTable.innerHTML = auditEvents.length
             ? auditEvents.slice(0, 25).map(event => `
@@ -471,44 +471,6 @@ document.getElementById('adminConfigForm').addEventListener('submit', async even
         showNotification('E-mail beállítások sikeresen elmentve.', 'success');
     } catch (err) {
         showNotification(err.message || 'Az e-mail beállítások mentése nem sikerült.', 'error');
-    }
-});
-
-document.getElementById('adminCreateTeamForm').addEventListener('submit', async event => {
-    event.preventDefault();
-    const teamName = document.getElementById('adminTeamName').value.trim();
-    if (!teamName) {
-        showNotification('A csapat neve kötelező.', 'error');
-        return;
-    }
-    try {
-        await api.createTeam(teamName);
-        document.getElementById('adminTeamName').value = '';
-        await renderAdminPanel();
-        await renderTeamManager();
-        showNotification('A csapat létrehozva.', 'success');
-    } catch (err) {
-        showNotification(err.message || 'A csapat létrehozása nem sikerült.', 'error');
-    }
-});
-
-document.getElementById('adminAddMemberForm').addEventListener('submit', async event => {
-    event.preventDefault();
-    const teamId = document.getElementById('adminTeamMemberTeamSelect').value;
-    const username = document.getElementById('adminMemberUsername').value.trim();
-    const role = document.getElementById('adminMemberRole').value;
-    if (!teamId || !username) {
-        showNotification('Válassz csapatot és adj meg felhasználónevet.', 'error');
-        return;
-    }
-    try {
-        await api.addTeamMember(Number(teamId), username, role);
-        document.getElementById('adminMemberUsername').value = '';
-        await renderAdminPanel();
-        await renderTeamManager();
-        showNotification('A felhasználó hozzáadva a csapathoz.', 'success');
-    } catch (err) {
-        showNotification(err.message || 'A felhasználó hozzáadása nem sikerült.', 'error');
     }
 });
 

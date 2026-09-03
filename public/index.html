@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20260905g-admin-users">
+    <link rel="stylesheet" href="/css/styles.css?v=20260905h-team-cleanup">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -405,12 +405,15 @@
     <div class="modal-overlay" id="teamManagerModal">
         <div class="modal" style="max-width: 760px; width: min(92vw, 760px);">
             <div class="modal-title" style="color: var(--accent);">
-                <i class="fa-solid fa-users-rectangle"></i> Team kezelő
+                <i class="fa-solid fa-users-rectangle"></i> Csapatok kezelése
             </div>
+            <p style="margin: -0.5rem 0 1rem; color: var(--text-secondary); font-size: 0.85rem;">
+                A csapat (team) tagjai közösen látják és szerkeszthetik egymás könyvjelzőit. A <strong>tulajdonos</strong> hozhatja létre/törölheti a csapatot és adhatja át a tulajdonjogot, a <strong>csapat admin</strong> tagokat vehet fel/távolíthat el, a <strong>tag</strong> csak a megosztott könyvjelzőket használja.
+            </p>
 
             <div style="display: flex; flex-direction: column; gap: 1.25rem;">
                 <div>
-                    <div class="section-divider"><i class="fa-solid fa-people-group"></i> Csapat létrehozása</div>
+                    <div class="section-divider"><i class="fa-solid fa-people-group"></i> Új csapat létrehozása</div>
                     <form id="teamManagerCreateForm" class="add-form-grid" style="grid-template-columns: 1fr auto; align-items: end; margin: 0;">
                         <div class="form-control" style="margin: 0;">
                             <label>Csapat neve</label>
@@ -421,7 +424,7 @@
                 </div>
 
                 <div>
-                    <div class="section-divider"><i class="fa-solid fa-user-plus"></i> Tag hozzáadása egy csapathoz</div>
+                    <div class="section-divider"><i class="fa-solid fa-user-plus"></i> Tag felvétele egy csapatba</div>
                     <form id="teamManagerMemberForm" class="add-form-grid" style="grid-template-columns: 1.2fr 1fr 0.8fr auto; align-items: end; margin: 0;">
                         <div class="form-control" style="margin: 0;">
                             <label>Csapat</label>
@@ -434,8 +437,8 @@
                         <div class="form-control" style="margin: 0;">
                             <label>Szerep</label>
                             <select id="teamManagerRole">
-                                <option value="member">member</option>
-                                <option value="team_admin">team_admin</option>
+                                <option value="member">Tag (member)</option>
+                                <option value="team_admin">Csapat admin (team_admin)</option>
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary">Hozzáadás</button>
@@ -443,8 +446,8 @@
                 </div>
 
                 <div>
-                    <div class="section-divider"><i class="fa-solid fa-list"></i> Csapatok</div>
-                    <div id="teamManagerList" style="display:flex; flex-direction: column; gap: 0.5rem; max-height: 220px; overflow-y: auto;"></div>
+                    <div class="section-divider"><i class="fa-solid fa-list"></i> Csapataim</div>
+                    <div id="teamManagerList" style="display:flex; flex-direction: column; gap: 0.75rem; max-height: 320px; overflow-y: auto;"></div>
                 </div>
             </div>
 
@@ -482,37 +485,13 @@
                 </div>
 
                 <div>
-                    <div class="section-divider"><i class="fa-solid fa-users"></i> Csapatok</div>
-                    <form id="adminCreateTeamForm" class="add-form-grid" style="grid-template-columns: 1fr auto; align-items: end; margin: 0 0 0.75rem;">
-                        <div class="form-control" style="margin: 0;">
-                            <label>Csapat neve</label>
-                            <input type="text" id="adminTeamName" placeholder="Pl. Marketing Team" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Létrehozás</button>
-                    </form>
-                    <div id="adminTeamList" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 180px; overflow-y: auto;"></div>
-                </div>
-
-                <div>
-                    <div class="section-divider"><i class="fa-solid fa-user-plus"></i> Tag hozzáadása</div>
-                    <form id="adminAddMemberForm" class="add-form-grid" style="grid-template-columns: 1.2fr 1fr 0.8fr auto; align-items: end; margin: 0;">
-                        <div class="form-control" style="margin: 0;">
-                            <label>Csapat</label>
-                            <select id="adminTeamMemberTeamSelect"></select>
-                        </div>
-                        <div class="form-control" style="margin: 0;">
-                            <label>Felhasználónév</label>
-                            <input type="text" id="adminMemberUsername" placeholder="pl. bob" required>
-                        </div>
-                        <div class="form-control" style="margin: 0;">
-                            <label>Szerep</label>
-                            <select id="adminMemberRole">
-                                <option value="member">member</option>
-                                <option value="team_admin">team_admin</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Hozzáadás</button>
-                    </form>
+                    <div class="section-divider"><i class="fa-solid fa-users"></i> Csapatok kezelése</div>
+                    <p style="margin: 0 0 0.75rem; color: var(--text-secondary); font-size: 0.85rem;">
+                        Csapat létrehozása, tagok hozzáadása/eltávolítása és a tulajdonjog átadása a <strong>Team kezelő</strong> ablakban történik (admin az összes csapatot látja és szerkesztheti).
+                    </p>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('adminPanelModal'); openTeamManager();">
+                        <i class="fa-solid fa-users-rectangle"></i> Team kezelő megnyitása
+                    </button>
                 </div>
 
                 <div>
@@ -663,15 +642,15 @@
             </div>
         </div>
     </div>
-    <script src="/js/config.js?v=20260905g-admin-users"></script>
-    <script src="/js/api.js?v=20260905g-admin-users"></script>
-    <script src="/js/notifications.js?v=20260905g-admin-users"></script>
-    <script src="/js/modal.js?v=20260905g-admin-users"></script>
-    <script src="/js/categories-ui.js?v=20260905g-admin-users"></script>
-    <script src="/js/bookmarks-ui.js?v=20260905g-admin-users"></script>
-    <script src="/js/enterprise.js?v=20260905g-admin-users"></script>
-    <script src="/js/auth.js?v=20260905g-admin-users"></script>
-    <script src="/js/app.js?v=20260905g-admin-users"></script>
-    <script src="/js/main-menu.js?v=20260905g-admin-users"></script>
+    <script src="/js/config.js?v=20260905h-team-cleanup"></script>
+    <script src="/js/api.js?v=20260905h-team-cleanup"></script>
+    <script src="/js/notifications.js?v=20260905h-team-cleanup"></script>
+    <script src="/js/modal.js?v=20260905h-team-cleanup"></script>
+    <script src="/js/categories-ui.js?v=20260905h-team-cleanup"></script>
+    <script src="/js/bookmarks-ui.js?v=20260905h-team-cleanup"></script>
+    <script src="/js/enterprise.js?v=20260905h-team-cleanup"></script>
+    <script src="/js/auth.js?v=20260905h-team-cleanup"></script>
+    <script src="/js/app.js?v=20260905h-team-cleanup"></script>
+    <script src="/js/main-menu.js?v=20260905h-team-cleanup"></script>
 </body>
 </html>
