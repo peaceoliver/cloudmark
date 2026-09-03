@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20260905i-search-tagfilter">
+    <link rel="stylesheet" href="/css/styles.css?v=20260905j-pagination">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -212,6 +212,14 @@
         <!-- Bookmarks Dashboard -->
         <div class="dashboard-grid" id="bookmarkGrid">
             <!-- Dynamic Cards -->
+        </div>
+        <div class="pagination-bar" id="paginationBar" style="display:none;">
+            <span class="pagination-info" id="paginationInfo"></span>
+            <div class="pagination-controls">
+                <button type="button" class="btn btn-secondary" id="paginationPrevBtn" onclick="goToBookmarkPage(currentBookmarkPage - 1)"><i class="fa-solid fa-chevron-left"></i> Előző</button>
+                <span class="pagination-page" id="paginationPageLabel"></span>
+                <button type="button" class="btn btn-secondary" id="paginationNextBtn" onclick="goToBookmarkPage(currentBookmarkPage + 1)">Következő <i class="fa-solid fa-chevron-right"></i></button>
+            </div>
         </div>
     </main>
 
@@ -637,15 +645,15 @@
             </div>
         </div>
     </div>
-    <script src="/js/config.js?v=20260905i-search-tagfilter"></script>
-    <script src="/js/api.js?v=20260905i-search-tagfilter"></script>
-    <script src="/js/notifications.js?v=20260905i-search-tagfilter"></script>
-    <script src="/js/modal.js?v=20260905i-search-tagfilter"></script>
-    <script src="/js/categories-ui.js?v=20260905i-search-tagfilter"></script>
-    <script src="/js/bookmarks-ui.js?v=20260905i-search-tagfilter"></script>
-    <script src="/js/enterprise.js?v=20260905i-search-tagfilter"></script>
-    <script src="/js/auth.js?v=20260905i-search-tagfilter"></script>
-    <script src="/js/app.js?v=20260905i-search-tagfilter"></script>
-    <script src="/js/main-menu.js?v=20260905i-search-tagfilter"></script>
+    <script src="/js/config.js?v=20260905j-pagination"></script>
+    <script src="/js/api.js?v=20260905j-pagination"></script>
+    <script src="/js/notifications.js?v=20260905j-pagination"></script>
+    <script src="/js/modal.js?v=20260905j-pagination"></script>
+    <script src="/js/categories-ui.js?v=20260905j-pagination"></script>
+    <script src="/js/bookmarks-ui.js?v=20260905j-pagination"></script>
+    <script src="/js/enterprise.js?v=20260905j-pagination"></script>
+    <script src="/js/auth.js?v=20260905j-pagination"></script>
+    <script src="/js/app.js?v=20260905j-pagination"></script>
+    <script src="/js/main-menu.js?v=20260905j-pagination"></script>
 </body>
 </html>

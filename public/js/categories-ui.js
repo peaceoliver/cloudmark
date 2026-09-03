@@ -104,7 +104,7 @@ function renderCategoryTreeView() {
     });
 }
 
-function filterCategory(category) { activeCategoryFilter = category; renderCategories(); renderBookmarks(); }
+function filterCategory(category) { activeCategoryFilter = category; currentBookmarkPage = 1; renderCategories(); renderBookmarks(); }
 
 function renderManageCategoriesList() {
     const container = document.getElementById('manageCategoriesList');

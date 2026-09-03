@@ -2,6 +2,7 @@
 (function () {
     function refresh() {
         window.enterpriseSearch = document.getElementById('bookmarkSearch').value;
+        currentBookmarkPage = 1;
         renderBookmarks();
     }
     document.getElementById('bookmarkSearch').addEventListener('input', refresh);

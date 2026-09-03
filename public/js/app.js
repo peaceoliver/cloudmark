@@ -7,6 +7,8 @@ let currentUser = null;
 let activeCategoryFilter = 'All';
 let currentSortMode = localStorage.getItem(config.storageKeys.sortMode) || 'newest';
 let bookmarkStateFilter = 'active';
+let currentBookmarkPage = 1;
+const bookmarksPerPage = 60;
 
 if (localStorage.getItem(config.storageKeys.viewMode) === 'noimage') {
     localStorage.setItem(config.storageKeys.viewMode, 'grid');
@@ -105,6 +107,7 @@ function updateThemeIcon(theme) {
 /** Persists the selected bookmark sort mode and refreshes the list. */
 function changeSortMode(mode) {
     currentSortMode = mode;
+    currentBookmarkPage = 1;
     localStorage.setItem(config.storageKeys.sortMode, mode);
     if (currentUser) api.saveUserSetting('sortMode', mode).catch(err => console.warn('Failed to save sort mode:', err));
     renderBookmarks();
@@ -179,6 +182,7 @@ window.changeSortMode = changeSortMode;
 window.setBookmarkStateFilter = function (filter) {
     bookmarkStateFilter = filter;
     activeCategoryFilter = 'All';
+    currentBookmarkPage = 1;
     renderCategories();
     document.querySelectorAll('.state-filter').forEach(button => button.classList.toggle('active', button.getAttribute('onclick').includes(`'${filter}'`)));
     renderBookmarks();
