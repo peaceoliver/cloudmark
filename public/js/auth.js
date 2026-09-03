@@ -41,6 +41,7 @@ async function loginUser(username, password) {
         return;
     }
     closeModal('authModal');
+    activeCategoryFilter = 'All';
     await loadUserSettings();
     await loadCategoriesFromServer();
     await loadBookmarksFromServer();
@@ -51,6 +52,7 @@ async function loginUser(username, password) {
 async function logoutUser() {
     try { await api.logout(); } catch (err) { console.warn('Logout failed:', err); }
     currentUser = null;
+    activeCategoryFilter = 'All';
     await loadCategoriesFromServer(); await loadBookmarksFromServer();
     updateUserUI(); renderCategories(); renderBookmarks(); showNotification('Sikeresen kijelentkeztél.', 'success');
 }
