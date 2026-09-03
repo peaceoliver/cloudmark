@@ -325,8 +325,8 @@ async function testSmtpConnection() {
             secure: Number(document.getElementById('cfgSmtpPort').value) === 465,
             to: document.getElementById('cfgEmailSender').value.trim()
         };
-        if (!settings.from || !settings.user || !settings.host || !settings.port || !settings.password) {
-            showNotification('A teszt küldéshez töltsd ki a küldő címet, SMTP szervert, portot és jelszót.', 'error');
+        if (!settings.from || !settings.user || !settings.host || !settings.port) {
+            showNotification('A teszt küldéshez töltsd ki a küldő címet, SMTP szervert és portot.', 'error');
             return;
         }
         const result = await api.smtpTest(settings);
