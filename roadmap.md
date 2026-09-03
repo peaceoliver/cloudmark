@@ -27,6 +27,9 @@
 - audit log (audit_events tábla + admin lekérdező endpoint)
 - admin backup export/import (teljes adat JSON export/import)
 - app-szintű admin konfiguráció (settings_app)
+- e-mail megerősítés ki/bekapcsolása admin felületről + regisztrált felhasználók manuális aktiválása/deaktiválása admin panelből
+- egységesített, könnyen olvasható csapat (team) kezelő felület (szerepkör-magyarázattal, kártyás nézettel)
+- kliens-oldali lapozás a könyvjelző listánál (60 elem/oldal), nagy listáknál is gyors marad a renderelés
 
 ## 2. Részben kész ⚠️
 
@@ -48,7 +51,7 @@
 - teljesen validált keresés cím+URL+kategória+címke+leírás kombinációban UI szinten
 - search index bővítés (jelenlegi Postgres full-text alapszintű, nincs Elastic/OpenSearch)
 - caching réteg (Redis vagy hasonló)
-- pagination / cursor-based lapozás nagy listákhoz
+- szerver-oldali/cursor-alapú lapozás (jelenleg csak kliens-oldali lapozás van, minden könyvjelző lekérdezésre kerül a szerverről)
 - lazy loading képekhez, CDN/image proxy
 - job queue / async background worker (pl. metadata fetch háttérben)
 - application monitoring, error tracking (pl. Sentry)
