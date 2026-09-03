@@ -320,6 +320,20 @@ header {
     gap: 0.4rem;
 }
 
+.menu-subsection-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    padding: 0.5rem 0.5rem 0.1rem;
+    margin-top: 0.25rem;
+    border-top: 1px dashed var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
 .menu-item {
     display: flex;
     align-items: center;

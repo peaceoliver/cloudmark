@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20260905-main-menu">
+    <link rel="stylesheet" href="/css/styles.css?v=20260905b-main-menu">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -22,6 +22,17 @@
             </a>
             
             <div class="nav-actions">
+                <button class="btn-icon" id="themeToggle" title="Téma váltása">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+
+                <!-- Dynamic User / Superuser Menu Area -->
+                <div id="userStateArea">
+                    <button class="btn btn-primary" onclick="openModal('authModal')">
+                        <i class="fa-solid fa-user"></i> Bejelentkezés / Regisztráció
+                    </button>
+                </div>
+
                 <div class="menu-wrapper">
                     <button class="btn-icon menu-toggle" id="mainMenuToggle" aria-haspopup="true" aria-expanded="false" title="Menü">
                         <i class="fa-solid fa-ellipsis-vertical"></i>
@@ -33,15 +44,6 @@
                             <button class="btn-icon menu-close" id="mainMenuClose" title="Bezárás"><i class="fa-solid fa-xmark"></i></button>
                         </div>
                         <div class="menu-panel-body">
-                            <div class="menu-section">
-                                <div class="menu-section-title">Fiók</div>
-                                <button class="menu-item" id="themeToggle" title="Téma váltása">
-                                    <i class="fa-solid fa-moon"></i> <span>Téma váltása</span>
-                                </button>
-                                <!-- Dynamic User / Superuser Menu Area -->
-                                <div id="userStateArea"></div>
-                            </div>
-
                             <div class="menu-section">
                                 <div class="menu-section-title"><i class="fa-solid fa-bolt"></i> Gyors Könyvjelzőzés</div>
                                 <div class="bookmarklet-banner">
@@ -60,6 +62,10 @@
                                 <div class="enterprise-actions">
                                     <button class="btn btn-secondary" id="manageCategoriesBtn"><i class="fa-solid fa-folder-gear"></i> Kategóriák kezelése</button>
                                     <button class="btn btn-secondary" id="manageTagsBtn"><i class="fa-solid fa-tags"></i> Címkék kezelése</button>
+                                </div>
+
+                                <div class="menu-subsection-title"><i class="fa-solid fa-file-import"></i> Import/Export</div>
+                                <div class="enterprise-actions">
                                     <select id="exportModeSelect" style="max-width: 220px; min-width: 180px;">
                                         <option value="visible">Csak a látható könyvjelzők</option>
                                         <option value="filtered">Minden egyező szűrés szerint</option>
@@ -628,15 +634,15 @@
             </div>
         </div>
     </div>
-    <script src="/js/config.js?v=20260905-main-menu"></script>
-    <script src="/js/api.js?v=20260905-main-menu"></script>
-    <script src="/js/notifications.js?v=20260905-main-menu"></script>
-    <script src="/js/modal.js?v=20260905-main-menu"></script>
-    <script src="/js/categories-ui.js?v=20260905-main-menu"></script>
-    <script src="/js/bookmarks-ui.js?v=20260905-main-menu"></script>
-    <script src="/js/enterprise.js?v=20260905-main-menu"></script>
-    <script src="/js/auth.js?v=20260905-main-menu"></script>
-    <script src="/js/app.js?v=20260905-main-menu"></script>
-    <script src="/js/main-menu.js?v=20260905-main-menu"></script>
+    <script src="/js/config.js?v=20260905b-main-menu"></script>
+    <script src="/js/api.js?v=20260905b-main-menu"></script>
+    <script src="/js/notifications.js?v=20260905b-main-menu"></script>
+    <script src="/js/modal.js?v=20260905b-main-menu"></script>
+    <script src="/js/categories-ui.js?v=20260905b-main-menu"></script>
+    <script src="/js/bookmarks-ui.js?v=20260905b-main-menu"></script>
+    <script src="/js/enterprise.js?v=20260905b-main-menu"></script>
+    <script src="/js/auth.js?v=20260905b-main-menu"></script>
+    <script src="/js/app.js?v=20260905b-main-menu"></script>
+    <script src="/js/main-menu.js?v=20260905b-main-menu"></script>
 </body>
 </html>
