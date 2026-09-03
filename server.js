@@ -29,6 +29,8 @@ const DEFAULT_APP_SETTINGS = {
 };
 const registrationAttempts = new Map();
 const defaultSmtpConfig = {
+    provider: process.env.EMAIL_PROVIDER || 'smtp',
+    apiKey: process.env.EMAIL_API_KEY || '',
     from: process.env.SMTP_FROM || '',
     user: process.env.SMTP_USER || '',
     password: process.env.SMTP_PASSWORD || '',
@@ -433,11 +435,60 @@ function isRegistrationRateLimited(req) {
     return now - previousAttempt < 60 * 1000;
 }
 
-/** Sends an account verification link or logs it in local development. */
-async function sendVerificationEmail(req, email, token) {
-    const verificationUrl = `${getPublicBaseUrl(req)}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
-    const result = await pool.query("SELECT value FROM settings_app WHERE key = 'smtp'");
-    const smtp = result.rows[0]?.value;
+/** Sends an email via the Resend HTTPS API (bypasses SMTP port blocks on hosts like Render). */
+async function sendViaResend({ apiKey, from, to, subject, text, html }) {
+    const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ from, to: [to], subject, text, html }),
+        signal: AbortSignal.timeout(10000)
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body?.message || `Resend API hiba (${response.status})`);
+    return { messageId: body?.id, response: 'Resend API OK' };
+}
+
+/** Sends an email via the SendGrid HTTPS API (bypasses SMTP port blocks on hosts like Render). */
+async function sendViaSendgrid({ apiKey, from, to, subject, text, html }) {
+    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            personalizations: [{ to: [{ email: to }] }],
+            from: { email: from },
+            subject,
+            content: [
+                { type: 'text/plain', value: text },
+                { type: 'text/html', value: html }
+            ]
+        }),
+        signal: AbortSignal.timeout(10000)
+    });
+    if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.errors?.[0]?.message || `SendGrid API hiba (${response.status})`);
+    }
+    return { messageId: response.headers.get('x-message-id'), response: 'SendGrid API OK' };
+}
+
+/** Sends an email using the configured provider (SMTP transport or an HTTPS email API). */
+async function sendEmailWithConfig(smtp, { to, subject, text, html }) {
+    const provider = smtp?.provider || 'smtp';
+    const from = smtp?.from || smtp?.user || process.env.SMTP_FROM;
+
+    if (provider === 'resend') {
+        return sendViaResend({ apiKey: smtp.apiKey, from, to, subject, text, html });
+    }
+    if (provider === 'sendgrid') {
+        return sendViaSendgrid({ apiKey: smtp.apiKey, from, to, subject, text, html });
+    }
+
     const transport = smtp?.host ? nodemailer.createTransport({
         host: smtp.host,
         port: Number(smtp.port || 587),
@@ -448,15 +499,24 @@ async function sendVerificationEmail(req, email, token) {
         greetingTimeout: 10000,
         socketTimeout: 15000
     }) : mailTransport;
-    if (!transport) {
-        if (process.env.NODE_ENV === 'production') throw new Error('SMTP nincs konfigurálva');
+    if (!transport) throw new Error('SMTP nincs konfigurálva');
+    const info = await transport.sendMail({ from: smtp?.user || from, to, subject, text, html });
+    transport.close();
+    return { messageId: info.messageId, response: info.response };
+}
+
+/** Sends an account verification link or logs it in local development. */
+async function sendVerificationEmail(req, email, token) {
+    const verificationUrl = `${getPublicBaseUrl(req)}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+    const result = await pool.query("SELECT value FROM settings_app WHERE key = 'smtp'");
+    const smtp = result.rows[0]?.value;
+    if (!smtp?.host && !smtp?.apiKey && !mailTransport) {
+        if (process.env.NODE_ENV === 'production') throw new Error('E-mail küldés nincs konfigurálva');
         console.log(`[DEV] E-mail megerősítő link: ${verificationUrl}`);
         return false;
     }
-    const sender = smtp?.user || process.env.SMTP_USER || smtp?.from || process.env.SMTP_FROM;
     try {
-        const info = await transport.sendMail({
-            from: sender,
+        const info = await sendEmailWithConfig(smtp, {
             to: email,
             subject: 'CloudMark e-mail cím megerősítése',
             text: `A fiókod aktiválásához nyisd meg ezt a linket: ${verificationUrl}`,
@@ -1624,7 +1684,14 @@ app.get('/api/admin/smtp-config', requireAdmin, async (req, res) => {
     try {
         const result = await pool.query("SELECT value FROM settings_app WHERE key = 'smtp'");
         const smtp = result.rows[0]?.value || defaultSmtpConfig;
-        res.json({ ...smtp, password: '', passwordConfigured: Boolean(smtp.password) });
+        res.json({
+            ...smtp,
+            provider: smtp.provider || 'smtp',
+            password: '',
+            apiKey: '',
+            passwordConfigured: Boolean(smtp.password),
+            apiKeyConfigured: Boolean(smtp.apiKey)
+        });
     } catch (err) {
         res.status(500).json({ error: 'Az SMTP beállítások nem tölthetők be.' });
     }
@@ -1652,13 +1719,17 @@ app.post('/api/admin/smtp-ping', requireAdmin, async (req, res) => {
     socket.connect(port, host);
 });
 
-/** Sends a test email through the configured SMTP server. */
+/** Sends a test email using either the SMTP transport or the configured HTTPS email API provider. */
 app.post('/api/admin/smtp-test', requireAdmin, async (req, res) => {
     try {
         const incoming = req.body || {};
         const existing = await pool.query("SELECT value FROM settings_app WHERE key = 'smtp'");
         const saved = existing.rows[0]?.value || {};
+        const provider = incoming.provider || saved.provider || 'smtp';
+
         const settings = {
+            provider,
+            apiKey: incoming.apiKey || saved.apiKey,
             from: incoming.from || saved.from || incoming.user || saved.user || process.env.SMTP_FROM,
             user: incoming.user || saved.user || process.env.SMTP_USER,
             password: incoming.password || saved.password || process.env.SMTP_PASSWORD,
@@ -1668,48 +1739,50 @@ app.post('/api/admin/smtp-test', requireAdmin, async (req, res) => {
         };
         const to = incoming.to || settings.user || settings.from;
 
-        if (!settings.from || !settings.user || !settings.host || !Number(settings.port) || !settings.password) {
+        if (provider === 'resend' || provider === 'sendgrid') {
+            if (!settings.apiKey || !settings.from) {
+                return res.status(400).json({ error: 'Az API kulcs és a küldő e-mail cím megadása kötelező.' });
+            }
+        } else if (!settings.from || !settings.user || !settings.host || !Number(settings.port) || !settings.password) {
             return res.status(400).json({ error: 'Az SMTP teszteléshez a küldő, felhasználó, host, port és jelszó megadása kötelező.' });
         }
 
-        const transport = nodemailer.createTransport({
-            host: settings.host,
-            port: Number(settings.port),
-            secure: Boolean(settings.secure),
-            auth: { user: settings.user, pass: settings.password },
-            family: 4,
-            connectionTimeout: 10000,
-            greetingTimeout: 10000,
-            socketTimeout: 15000
-        });
-
-        const info = await transport.sendMail({
-            from: settings.from,
+        const info = await sendEmailWithConfig(settings, {
             to,
-            subject: 'CloudMark SMTP teszt e-mail',
-            text: 'Ez egy SMTP teszt üzenet a CloudMark alkalmazásból. Ha megérkezett, az SMTP konfiguráció működik.',
-            html: '<p>Ez egy SMTP teszt üzenet a CloudMark alkalmazásból.</p><p>Ha megérkezett, az SMTP konfiguráció működik.</p>'
+            subject: 'CloudMark teszt e-mail',
+            text: 'Ez egy teszt üzenet a CloudMark alkalmazásból. Ha megérkezett, az e-mail küldési beállítás működik.',
+            html: '<p>Ez egy teszt üzenet a CloudMark alkalmazásból.</p><p>Ha megérkezett, az e-mail küldési beállítás működik.</p>'
         });
-        transport.close();
 
-        res.json({ success: true, messageId: info.messageId, response: info.response, to });
+        res.json({ success: true, messageId: info.messageId, response: info.response, to, provider });
     } catch (err) {
-        console.error('[SMTP TEST] failed:', err.message || err);
-        res.status(500).json({ error: err.message || 'Az SMTP teszt küldése nem sikerült.' });
+        console.error('[EMAIL TEST] failed:', err.message || err);
+        res.status(500).json({ error: err.message || 'A teszt e-mail küldése nem sikerült.' });
     }
 });
 
-/** Stores SMTP settings submitted by an authenticated administrator. */
+/** Stores email delivery settings (SMTP or HTTPS API provider) submitted by an authenticated administrator. */
 app.put('/api/admin/smtp-config', requireAdmin, async (req, res) => {
-    const { from, user, password, host, port, secure } = req.body;
-    if (!from || !user || !host || !Number(port)) {
-        return res.status(400).json({ error: 'A küldő, felhasználó, szerver és port megadása kötelező.' });
-    }
-    try {
-        const existing = await pool.query("SELECT value FROM settings_app WHERE key = 'smtp'");
-        const existingPassword = existing.rows[0]?.value?.password || '';
-        const settings = { from, user, password: password || existingPassword, host, port: Number(port), secure: Boolean(secure) };
+    const { provider = 'smtp', from, user, password, host, port, secure, apiKey } = req.body;
+    const existing = await pool.query("SELECT value FROM settings_app WHERE key = 'smtp'");
+    const existingSettings = existing.rows[0]?.value || {};
+
+    let settings;
+    if (provider === 'resend' || provider === 'sendgrid') {
+        if (!from) return res.status(400).json({ error: 'A küldő e-mail cím megadása kötelező.' });
+        const resolvedApiKey = apiKey || existingSettings.apiKey || '';
+        if (!resolvedApiKey) return res.status(400).json({ error: 'Az API kulcs megadása kötelező az első mentéskor.' });
+        settings = { provider, from, apiKey: resolvedApiKey };
+    } else {
+        if (!from || !user || !host || !Number(port)) {
+            return res.status(400).json({ error: 'A küldő, felhasználó, szerver és port megadása kötelező.' });
+        }
+        const existingPassword = existingSettings.password || '';
+        settings = { provider: 'smtp', from, user, password: password || existingPassword, host, port: Number(port), secure: Boolean(secure) };
         if (!settings.password) return res.status(400).json({ error: 'Az SMTP jelszó megadása kötelező az első mentéskor.' });
+    }
+
+    try {
         await pool.query(
             `INSERT INTO settings_app (key, value, updated_at) VALUES ('smtp', $1, NOW())
              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
@@ -1717,7 +1790,7 @@ app.put('/api/admin/smtp-config', requireAdmin, async (req, res) => {
         );
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: 'Az SMTP beállítások mentése nem sikerült.' });
+        res.status(500).json({ error: 'Az e-mail beállítások mentése nem sikerült.' });
     }
 });
 

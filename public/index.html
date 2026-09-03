@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20260903-smtp-test">
+    <link rel="stylesheet" href="/css/styles.css?v=20260904-email-provider">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -320,32 +320,52 @@
             
             <form id="adminConfigForm" class="modal-form">
                 <div class="section-divider">
-                    <i class="fa-solid fa-envelope"></i> SMTP E-mail Küldési Beállítások
+                    <i class="fa-solid fa-envelope"></i> E-mail Küldési Beállítások
+                </div>
+
+                <div class="form-control">
+                    <label>Küldési Mód</label>
+                    <select id="cfgEmailProvider">
+                        <option value="smtp">SMTP (pl. Gmail)</option>
+                        <option value="resend">Resend (HTTPS API)</option>
+                        <option value="sendgrid">SendGrid (HTTPS API)</option>
+                    </select>
+                    <small style="color: var(--text-secondary); display:block; margin-top:0.25rem;">
+                        Ha az SMTP nem működik a hosztingon (pl. Render blokkolja a 25/465/587 portokat), válassz HTTPS alapú API szolgáltatót.
+                    </small>
                 </div>
 
                 <div class="form-control">
                     <label>Küldő E-mail Cím (Sender)</label>
                     <input type="email" id="cfgEmailSender" required>
                 </div>
-                <div class="form-control">
-                    <label>Alkalmazás Jelszó / Password</label>
-                    <input type="password" id="cfgEmailPassword" required>
+
+                <div id="cfgApiKeyGroup" class="form-control" style="display:none;">
+                    <label>API Kulcs</label>
+                    <input type="password" id="cfgEmailApiKey" placeholder="Hagyd üresen, ha nem változott">
                 </div>
-                <div class="add-form-grid" style="grid-template-columns: 2fr 1fr; gap: 0.5rem; margin:0;">
+
+                <div id="cfgSmtpGroup">
                     <div class="form-control">
-                        <label>SMTP Szerver</label>
-                        <input type="text" id="cfgSmtpServer" required>
+                        <label>Alkalmazás Jelszó / Password</label>
+                        <input type="password" id="cfgEmailPassword">
                     </div>
-                    <div class="form-control">
-                        <label>Port</label>
-                        <input type="number" id="cfgSmtpPort" value="587" required>
+                    <div class="add-form-grid" style="grid-template-columns: 2fr 1fr; gap: 0.5rem; margin:0;">
+                        <div class="form-control">
+                            <label>SMTP Szerver</label>
+                            <input type="text" id="cfgSmtpServer">
+                        </div>
+                        <div class="form-control">
+                            <label>Port</label>
+                            <input type="number" id="cfgSmtpPort" value="587">
+                        </div>
                     </div>
                 </div>
 
                 <div style="display:flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem;">
                     <button type="button" class="btn btn btn-danger" onclick="closeModal('adminConfigModal')">Mégse</button>
                     <button type="button" class="btn btn-secondary" id="smtpTestBtn">
-                        <i class="fa-solid fa-envelope-circle-check"></i> SMTP Teszt
+                        <i class="fa-solid fa-envelope-circle-check"></i> Teszt Küldés
                     </button>
                     <button type="submit" class="btn btn-primary" style="background-color: var(--warning); border-color: var(--warning);">
                         <i class="fa-solid fa-floppy-disk"></i> Beállítások Mentése
@@ -598,14 +618,14 @@
             </div>
         </div>
     </div>
-    <script src="/js/config.js?v=20260903-smtp-test"></script>
-    <script src="/js/api.js?v=20260903-smtp-test"></script>
-    <script src="/js/notifications.js?v=20260903-smtp-test"></script>
-    <script src="/js/modal.js?v=20260903-smtp-test"></script>
-    <script src="/js/categories-ui.js?v=20260903-smtp-test"></script>
-    <script src="/js/bookmarks-ui.js?v=20260903-smtp-test"></script>
-    <script src="/js/enterprise.js?v=20260903-smtp-test"></script>
-    <script src="/js/auth.js?v=20260903-smtp-test"></script>
-    <script src="/js/app.js?v=20260903-smtp-test"></script>
+    <script src="/js/config.js?v=20260904-email-provider"></script>
+    <script src="/js/api.js?v=20260904-email-provider"></script>
+    <script src="/js/notifications.js?v=20260904-email-provider"></script>
+    <script src="/js/modal.js?v=20260904-email-provider"></script>
+    <script src="/js/categories-ui.js?v=20260904-email-provider"></script>
+    <script src="/js/bookmarks-ui.js?v=20260904-email-provider"></script>
+    <script src="/js/enterprise.js?v=20260904-email-provider"></script>
+    <script src="/js/auth.js?v=20260904-email-provider"></script>
+    <script src="/js/app.js?v=20260904-email-provider"></script>
 </body>
 </html>

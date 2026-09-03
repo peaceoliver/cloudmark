@@ -299,40 +299,75 @@ function confirmEmailActivation() {
     closeModal('verifyModal');
 }
 
+/** Shows/hides the SMTP vs. API-key fields based on the selected email provider. */
+function updateEmailProviderFields() {
+    const provider = document.getElementById('cfgEmailProvider').value;
+    const isApi = provider === 'resend' || provider === 'sendgrid';
+    document.getElementById('cfgApiKeyGroup').style.display = isApi ? '' : 'none';
+    document.getElementById('cfgSmtpGroup').style.display = isApi ? 'none' : '';
+}
+
 /** Loads saved admin settings into the configuration modal. */
 async function openAdminConfig() {
     try {
         const smtp = await api.getSmtpConfig();
+        document.getElementById('cfgEmailProvider').value = smtp.provider || 'smtp';
         document.getElementById('cfgEmailSender').value = smtp.from || '';
         document.getElementById('cfgEmailPassword').value = '';
         document.getElementById('cfgEmailPassword').placeholder = smtp.passwordConfigured ? 'Mentett jelszó, üresen hagyva változatlan marad' : 'SMTP jelszó';
         document.getElementById('cfgSmtpServer').value = smtp.host || '';
         document.getElementById('cfgSmtpPort').value = smtp.port || 587;
+        document.getElementById('cfgEmailApiKey').value = '';
+        document.getElementById('cfgEmailApiKey').placeholder = smtp.apiKeyConfigured ? 'Mentett API kulcs, üresen hagyva változatlan marad' : 'API kulcs';
+        updateEmailProviderFields();
         openModal('adminConfigModal');
     } catch (err) {
-        showNotification(err.message || 'Az SMTP beállítások nem tölthetők be.', 'error');
+        showNotification(err.message || 'Az e-mail beállítások nem tölthetők be.', 'error');
     }
+}
+
+/** Reads the admin config form into a settings object matching the currently selected provider. */
+function readEmailConfigForm() {
+    const provider = document.getElementById('cfgEmailProvider').value;
+    const from = document.getElementById('cfgEmailSender').value.trim();
+    if (provider === 'resend' || provider === 'sendgrid') {
+        return {
+            provider,
+            from,
+            user: from,
+            apiKey: document.getElementById('cfgEmailApiKey').value,
+            to: from
+        };
+    }
+    return {
+        provider: 'smtp',
+        from,
+        user: from,
+        password: document.getElementById('cfgEmailPassword').value,
+        host: document.getElementById('cfgSmtpServer').value.trim(),
+        port: Number(document.getElementById('cfgSmtpPort').value),
+        secure: Number(document.getElementById('cfgSmtpPort').value) === 465,
+        to: from
+    };
 }
 
 async function testSmtpConnection() {
     try {
-        const settings = {
-            from: document.getElementById('cfgEmailSender').value.trim(),
-            user: document.getElementById('cfgEmailSender').value.trim(),
-            password: document.getElementById('cfgEmailPassword').value,
-            host: document.getElementById('cfgSmtpServer').value.trim(),
-            port: Number(document.getElementById('cfgSmtpPort').value),
-            secure: Number(document.getElementById('cfgSmtpPort').value) === 465,
-            to: document.getElementById('cfgEmailSender').value.trim()
-        };
-        if (!settings.from || !settings.user || !settings.host || !settings.port) {
+        const settings = readEmailConfigForm();
+        const isApi = settings.provider === 'resend' || settings.provider === 'sendgrid';
+        if (isApi) {
+            if (!settings.from) {
+                showNotification('A teszt küldéshez töltsd ki a küldő e-mail címet.', 'error');
+                return;
+            }
+        } else if (!settings.from || !settings.user || !settings.host || !settings.port) {
             showNotification('A teszt küldéshez töltsd ki a küldő címet, SMTP szervert és portot.', 'error');
             return;
         }
         const result = await api.smtpTest(settings);
-        showNotification(`SMTP teszt sikeres. A teszt e-mail elküldve erre a címre: ${result.to}`, 'success');
+        showNotification(`Teszt e-mail sikeresen elküldve erre a címre: ${result.to}`, 'success');
     } catch (err) {
-        showNotification(err.message || 'Az SMTP teszt küldése nem sikerült.', 'error');
+        showNotification(err.message || 'A teszt e-mail küldése nem sikerült.', 'error');
     }
 }
 
@@ -358,23 +393,17 @@ document.getElementById('authForm').addEventListener('submit', async event => {
 });
 
 document.getElementById('smtpTestBtn').addEventListener('click', testSmtpConnection);
+document.getElementById('cfgEmailProvider').addEventListener('change', updateEmailProviderFields);
 
 document.getElementById('adminConfigForm').addEventListener('submit', async event => {
     event.preventDefault();
-    const settings = {
-        from: document.getElementById('cfgEmailSender').value.trim(),
-        user: document.getElementById('cfgEmailSender').value.trim(),
-        password: document.getElementById('cfgEmailPassword').value,
-        host: document.getElementById('cfgSmtpServer').value.trim(),
-        port: Number(document.getElementById('cfgSmtpPort').value),
-        secure: Number(document.getElementById('cfgSmtpPort').value) === 465
-    };
+    const settings = readEmailConfigForm();
     try {
         await api.saveSmtpConfig(settings);
         closeModal('adminConfigModal');
-        showNotification('SMTP beállítások sikeresen elmentve.', 'success');
+        showNotification('E-mail beállítások sikeresen elmentve.', 'success');
     } catch (err) {
-        showNotification(err.message || 'Az SMTP beállítások mentése nem sikerült.', 'error');
+        showNotification(err.message || 'Az e-mail beállítások mentése nem sikerült.', 'error');
     }
 });
 
