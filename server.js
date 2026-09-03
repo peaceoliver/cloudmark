@@ -5,6 +5,7 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const net = require('net');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1627,6 +1628,28 @@ app.get('/api/admin/smtp-config', requireAdmin, async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: 'Az SMTP beállítások nem tölthetők be.' });
     }
+});
+
+/** Checks raw TCP reachability to an SMTP host/port, bypassing TLS/auth to isolate network blocks. */
+app.post('/api/admin/smtp-ping', requireAdmin, async (req, res) => {
+    const host = String(req.body?.host || 'smtp.gmail.com');
+    const port = Number(req.body?.port || 587);
+    const start = Date.now();
+    const socket = new net.Socket();
+    let settled = false;
+
+    const finish = (result) => {
+        if (settled) return;
+        settled = true;
+        socket.destroy();
+        res.json({ host, port, elapsedMs: Date.now() - start, ...result });
+    };
+
+    socket.setTimeout(8000);
+    socket.once('connect', () => finish({ reachable: true }));
+    socket.once('timeout', () => finish({ reachable: false, error: 'timeout' }));
+    socket.once('error', (err) => finish({ reachable: false, error: err.message, code: err.code }));
+    socket.connect(port, host);
 });
 
 /** Sends a test email through the configured SMTP server. */
