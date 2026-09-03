@@ -43,7 +43,10 @@ const mailTransport = process.env.SMTP_HOST ? nodemailer.createTransport({
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD
-    }
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000
 }) : null;
 
 // Középrétegek (Middleware)
@@ -437,7 +440,10 @@ async function sendVerificationEmail(req, email, token) {
         host: smtp.host,
         port: Number(smtp.port || 587),
         secure: Boolean(smtp.secure),
-        auth: { user: smtp.user, pass: smtp.password }
+        auth: { user: smtp.user, pass: smtp.password },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000
     }) : mailTransport;
     if (!transport) {
         if (process.env.NODE_ENV === 'production') throw new Error('SMTP nincs konfigurálva');
@@ -1645,7 +1651,10 @@ app.post('/api/admin/smtp-test', requireAdmin, async (req, res) => {
             host: settings.host,
             port: Number(settings.port),
             secure: Boolean(settings.secure),
-            auth: { user: settings.user, pass: settings.password }
+            auth: { user: settings.user, pass: settings.password },
+            connectionTimeout: 10000,
+            greetingTimeout: 10000,
+            socketTimeout: 15000
         });
 
         const info = await transport.sendMail({
@@ -1655,6 +1664,7 @@ app.post('/api/admin/smtp-test', requireAdmin, async (req, res) => {
             text: 'Ez egy SMTP teszt üzenet a CloudMark alkalmazásból. Ha megérkezett, az SMTP konfiguráció működik.',
             html: '<p>Ez egy SMTP teszt üzenet a CloudMark alkalmazásból.</p><p>Ha megérkezett, az SMTP konfiguráció működik.</p>'
         });
+        transport.close();
 
         res.json({ success: true, messageId: info.messageId, response: info.response, to });
     } catch (err) {
