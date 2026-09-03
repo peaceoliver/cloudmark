@@ -1300,8 +1300,7 @@ app.get('/api/bookmarks', async (req, res) => {
                 const userIds = [...new Set([
                     String(user.username || '').toLowerCase(),
                     String(user.id || '').toLowerCase(),
-                    'demo',
-                    'admin'
+                    'demo'
                 ].filter(Boolean))];
                 conditions.push('LOWER(CAST(b.user_id AS TEXT)) = ANY($1)');
                 params = [userIds];
