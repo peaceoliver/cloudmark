@@ -100,6 +100,34 @@ apiNamespace.api = {
         });
     },
 
+    /** Returns global application settings for an authenticated administrator. */
+    getAppConfig() {
+        return requestJson('/api/admin/app-config');
+    },
+
+    /** Saves global application settings for an authenticated administrator. */
+    saveAppConfig(settings) {
+        return requestJson('/api/admin/app-config', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+    },
+
+    /** Lists every registered user for an authenticated administrator. */
+    getUsers() {
+        return requestJson('/api/admin/users');
+    },
+
+    /** Updates a user's verification/active status as an authenticated administrator. */
+    updateUserStatus(userId, changes) {
+        return requestJson(`/api/admin/users/${encodeURIComponent(userId)}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(changes)
+        });
+    },
+
     /** Lists all teams visible to the current user. */
     getTeams() {
         return requestJson('/api/teams');

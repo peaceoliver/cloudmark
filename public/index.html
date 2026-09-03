@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20260905f-main-menu">
+    <link rel="stylesheet" href="/css/styles.css?v=20260905g-admin-users">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -335,6 +335,17 @@
             
             <form id="adminConfigForm" class="modal-form">
                 <div class="section-divider">
+                    <i class="fa-solid fa-user-check"></i> Regisztráció
+                </div>
+                <div class="form-control" style="flex-direction: row; align-items: center; gap: 0.75rem;">
+                    <label style="margin:0;" for="cfgRequireVerification">E-mail megerősítés kötelező regisztrációkor</label>
+                    <input type="checkbox" id="cfgRequireVerification" style="width:auto; height:1.1rem;" checked>
+                </div>
+                <small style="color: var(--text-secondary); display:block; margin-top:-0.5rem; margin-bottom:0.75rem;">
+                    Ha kikapcsolod, az új regisztrációk azonnal aktívvá válnak, e-mail küldés nélkül. Ilyenkor te (admin) tudod manuálisan aktiválni/deaktiválni a felhasználókat az Admin panelben.
+                </small>
+
+                <div class="section-divider">
                     <i class="fa-solid fa-envelope"></i> E-mail Küldési Beállítások
                 </div>
 
@@ -451,6 +462,25 @@
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <div>
+                    <div class="section-divider"><i class="fa-solid fa-user-group"></i> Regisztrált felhasználók</div>
+                    <div style="max-height: 260px; overflow: auto; border: 1px solid var(--border-color); border-radius: 12px; background: rgba(148, 163, 184, 0.04);">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                            <thead>
+                                <tr style="background: rgba(148,163,184,0.08);">
+                                    <th style="padding: 0.75rem; text-align: left;">Felhasználónév</th>
+                                    <th style="padding: 0.75rem; text-align: left;">E-mail</th>
+                                    <th style="padding: 0.75rem; text-align: left;">Regisztrált</th>
+                                    <th style="padding: 0.75rem; text-align: left;">Megerősítve</th>
+                                    <th style="padding: 0.75rem; text-align: left;">Aktív</th>
+                                    <th style="padding: 0.75rem; text-align: left;">Műveletek</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminUsersBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div>
                     <div class="section-divider"><i class="fa-solid fa-users"></i> Csapatok</div>
                     <form id="adminCreateTeamForm" class="add-form-grid" style="grid-template-columns: 1fr auto; align-items: end; margin: 0 0 0.75rem;">
@@ -633,15 +663,15 @@
             </div>
         </div>
     </div>
-    <script src="/js/config.js?v=20260905f-main-menu"></script>
-    <script src="/js/api.js?v=20260905f-main-menu"></script>
-    <script src="/js/notifications.js?v=20260905f-main-menu"></script>
-    <script src="/js/modal.js?v=20260905f-main-menu"></script>
-    <script src="/js/categories-ui.js?v=20260905f-main-menu"></script>
-    <script src="/js/bookmarks-ui.js?v=20260905f-main-menu"></script>
-    <script src="/js/enterprise.js?v=20260905f-main-menu"></script>
-    <script src="/js/auth.js?v=20260905f-main-menu"></script>
-    <script src="/js/app.js?v=20260905f-main-menu"></script>
-    <script src="/js/main-menu.js?v=20260905f-main-menu"></script>
+    <script src="/js/config.js?v=20260905g-admin-users"></script>
+    <script src="/js/api.js?v=20260905g-admin-users"></script>
+    <script src="/js/notifications.js?v=20260905g-admin-users"></script>
+    <script src="/js/modal.js?v=20260905g-admin-users"></script>
+    <script src="/js/categories-ui.js?v=20260905g-admin-users"></script>
+    <script src="/js/bookmarks-ui.js?v=20260905g-admin-users"></script>
+    <script src="/js/enterprise.js?v=20260905g-admin-users"></script>
+    <script src="/js/auth.js?v=20260905g-admin-users"></script>
+    <script src="/js/app.js?v=20260905g-admin-users"></script>
+    <script src="/js/main-menu.js?v=20260905g-admin-users"></script>
 </body>
 </html>

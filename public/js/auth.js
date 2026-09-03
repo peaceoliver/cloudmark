@@ -1,5 +1,6 @@
 const authConfig = window.CloudMark && window.CloudMark.config ? window.CloudMark.config : {};
 let isRegisterMode = false;
+let loadedAppConfig = { sessionDays: 30, verificationMinutes: 30, requireEmailVerification: true };
 
 /** Switches the authentication modal between login and registration. */
 function toggleAuthMode(event) {
@@ -242,10 +243,30 @@ async function openTeamManager() {
 
 async function renderAdminPanel() {
     try {
-        const [teams, auditEvents] = await Promise.all([api.getTeams(), api.getAuditEvents()]);
+        const [teams, auditEvents, users] = await Promise.all([api.getTeams(), api.getAuditEvents(), api.getUsers()]);
         const teamList = document.getElementById('adminTeamList');
         const teamSelect = document.getElementById('adminTeamMemberTeamSelect');
         const auditTable = document.getElementById('adminAuditEventsBody');
+        const usersBody = document.getElementById('adminUsersBody');
+
+        usersBody.innerHTML = users.length
+            ? users.map(user => `
+                <tr>
+                    <td style="padding: 0.6rem 0.75rem;">${user.username}${user.role === 'admin' ? ' <i class="fa-solid fa-crown" title="Admin" style="color: var(--warning);"></i>' : ''}</td>
+                    <td style="padding: 0.6rem 0.75rem;">${user.email || '-'}</td>
+                    <td style="padding: 0.6rem 0.75rem;">${user.created_at ? new Date(user.created_at).toLocaleDateString('hu-HU') : '-'}</td>
+                    <td style="padding: 0.6rem 0.75rem;"><span class="status-badge ${user.is_verified ? 'status-verified' : ''}" style="${user.is_verified ? '' : 'background: rgba(148,163,184,0.15); color: var(--text-secondary);'}">${user.is_verified ? 'Igen' : 'Nem'}</span></td>
+                    <td style="padding: 0.6rem 0.75rem;"><span class="status-badge ${user.is_active ? 'status-verified' : 'status-admin'}">${user.is_active ? 'Aktív' : 'Felfüggesztve'}</span></td>
+                    <td style="padding: 0.6rem 0.75rem; display:flex; gap:0.4rem; flex-wrap:wrap;">
+                        ${!user.is_verified ? `<button type="button" class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.8rem;" onclick="setUserVerified(${user.id}, true)"><i class="fa-solid fa-check"></i> Aktiválás</button>` : ''}
+                        ${user.role !== 'admin' ? (user.is_active
+                            ? `<button type="button" class="btn btn-danger" style="padding:0.3rem 0.6rem; font-size:0.8rem;" onclick="setUserActive(${user.id}, false)"><i class="fa-solid fa-ban"></i> Deaktiválás</button>`
+                            : `<button type="button" class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.8rem;" onclick="setUserActive(${user.id}, true)"><i class="fa-solid fa-rotate-left"></i> Visszaállítás</button>`)
+                            : ''}
+                    </td>
+                </tr>
+            `).join('')
+            : '<tr><td colspan="6" style="padding: 0.75rem;">Nincs regisztrált felhasználó.</td></tr>';
 
         teamList.innerHTML = teams.length
             ? teams.map(team => `
@@ -288,6 +309,29 @@ async function openAdminPanel() {
     openModal('adminPanelModal');
 }
 
+/** Manually verifies/activates a registered user from the admin panel. */
+async function setUserVerified(userId, isVerified) {
+    try {
+        await api.updateUserStatus(userId, { isVerified });
+        showNotification('A felhasználó állapota frissítve.', 'success');
+        await renderAdminPanel();
+    } catch (err) {
+        showNotification(err.message || 'A művelet nem sikerült.', 'error');
+    }
+}
+
+/** Activates or suspends a registered user's account from the admin panel. */
+async function setUserActive(userId, isActive) {
+    if (!isActive && !confirm('Biztosan felfüggeszted ezt a felhasználót? Ki fog jelentkezni minden eszközön.')) return;
+    try {
+        await api.updateUserStatus(userId, { isActive });
+        showNotification('A felhasználó állapota frissítve.', 'success');
+        await renderAdminPanel();
+    } catch (err) {
+        showNotification(err.message || 'A művelet nem sikerült.', 'error');
+    }
+}
+
 /** Opens the user settings modal with database values and local fallbacks. */
 async function openUserSettings() {
     const settings = await api.getUserSettings().catch(() => ({}));
@@ -321,7 +365,7 @@ function updateEmailProviderFields() {
 /** Loads saved admin settings into the configuration modal. */
 async function openAdminConfig() {
     try {
-        const smtp = await api.getSmtpConfig();
+        const [smtp, appConfig] = await Promise.all([api.getSmtpConfig(), api.getAppConfig()]);
         document.getElementById('cfgEmailProvider').value = smtp.provider || 'smtp';
         document.getElementById('cfgEmailSender').value = smtp.from || '';
         document.getElementById('cfgEmailPassword').value = '';
@@ -330,6 +374,8 @@ async function openAdminConfig() {
         document.getElementById('cfgSmtpPort').value = smtp.port || 587;
         document.getElementById('cfgEmailApiKey').value = '';
         document.getElementById('cfgEmailApiKey').placeholder = smtp.apiKeyConfigured ? 'Mentett API kulcs, üresen hagyva változatlan marad' : 'API kulcs';
+        document.getElementById('cfgRequireVerification').checked = appConfig.requireEmailVerification !== false;
+        loadedAppConfig = appConfig;
         updateEmailProviderFields();
         openModal('adminConfigModal');
     } catch (err) {
@@ -391,6 +437,10 @@ document.getElementById('authForm').addEventListener('submit', async event => {
         if (isRegisterMode) {
             const registration = await api.register(username, email, password);
             closeModal('authModal');
+            if (registration.verificationRequired === false) {
+                showNotification('A regisztráció sikeres. Most már bejelentkezhetsz.', 'success');
+                return;
+            }
             const message = registration.emailSent
                 ? 'A megerősítő e-mailt sikeresen elküldtük. Ellenőrizd a beérkező leveleket és a Spam mappát is.'
                 : buildVerificationFallbackMessage(registration);
@@ -409,8 +459,14 @@ document.getElementById('cfgEmailProvider').addEventListener('change', updateEma
 document.getElementById('adminConfigForm').addEventListener('submit', async event => {
     event.preventDefault();
     const settings = readEmailConfigForm();
+    const requireEmailVerification = document.getElementById('cfgRequireVerification').checked;
     try {
         await api.saveSmtpConfig(settings);
+        await api.saveAppConfig({
+            sessionDays: loadedAppConfig.sessionDays || 30,
+            verificationMinutes: loadedAppConfig.verificationMinutes || 30,
+            requireEmailVerification
+        });
         closeModal('adminConfigModal');
         showNotification('E-mail beállítások sikeresen elmentve.', 'success');
     } catch (err) {
@@ -574,3 +630,4 @@ document.getElementById('userSettingsForm').addEventListener('submit', async eve
 window.toggleAuthMode = toggleAuthMode; window.confirmEmailActivation = confirmEmailActivation;
 window.loginUser = loginUser; window.logoutUser = logoutUser; window.openAdminConfig = openAdminConfig;
 window.openAdminPanel = openAdminPanel; window.openTeamManager = openTeamManager; window.changeTeamMemberRole = changeTeamMemberRole; window.removeTeamMember = removeTeamMember; window.transferTeamOwnership = transferTeamOwnership; window.leaveTeam = leaveTeam; window.deleteTeam = deleteTeam; window.openUserSettings = openUserSettings;
+window.setUserVerified = setUserVerified; window.setUserActive = setUserActive;

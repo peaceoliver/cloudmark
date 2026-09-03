@@ -25,7 +25,8 @@ function getPublicBaseUrl(req = null) {
 }
 const DEFAULT_APP_SETTINGS = {
     sessionDays: 30,
-    verificationMinutes: 30
+    verificationMinutes: 30,
+    requireEmailVerification: true
 };
 const registrationAttempts = new Map();
 const defaultSmtpConfig = {
@@ -100,6 +101,7 @@ async function initDatabase() {
         `);
 
         await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE');
+        await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE');
         await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_hash CHAR(64)');
         await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires_at TIMESTAMPTZ');
         await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS team_id BIGINT REFERENCES teams(id) ON DELETE SET NULL');
@@ -566,12 +568,14 @@ async function getAuthenticatedUser(req) {
     const token = getCookie(req, SESSION_COOKIE);
     if (!token) return null;
     const result = await pool.query(`
-        SELECT u.id, u.username, u.email, u.role, u.team_id, u.team_role
+        SELECT u.id, u.username, u.email, u.role, u.team_id, u.team_role, u.is_active
         FROM sessions s
         JOIN users u ON u.id = s.user_id
         WHERE s.token_hash = $1 AND s.expires_at > NOW()
     `, [hashSessionToken(token)]);
-    return result.rows[0] || null;
+    const user = result.rows[0] || null;
+    if (user && user.is_active === false) return null;
+    return user;
 }
 
 /** Requires a valid database session before allowing the request to continue. */
@@ -941,6 +945,60 @@ app.delete('/api/teams/:id/members/:userId', requireTeamAdmin, async (req, res) 
     }
 });
 
+/** Lists every registered user for administrators, including verification/active status. */
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT u.id, u.username, u.email, u.role, u.is_verified, u.is_active, u.created_at,
+                    t.name AS team_name
+             FROM users u
+             LEFT JOIN teams t ON t.id = u.team_id
+             ORDER BY u.created_at DESC`
+        );
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'A felhasználók nem tölthetők be.' });
+    }
+});
+
+/** Lets an administrator manually verify/activate or deactivate a registered user. */
+app.put('/api/admin/users/:id/status', requireAdmin, async (req, res) => {
+    const userId = Number(req.params.id);
+    const isVerified = req.body.isVerified === undefined ? undefined : Boolean(req.body.isVerified);
+    const isActive = req.body.isActive === undefined ? undefined : Boolean(req.body.isActive);
+    if (!Number.isInteger(userId) || (isVerified === undefined && isActive === undefined)) {
+        return res.status(400).json({ error: 'Érvénytelen kérés.' });
+    }
+    if (userId === req.user.id && isActive === false) {
+        return res.status(400).json({ error: 'A saját fiókodat nem tudod deaktiválni.' });
+    }
+    try {
+        const sets = [];
+        const values = [];
+        let idx = 1;
+        if (isVerified !== undefined) {
+            sets.push(`is_verified = $${idx++}`);
+            values.push(isVerified);
+            if (isVerified) { sets.push('verification_token_hash = NULL'); sets.push('verification_expires_at = NULL'); }
+        }
+        if (isActive !== undefined) {
+            sets.push(`is_active = $${idx++}`);
+            values.push(isActive);
+        }
+        values.push(userId);
+        const result = await pool.query(
+            `UPDATE users SET ${sets.join(', ')} WHERE id = $${idx} RETURNING id, username, email, role, is_verified, is_active`,
+            values
+        );
+        if (!result.rowCount) return res.status(404).json({ error: 'A felhasználó nem található.' });
+        if (isActive === false) await pool.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
+        await recordAuditEvent({ userId: req.user.id, action: 'admin_user_status_updated', entityType: 'user', entityId: userId, details: { isVerified, isActive }, req });
+        res.json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: 'A felhasználó státusza nem frissíthető.' });
+    }
+});
+
 app.get('/api/admin/audit-events', requireAdmin, async (req, res) => {
     try {
         const result = await pool.query(
@@ -1113,8 +1171,24 @@ app.post('/api/auth/register', async (req, res) => {
 
     try {
         const passwordHash = await bcrypt.hash(password, 12);
-        const verificationToken = crypto.randomBytes(32).toString('hex');
         const appSettings = await getAppSettings();
+        const requireVerification = appSettings.requireEmailVerification !== false;
+
+        if (!requireVerification) {
+            const result = await pool.query(
+                `INSERT INTO users (username, email, password_hash, is_verified)
+                 VALUES ($1, $2, $3, TRUE)
+                 RETURNING id, username, email, role`,
+                [username, email, passwordHash]
+            );
+            const user = result.rows[0];
+            await createDefaultTeamForUser(user.id, user.username);
+            await recordAuditEvent({ userId: user.id, action: 'user_registered', entityType: 'user', entityId: user.id, details: { email, autoVerified: true }, req });
+            res.status(201).json({ verificationRequired: false, email: user.email });
+            return;
+        }
+
+        const verificationToken = crypto.randomBytes(32).toString('hex');
         const verificationMinutes = Number(appSettings.verificationMinutes) || DEFAULT_APP_SETTINGS.verificationMinutes;
         const verificationExpiresAt = new Date(Date.now() + verificationMinutes * 60 * 1000);
         const result = await pool.query(
@@ -1178,7 +1252,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     try {
         const result = await pool.query(
-            'SELECT id, username, email, password_hash, role, team_id, team_role, is_verified FROM users WHERE LOWER(username) = LOWER($1)',
+            'SELECT id, username, email, password_hash, role, team_id, team_role, is_verified, is_active FROM users WHERE LOWER(username) = LOWER($1)',
             [username]
         );
         const user = result.rows[0];
@@ -1186,6 +1260,7 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ error: 'Hibás felhasználónév vagy jelszó.' });
         }
         if (!user.is_verified) return res.status(403).json({ error: 'Előbb erősítsd meg az e-mail címedet.' });
+        if (!user.is_active) return res.status(403).json({ error: 'A fiókod fel van függesztve. Vedd fel a kapcsolatot az adminisztrátorral.' });
         if (!user.team_id) await createDefaultTeamForUser(user.id, user.username);
         await createSession(user, res);
         await recordAuditEvent({ userId: user.id, action: 'login', entityType: 'user', entityId: user.id, req });
@@ -1838,11 +1913,12 @@ app.get('/api/admin/app-config', requireAdmin, async (req, res) => {
 app.put('/api/admin/app-config', requireAdmin, async (req, res) => {
     const sessionDays = Number(req.body.sessionDays);
     const verificationMinutes = Number(req.body.verificationMinutes);
+    const requireEmailVerification = Boolean(req.body.requireEmailVerification);
     if (!Number.isInteger(sessionDays) || sessionDays < 1 || sessionDays > 365 || !Number.isInteger(verificationMinutes) || verificationMinutes < 5 || verificationMinutes > 1440) {
         return res.status(400).json({ error: 'Érvénytelen app-beállítási érték.' });
     }
     try {
-        const settings = { sessionDays, verificationMinutes };
+        const settings = { sessionDays, verificationMinutes, requireEmailVerification };
         await pool.query(
             `INSERT INTO settings_app (key, value, updated_at) VALUES ('app', $1, NOW())
              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
