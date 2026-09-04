@@ -215,7 +215,7 @@
             <div class="bulk-selection-summary">
                 <strong id="bulkSelectionCount">0</strong> kiválasztott könyvjelző
             </div>
-            <div class="bulk-action-row">
+            <div class="bulk-primary-actions">
                 <button type="button" class="btn btn-secondary" onclick="selectVisibleBookmarks()"><i class="fa-solid fa-check-double"></i> Összes kijelölése</button>
                 <div class="bulk-category-combo">
                     <select id="bulkCategorySelect" class="bulk-category-select" aria-label="Kategória módosítása">
@@ -223,6 +223,8 @@
                     </select>
                     <button type="button" class="btn btn-secondary" onclick="applyBulkCategoryChange()"><i class="fa-solid fa-folder-tree"></i> Módosítás</button>
                 </div>
+            </div>
+            <div class="bulk-action-row">
                 <button type="button" class="btn btn-secondary" onclick="applyBulkAction('star')"><i class="fa-solid fa-star"></i> Kedvenc hozzáadás</button>
                 <button type="button" class="btn btn-secondary" onclick="applyBulkAction('unstar')"><i class="fa-regular fa-star"></i> Kedvenc eltávolítás</button>
                 <button type="button" class="btn btn-secondary" onclick="applyBulkAction('archive')"><i class="fa-solid fa-box-archive"></i> Archiválás</button>
