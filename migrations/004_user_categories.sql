@@ -1,6 +1,14 @@
--- Keep default categories global and scope user-created categories to their owner.
+-- Assign the existing categories to their creators and scope future categories to their owner.
 ALTER TABLE categories
   ADD COLUMN IF NOT EXISTS owner_user_id BIGINT REFERENCES users(id) ON DELETE CASCADE;
+
+UPDATE categories
+  SET owner_user_id = 3
+  WHERE name <> 'MAIN';
+
+UPDATE categories
+  SET owner_user_id = 5
+  WHERE name = 'MAIN';
 
 ALTER TABLE categories
   DROP CONSTRAINT IF EXISTS categories_name_key;

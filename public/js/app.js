@@ -21,7 +21,7 @@ if (!localStorage.getItem(config.storageKeys.showImages)) {
 async function loadCategoriesFromServer() {
     try {
         const data = await api.getCategories();
-        if (Array.isArray(data) && data.length) categories = data.map(category =>
+        if (Array.isArray(data)) categories = data.map(category =>
             typeof category === 'string' ? { id: category, name: category, parent_id: null } : category);
     } catch (err) { console.error('Failed to fetch categories:', err); }
 }

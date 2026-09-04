@@ -270,13 +270,6 @@ async function initDatabase() {
         await client.query('CREATE UNIQUE INDEX IF NOT EXISTS categories_owner_name_unique ON categories (COALESCE(owner_user_id, 0), LOWER(name))');
         await client.query('CREATE INDEX IF NOT EXISTS categories_parent_idx ON categories(parent_id)');
 
-        // Alapértelmezett kategóriák feltöltése, ha üres a tábla
-        await client.query(`
-            INSERT INTO categories (name) 
-            VALUES ('Inbox'), ('Fejlesztés'), ('Eszközök'), ('Hírek'), ('Szórakozás')
-            ON CONFLICT (name) DO NOTHING;
-        `);
-
         client.release();
         console.log(`[OK] Supabase PostgreSQL tablak sikeresen ellenorizve / letrehozva!`);
     } catch (err) {
@@ -304,11 +297,20 @@ async function userCanUseCategory(user, name) {
     const result = await pool.query(
         `SELECT 1 FROM categories
          WHERE LOWER(name) = LOWER($1)
-           AND (owner_user_id IS NULL OR owner_user_id = $2 OR $3 = TRUE)
+           AND owner_user_id = $2
          LIMIT 1`,
-        [categoryName, user.id, user.role === 'admin']
+        [categoryName, user.id]
     );
     return result.rowCount > 0;
+}
+
+async function createPersonalInbox(userId) {
+    await pool.query(
+        `INSERT INTO categories (name, owner_user_id)
+         VALUES ('Inbox', $1)
+         ON CONFLICT DO NOTHING`,
+        [userId]
+    );
 }
 
 /** Canonicalizes a URL for duplicate detection without changing the stored URL. */
@@ -1202,6 +1204,7 @@ app.post('/api/auth/register', async (req, res) => {
             );
             const user = result.rows[0];
             await createDefaultTeamForUser(user.id, user.username);
+            await createPersonalInbox(user.id);
             await recordAuditEvent({ userId: user.id, action: 'user_registered', entityType: 'user', entityId: user.id, details: { email, autoVerified: true }, req });
             res.status(201).json({ verificationRequired: false, email: user.email });
             return;
@@ -1218,6 +1221,7 @@ app.post('/api/auth/register', async (req, res) => {
         );
         const user = result.rows[0];
         await createDefaultTeamForUser(user.id, user.username);
+        await createPersonalInbox(user.id);
         await recordAuditEvent({ userId: user.id, action: 'user_registered', entityType: 'user', entityId: user.id, details: { email }, req });
 
         try {
@@ -1716,16 +1720,15 @@ app.get('/api/shares/:token', async (req, res) => {
 });
 
 
-/** Returns global defaults and categories owned by the current user. */
-app.get('/api/categories', async (req, res) => {
+/** Returns only categories owned by the authenticated user. */
+app.get('/api/categories', requireAuth, async (req, res) => {
     try {
-        const user = await getAuthenticatedUser(req);
         const result = await pool.query(
             `SELECT id, name, parent_id, owner_user_id
              FROM categories
-             WHERE owner_user_id IS NULL OR owner_user_id = $1
+             WHERE owner_user_id = $1
              ORDER BY id ASC`,
-            [user ? user.id : null]
+            [req.user.id]
         );
         res.json(result.rows);
     } catch (err) {
@@ -1741,12 +1744,12 @@ app.post('/api/categories', requireAuth, async (req, res) => {
         const parent = parentId === null || parentId === undefined || parentId === '' ? null : Number(parentId);
         const duplicate = await pool.query(
             `SELECT 1 FROM categories
-             WHERE LOWER(name) = LOWER($1) AND (owner_user_id IS NULL OR owner_user_id = $2)`,
+             WHERE LOWER(name) = LOWER($1) AND owner_user_id = $2`,
             [name.trim(), req.user.id]
         );
         if (duplicate.rowCount) return res.status(409).json({ error: 'Ez a kategória már létezik.' });
         if (parent !== null && (!Number.isInteger(parent) || !(await pool.query(
-            'SELECT 1 FROM categories WHERE id = $1 AND (owner_user_id IS NULL OR owner_user_id = $2)',
+            'SELECT 1 FROM categories WHERE id = $1 AND owner_user_id = $2',
             [parent, req.user.id]
         )).rowCount)) {
             return res.status(400).json({ error: 'Érvénytelen szülőkategória.' });
@@ -1754,7 +1757,7 @@ app.post('/api/categories', requireAuth, async (req, res) => {
         await pool.query('INSERT INTO categories (name, owner_user_id, parent_id) VALUES ($1, $2, $3)', [name.trim(), req.user.id, parent]);
         const result = await pool.query(
             `SELECT id, name, parent_id, owner_user_id FROM categories
-             WHERE owner_user_id IS NULL OR owner_user_id = $1 ORDER BY id ASC`,
+             WHERE owner_user_id = $1 ORDER BY id ASC`,
             [req.user.id]
         );
         res.status(201).json(result.rows);
@@ -1781,7 +1784,7 @@ app.put('/api/categories/:oldName', requireAuth, async (req, res) => {
             await client.query('BEGIN');
             const duplicate = await client.query(
                 `SELECT 1 FROM categories
-                 WHERE LOWER(name) = LOWER($1) AND (owner_user_id IS NULL OR owner_user_id = $2)`,
+                 WHERE LOWER(name) = LOWER($1) AND owner_user_id = $2`,
                 [newName.trim(), req.user.id]
             );
             if (duplicate.rowCount) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'Ez a kategória már létezik.' }); }
