@@ -1,6 +1,14 @@
 const authConfig = window.CloudMark && window.CloudMark.config ? window.CloudMark.config : {};
 let isRegisterMode = false;
 let loadedAppConfig = { sessionDays: 30, verificationMinutes: 30, requireEmailVerification: true };
+let teamsFeatureEnabled = true;
+
+/** Shows/hides Team-related menu items based on the admin-controlled teamsEnabled setting. */
+function applyTeamsFeatureVisibility() {
+    document.querySelectorAll('.team-feature').forEach(el => {
+        el.style.display = teamsFeatureEnabled ? '' : 'none';
+    });
+}
 
 /** Switches the authentication modal between login and registration. */
 function toggleAuthMode(event) {
@@ -72,12 +80,12 @@ function updateUserUI() {
     updateAuthOnlyVisibility();
     if (!currentUser) { area.innerHTML = '<button class="btn btn-primary" onclick="openModal(\'authModal\')"><i class="fa-solid fa-user"></i> Bejelentkezés / Regisztráció</button>'; return; }
     const admin = currentUser.isSuperuser
-        ? '<div style="display:flex; align-items:center; gap:0.5rem;"><button class="btn btn-admin" onclick="openAdminPanel()"><i class="fa-solid fa-shield-halved"></i> Admin panel</button><button class="btn btn-secondary" onclick="openAdminConfig()"><i class="fa-solid fa-sliders"></i> SMTP</button></div>'
+        ? '<div style="display:flex; align-items:center; gap:0.5rem;"><button class="btn btn-admin" onclick="openAdminPanel()"><i class="fa-solid fa-shield-halved"></i> Admin panel</button><button class="btn btn-secondary" onclick="openAdminConfig()"><i class="fa-solid fa-sliders"></i> Beállítások</button></div>'
         : '';
-    const teamButton = '<button class="btn btn-secondary" onclick="openTeamManager()"><i class="fa-solid fa-users"></i> Team</button>';
     const statusClass = currentUser.isSuperuser ? 'status-admin' : 'status-verified';
     const statusIcon = currentUser.isSuperuser ? 'fa-crown' : 'fa-check-circle';
-    area.innerHTML = `<div style="display:flex; align-items:center; gap:0.75rem;">${admin}${teamButton}<button class="btn-icon" onclick="openUserSettings()" title="Felhasználói beállítások"><i class="fa-solid fa-user-gear"></i></button><span class="status-badge ${statusClass}"><i class="fa-solid ${statusIcon}"></i> ${currentUser.username}</span><button class="btn btn-danger" onclick="logoutUser()"> <i class="fa-solid fa-right-from-bracket"></i> Kilépés</button></div>`;
+    area.innerHTML = `<div style="display:flex; align-items:center; gap:0.75rem;">${admin}<span class="status-badge ${statusClass}"><i class="fa-solid ${statusIcon}"></i> ${currentUser.username}</span><button class="btn btn-danger" onclick="logoutUser()"> <i class="fa-solid fa-right-from-bracket"></i> Kilépés</button></div>`;
+    applyTeamsFeatureVisibility();
 }
 
 async function renderTeamManager() {
@@ -375,6 +383,7 @@ async function openAdminConfig() {
         document.getElementById('cfgEmailApiKey').value = '';
         document.getElementById('cfgEmailApiKey').placeholder = smtp.apiKeyConfigured ? 'Mentett API kulcs, üresen hagyva változatlan marad' : 'API kulcs';
         document.getElementById('cfgRequireVerification').checked = appConfig.requireEmailVerification !== false;
+        document.getElementById('cfgTeamsEnabled').checked = appConfig.teamsEnabled !== false;
         document.getElementById('cfgBookmarksPerPage').value = appConfig.bookmarksPerPage || 60;
         loadedAppConfig = appConfig;
         updateEmailProviderFields();
@@ -461,6 +470,7 @@ document.getElementById('adminConfigForm').addEventListener('submit', async even
     event.preventDefault();
     const settings = readEmailConfigForm();
     const requireEmailVerification = document.getElementById('cfgRequireVerification').checked;
+    const teamsEnabled = document.getElementById('cfgTeamsEnabled').checked;
     const bookmarksPerPage = Number(document.getElementById('cfgBookmarksPerPage').value);
     if (!Number.isInteger(bookmarksPerPage) || bookmarksPerPage < 5 || bookmarksPerPage > 500) {
         showNotification('A lapozáshoz megadott érték 5 és 500 között kell legyen.', 'error');
@@ -472,8 +482,11 @@ document.getElementById('adminConfigForm').addEventListener('submit', async even
             sessionDays: loadedAppConfig.sessionDays || 30,
             verificationMinutes: loadedAppConfig.verificationMinutes || 30,
             requireEmailVerification,
+            teamsEnabled,
             bookmarksPerPage
         });
+        teamsFeatureEnabled = teamsEnabled;
+        applyTeamsFeatureVisibility();
         bookmarksPerPageSetting = bookmarksPerPage;
         currentBookmarkPage = 1;
         renderBookmarks();

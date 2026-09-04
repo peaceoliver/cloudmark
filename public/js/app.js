@@ -33,6 +33,10 @@ async function loadPublicConfig() {
         if (config && Number.isInteger(config.bookmarksPerPage) && config.bookmarksPerPage > 0) {
             bookmarksPerPageSetting = config.bookmarksPerPage;
         }
+        if (config && typeof config.teamsEnabled === 'boolean') {
+            teamsFeatureEnabled = config.teamsEnabled;
+            applyTeamsFeatureVisibility();
+        }
     } catch (err) { console.error('Failed to fetch public config:', err); }
 }
 

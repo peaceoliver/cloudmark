@@ -58,6 +58,14 @@
                             </div>
 
                             <div class="menu-section auth-only">
+                                <div class="menu-section-title"><i class="fa-solid fa-user"></i> Fiók</div>
+                                <div class="enterprise-actions">
+                                    <button class="btn btn-secondary team-feature" id="menuTeamBtn" onclick="openTeamManager()"><i class="fa-solid fa-users"></i> Team</button>
+                                    <button class="btn btn-secondary" id="menuUserSettingsBtn" onclick="openUserSettings()"><i class="fa-solid fa-user-gear"></i> Felhasználói beállítások</button>
+                                </div>
+                            </div>
+
+                            <div class="menu-section auth-only">
                                 <div class="menu-section-title"><i class="fa-solid fa-sliders"></i> Kezelés és adatkezelés</div>
                                 <div class="enterprise-actions">
                                     <button class="btn btn-secondary" id="manageCategoriesBtn"><i class="fa-solid fa-folder-gear"></i> Kategóriák kezelése</button>
@@ -341,7 +349,7 @@
     <div class="modal-overlay" id="adminConfigModal">
         <div class="modal">
             <div class="modal-title" style="color: var(--warning);">
-                <i class="fa-solid fa-sliders"></i> Rendszerbeállítások (Superuser)
+                <i class="fa-solid fa-sliders"></i> Beállítások (Superuser)
             </div>
             
             <form id="adminConfigForm" class="modal-form">
@@ -354,6 +362,17 @@
                 </div>
                 <small style="color: var(--text-secondary); display:block; margin-top:-0.5rem; margin-bottom:0.75rem;">
                     Ha kikapcsolod, az új regisztrációk azonnal aktívvá válnak, e-mail küldés nélkül. Ilyenkor te (admin) tudod manuálisan aktiválni/deaktiválni a felhasználókat az Admin panelben.
+                </small>
+
+                <div class="section-divider">
+                    <i class="fa-solid fa-users"></i> Csapatok (Team)
+                </div>
+                <div class="form-control" style="flex-direction: row; align-items: center; gap: 0.75rem;">
+                    <label style="margin:0;" for="cfgTeamsEnabled">Team menü engedélyezése a felhasználóknak</label>
+                    <input type="checkbox" id="cfgTeamsEnabled" style="width:auto; height:1.1rem;" checked>
+                </div>
+                <small style="color: var(--text-secondary); display:block; margin-top:-0.5rem; margin-bottom:0.75rem;">
+                    Ha kikapcsolod, a Team menüpont eltűnik minden felhasználó menüjéből.
                 </small>
 
                 <div class="section-divider">

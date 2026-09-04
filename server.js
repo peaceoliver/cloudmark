@@ -27,7 +27,8 @@ const DEFAULT_APP_SETTINGS = {
     sessionDays: 30,
     verificationMinutes: 30,
     requireEmailVerification: true,
-    bookmarksPerPage: 60
+    bookmarksPerPage: 60,
+    teamsEnabled: true
 };
 const registrationAttempts = new Map();
 const defaultSmtpConfig = {
@@ -1929,9 +1930,9 @@ app.put('/api/user/settings/:key', requireAuth, async (req, res) => {
 app.get('/api/public-config', async (req, res) => {
     try {
         const settings = await getAppSettings();
-        res.json({ bookmarksPerPage: settings.bookmarksPerPage });
+        res.json({ bookmarksPerPage: settings.bookmarksPerPage, teamsEnabled: settings.teamsEnabled !== false });
     } catch (err) {
-        res.json({ bookmarksPerPage: DEFAULT_APP_SETTINGS.bookmarksPerPage });
+        res.json({ bookmarksPerPage: DEFAULT_APP_SETTINGS.bookmarksPerPage, teamsEnabled: DEFAULT_APP_SETTINGS.teamsEnabled });
     }
 });
 
@@ -1947,12 +1948,13 @@ app.put('/api/admin/app-config', requireAdmin, async (req, res) => {
     const verificationMinutes = Number(req.body.verificationMinutes);
     const requireEmailVerification = Boolean(req.body.requireEmailVerification);
     const bookmarksPerPage = Number(req.body.bookmarksPerPage);
+    const teamsEnabled = Boolean(req.body.teamsEnabled);
     if (!Number.isInteger(sessionDays) || sessionDays < 1 || sessionDays > 365 || !Number.isInteger(verificationMinutes) || verificationMinutes < 5 || verificationMinutes > 1440
         || !Number.isInteger(bookmarksPerPage) || bookmarksPerPage < 5 || bookmarksPerPage > 500) {
         return res.status(400).json({ error: 'Érvénytelen app-beállítási érték.' });
     }
     try {
-        const settings = { sessionDays, verificationMinutes, requireEmailVerification, bookmarksPerPage };
+        const settings = { sessionDays, verificationMinutes, requireEmailVerification, bookmarksPerPage, teamsEnabled };
         await pool.query(
             `INSERT INTO settings_app (key, value, updated_at) VALUES ('app', $1, NOW())
              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
