@@ -130,7 +130,25 @@ header {
 .nav-actions {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.6rem;
+}
+
+.nav-actions .btn {
+    min-height: 2.25rem;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    gap: 0.4rem;
+}
+
+.nav-actions .btn-icon {
+    min-height: 2.25rem;
+    width: 2.25rem;
+    padding: 0.45rem;
+}
+
+.nav-actions .status-badge {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.65rem;
 }
 
 .btn {
@@ -211,6 +229,12 @@ header {
 .btn-icon:hover {
     background-color: var(--bg-card-hover);
     color: var(--accent);
+}
+
+.logout-btn:hover {
+    background-color: rgba(239, 68, 68, 0.12);
+    border-color: #ef4444;
+    color: #ef4444;
 }
 
 /* --- Main 3-dot Menu (2026 style: floating glass panel) --- */

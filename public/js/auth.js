@@ -84,7 +84,7 @@ function updateUserUI() {
         : '';
     const statusClass = currentUser.isSuperuser ? 'status-admin' : 'status-verified';
     const statusIcon = currentUser.isSuperuser ? 'fa-crown' : 'fa-check-circle';
-    area.innerHTML = `<div style="display:flex; align-items:center; gap:0.75rem;">${admin}<span class="status-badge ${statusClass}"><i class="fa-solid ${statusIcon}"></i> ${currentUser.username}</span><button class="btn btn-danger" onclick="logoutUser()"> <i class="fa-solid fa-right-from-bracket"></i> Kilépés</button></div>`;
+    area.innerHTML = `<div style="display:flex; align-items:center; gap:0.5rem;">${admin}<span class="status-badge ${statusClass}"><i class="fa-solid ${statusIcon}"></i> ${currentUser.username}</span><button class="btn-icon logout-btn" onclick="logoutUser()" title="Kilépés"><i class="fa-solid fa-right-from-bracket"></i></button></div>`;
     applyTeamsFeatureVisibility();
 }
 
