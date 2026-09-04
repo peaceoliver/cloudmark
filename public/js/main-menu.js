@@ -32,7 +32,7 @@
 
     // Category/tag management and export/import buttons stay open (multi-step flows);
     // only close automatically when their own modals are triggered elsewhere.
-    ['manageCategoriesBtn', 'manageTagsBtn'].forEach(id => {
+    ['manageCategoriesBtn', 'manageTagsBtn', 'menuInfoBtn'].forEach(id => {
         document.getElementById(id)?.addEventListener('click', closeMainMenu);
     });
     ['exportJsonBtn', 'exportHtmlBtn'].forEach(id => {

@@ -57,6 +57,13 @@
                                 </div>
                             </div>
 
+                            <div class="menu-section">
+                                <div class="menu-section-title"><i class="fa-solid fa-circle-info"></i> Információ</div>
+                                <div class="enterprise-actions">
+                                    <button class="btn btn-secondary" id="menuInfoBtn" type="button" onclick="openModal('infoModal')"><i class="fa-solid fa-book-open"></i> Info</button>
+                                </div>
+                            </div>
+
                             <div class="menu-section auth-only">
                                 <div class="menu-section-title"><i class="fa-solid fa-user"></i> Fiók</div>
                                 <div class="enterprise-actions">
@@ -688,6 +695,30 @@
             <div style="display:flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem;">
                 <button type="button" class="btn btn btn-danger" onclick="closeModal('previewModal')">Bezárás</button>
                 <a id="previewBookmarkOpen" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Megnyitás</a>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="infoModal">
+        <div class="modal">
+            <div class="modal-title"><i class="fa-solid fa-circle-info"></i> CloudMark - az oldal működése</div>
+            <div class="modal-form" style="max-height: 60vh; overflow-y: auto;">
+                <p>A CloudMark egy többfelhasználós könyvjelző-kezelő alkalmazás. Bejelentkezés után saját kategóriákba rendezve lehet weboldalakat menteni, keresni és kezelni.</p>
+                <h3>Könyvjelző mentése</h3>
+                <p>Új könyvjelzőhöz meg kell adni a címet, az URL-t és egy kategóriát. Leírás és címkék opcionálisan adhatók meg. A kézzel megadott cím lesz a könyvjelző fő címe, a kézzel megadott leírás pedig változatlanul mentődik és megjelenik a kártyán.</p>
+                <p>Azonos URL ugyanahhoz a felhasználóhoz egyszer menthető el. A gyorsmentő (bookmarklet) az aktuális oldal URL-jével és címével is elő tudja készíteni a mentést.</p>
+                <h3>Automatikus weboldal-adatok</h3>
+                <p>A felhasználói beállításokban külön kapcsolható a weboldal címsorának és képének olvasása. Mentéskor vagy szerkesztéskor az oldal <code>og:title</code>, <code>twitter:title</code> vagy HTML-címe beolvasható. Ha nincs kézzel megadott cím, ez lesz a fő cím.</p>
+                <p>Az oldal <code>og:image</code> vagy <code>twitter:image</code> képe kártyaképként jelenhet meg. Ha a leírás mező üres, az oldal meta-leírása elmenthető. A kézzel beírt leírás mindig elsőbbséget élvez.</p>
+                <p>Az automatikus beolvasás nem garantált: az oldal blokkolhatja a lekérést, vagy nem adhat meg megfelelő metaadatot.</p>
+                <h3>Megjelenítés és rendezés</h3>
+                <p>A könyvjelzők kártya-, kompakt- vagy listanézetben jelennek meg. A képek külön elrejthetők vagy megjeleníthetők. Keresés működik címre, URL-re, kategóriára, leírásra és címkére.</p>
+                <p>Rendezés: legújabb vagy legrégebbi elöl, ABC-sorrend cím szerint, illetve leggyakrabban megnyitott szerint.</p>
+                <h3>Állapotok és egyéb lehetőségek</h3>
+                <p>Egy könyvjelző lehet aktív, kedvenc, későbbi olvasásra jelölt, ellenőrzésre váró, archivált vagy kukába helyezett. A kijelölt könyvjelzők csoportosan is módosíthatók vagy más kategóriába mozgathatók.</p>
+                <p>Saját kategóriák és címkék kezelése, JSON- vagy HTML-import/export, valamint megosztható hivatkozás készítése is elérhető. A Team funkció és az adminisztrációs lehetőségek jogosultságtól függnek.</p>
+            </div>
+            <div style="display:flex; justify-content:flex-end; margin-top:1rem;">
+                <button type="button" class="btn btn-danger" onclick="closeModal('infoModal')">Bezárás</button>
             </div>
         </div>
     </div>
