@@ -154,22 +154,17 @@
         </div>
 
         <section class="dashboard-section category-section auth-only" aria-label="Kategóriák">
-            <button type="button" class="accordion-trigger category-main-toggle" data-target="categorySectionContent" data-storage-key="category-main" aria-expanded="true">
-                <span class="toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</span>
-                <i class="accordion-icon fa-solid fa-chevron-down"></i>
-            </button>
-            <div id="categorySectionContent" class="accordion-panel">
-                <div class="category-inner-content">
-                    <div class="category-header-row">
-                        <button type="button" class="accordion-trigger category-section-toggle" data-target="categoryTreePanelContent" data-storage-key="category-tree" aria-expanded="false">
-                            <span>Fa nézet</span>
-                            <i class="accordion-icon fa-solid fa-chevron-down"></i>
-                        </button>
-                    </div>
-                    <div class="categories-bar" id="categoriesBar"></div>
-                    <div id="categoryTreePanelContent" class="accordion-panel">
-                        <div class="category-tree-view" id="categoryTreeView" aria-label="Kategóriák fa nézet"></div>
-                    </div>
+            <div class="category-inner-content">
+                <div class="category-bubbles-label toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</div>
+                <div class="categories-bar" id="categoriesBar"></div>
+                <div class="category-header-row">
+                    <button type="button" class="accordion-trigger category-section-toggle" data-target="categoryTreePanelContent" data-storage-key="category-tree" aria-expanded="false">
+                        <span>Fa nézet</span>
+                        <i class="accordion-icon fa-solid fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div id="categoryTreePanelContent" class="accordion-panel">
+                    <div class="category-tree-view" id="categoryTreeView" aria-label="Kategóriák fa nézet"></div>
                 </div>
             </div>
         </section>

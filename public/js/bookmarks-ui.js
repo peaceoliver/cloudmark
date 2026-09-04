@@ -2,10 +2,34 @@ const bookmarksConfig = window.CloudMark && window.CloudMark.config ? window.Clo
 let currentBookmarkView = (bookmarksConfig.storageKeys ? localStorage.getItem(bookmarksConfig.storageKeys.viewMode) : null) || 'grid';
 let showBookmarkImages = bookmarksConfig.storageKeys ? localStorage.getItem(bookmarksConfig.storageKeys.showImages) !== 'false' : true;
 const tagInputState = new Map();
+let tagInputDocumentListenersAttached = false;
 const selectedBookmarkIds = new Set();
 let bulkSelectionEnabled = false;
 
+function closeTagSuggestions(wrapper) {
+    const suggestions = wrapper.querySelector('.tag-suggestions');
+    if (suggestions) suggestions.classList.remove('visible');
+}
+
+function attachTagInputDocumentListeners() {
+    if (tagInputDocumentListenersAttached) return;
+    document.addEventListener('click', event => {
+        document.querySelectorAll('[data-tag-input]').forEach(wrapper => {
+            if (!wrapper.contains(event.target)) closeTagSuggestions(wrapper);
+        });
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        const wrapper = event.target && typeof event.target.closest === 'function'
+            ? event.target.closest('[data-tag-input]')
+            : null;
+        if (wrapper) closeTagSuggestions(wrapper);
+    });
+    tagInputDocumentListenersAttached = true;
+}
+
 function initTagInputs() {
+    attachTagInputDocumentListeners();
     document.querySelectorAll('[data-tag-input]').forEach(wrapper => {
         const input = wrapper.querySelector('.tag-entry');
         const state = { values: [], suggestions: [] };
