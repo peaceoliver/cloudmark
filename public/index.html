@@ -106,7 +106,7 @@
         <!-- Manual Add Bookmark Panel -->
         <section class="dashboard-section add-bookmark-section auth-only" aria-label="Új könyvjelző hozzáadása">
             <button type="button" class="accordion-trigger add-bookmark-toggle" data-target="addBookmarkPanelContent" data-storage-key="add-bookmark" aria-expanded="false">
-                <span class="toolbar-label"><i class="fa-solid fa-folder"></i> Új könyvjelző hozzáadása</span>
+                <span class="toolbar-label"><i class="fa-solid fa-link"></i> Új könyvjelző hozzáadása</span>
                 <i class="accordion-icon fa-solid fa-chevron-down"></i>
             </button>
             <div id="addBookmarkPanelContent" class="accordion-panel">
@@ -164,13 +164,11 @@
         <section class="dashboard-section category-section auth-only" aria-label="Kategóriák">
             <div class="category-inner-content">
                 <div class="category-bubbles-label toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</div>
+                <button type="button" class="accordion-trigger category-section-toggle" data-target="categoryTreePanelContent" data-storage-key="category-tree" aria-expanded="false" aria-label="Fa nézet" title="Fa nézet">
+                    <i class="fa-solid fa-folder-tree" aria-hidden="true"></i>
+                    <i class="accordion-icon fa-solid fa-chevron-down" aria-hidden="true"></i>
+                </button>
                 <div class="categories-bar" id="categoriesBar"></div>
-                <div class="category-header-row">
-                    <button type="button" class="accordion-trigger category-section-toggle" data-target="categoryTreePanelContent" data-storage-key="category-tree" aria-expanded="false">
-                        <span>Fa nézet</span>
-                        <i class="accordion-icon fa-solid fa-chevron-down"></i>
-                    </button>
-                </div>
                 <div id="categoryTreePanelContent" class="accordion-panel">
                     <div class="category-tree-view" id="categoryTreeView" aria-label="Kategóriák fa nézet"></div>
                 </div>

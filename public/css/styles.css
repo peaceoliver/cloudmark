@@ -595,13 +595,6 @@ input:focus, select:focus {
 .toolbar-group { width: 100%; }
 .toolbar-label { margin: .15rem 0 .45rem; color: var(--text-secondary); font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 .toolbar-label i { margin-right: .35rem; color: var(--accent); }
-.category-header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-top: 0.25rem;
-}
 .accordion-trigger {
     display: inline-flex;
     align-items: center;
@@ -642,23 +635,30 @@ input:focus, select:focus {
 }
 .add-bookmark-toggle { margin-bottom: 0.5rem; }
 .category-section-toggle {
-    width: 100%;
-    padding: 0.45rem 0.75rem;
-    border-radius: 999px;
+    width: auto;
+    min-height: 2.25rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 10px;
     background: rgba(148, 163, 184, 0.05);
     color: var(--text-secondary);
     font-size: 0.8rem;
     font-weight: 600;
 }
 .category-inner-content {
-    display: block;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
 }
 .category-bubbles-label {
-    margin: 0 0 0.45rem;
+    margin: 0;
 }
-.category-tree-panel-content {
-    display: block;
-    margin-top: 0.5rem;
+.category-section-toggle .accordion-icon {
+    font-size: 0.7rem;
+}
+#categoryTreePanelContent {
+    flex-basis: 100%;
+    margin-top: 0;
 }
 .state-filters, .enterprise-actions, .enterprise-search { display: flex; gap: .5rem; flex-wrap: wrap; width: 100%; }
 .enterprise-search { align-items: center; }
@@ -852,11 +852,12 @@ input:focus, select:focus {
 /* Categories Section */
 .categories-bar {
     display: flex;
+    flex: 1 1 260px;
     align-items: center;
     gap: 0.75rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0;
     overflow-x: auto;
-    padding-bottom: 0.5rem;
+    padding: 0.25rem 0;
 }
 
 .category-chip {
