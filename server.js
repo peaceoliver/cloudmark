@@ -1305,7 +1305,7 @@ app.post('/api/auth/logout', async (req, res) => {
     }
 });
 
-/** Returns bookmarks visible to the current session, keeping public demo/admin entries public. */
+/** Returns a user's bookmarks, or only the administrator's MAIN category when anonymous. */
 app.get('/api/bookmarks', async (req, res) => {
     try {
         const user = await getAuthenticatedUser(req);
@@ -1328,8 +1328,23 @@ app.get('/api/bookmarks', async (req, res) => {
                 params = [userIds];
             }
         } else {
-            conditions.push('LOWER(CAST(b.user_id AS TEXT)) = ANY($1)');
-            params = [['demo', 'admin', 'main']];
+            conditions.push(`
+                b.category = 'MAIN'
+                AND EXISTS (
+                    SELECT 1
+                    FROM categories c
+                    JOIN users u ON u.id = c.owner_user_id
+                    WHERE c.name = 'MAIN'
+                      AND c.owner_user_id = 5
+                      AND u.role = 'admin'
+                )
+                AND LOWER(CAST(b.user_id AS TEXT)) IN (
+                    SELECT LOWER(username)
+                    FROM users
+                    WHERE id = 5 AND role = 'admin'
+                    UNION ALL SELECT '5'
+                )
+            `);
         }
         if (req.query.q) {
             params.push(`%${String(req.query.q).slice(0, 200)}%`);
@@ -1720,16 +1735,24 @@ app.get('/api/shares/:token', async (req, res) => {
 });
 
 
-/** Returns only categories owned by the authenticated user. */
-app.get('/api/categories', requireAuth, async (req, res) => {
+/** Returns a user's categories, or the administrator-owned MAIN category when anonymous. */
+app.get('/api/categories', async (req, res) => {
     try {
-        const result = await pool.query(
-            `SELECT id, name, parent_id, owner_user_id
-             FROM categories
-             WHERE owner_user_id = $1
-             ORDER BY id ASC`,
-            [req.user.id]
-        );
+        const user = await getAuthenticatedUser(req);
+        const result = user
+            ? await pool.query(
+                `SELECT id, name, parent_id, owner_user_id
+                 FROM categories
+                 WHERE owner_user_id = $1
+                 ORDER BY id ASC`,
+                [user.id]
+            )
+            : await pool.query(
+                `SELECT c.id, c.name, c.parent_id, c.owner_user_id
+                 FROM categories c
+                 JOIN users u ON u.id = c.owner_user_id
+                 WHERE c.name = 'MAIN' AND c.owner_user_id = 5 AND u.role = 'admin'`
+            );
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
