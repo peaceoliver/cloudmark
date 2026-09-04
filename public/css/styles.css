@@ -640,10 +640,7 @@ input:focus, select:focus {
 .accordion-panel.is-collapsed {
     display: none;
 }
-.category-main-toggle {
-    width: 100%;
-    margin-bottom: 0.5rem;
-}
+.add-bookmark-toggle { margin-bottom: 0.5rem; }
 .category-section-toggle {
     width: 100%;
     padding: 0.45rem 0.75rem;

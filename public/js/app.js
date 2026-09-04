@@ -135,6 +135,13 @@ function checkIncomingBookmarklet() {
     document.getElementById('bmTitle').value = params.get('title');
     document.getElementById('incomingAlert').style.display = 'inline-block';
     document.getElementById('addPanel').style.borderColor = 'var(--accent)';
+    const addBookmarkTrigger = document.querySelector('[data-target="addBookmarkPanelContent"]');
+    const addBookmarkPanel = document.getElementById('addBookmarkPanelContent');
+    if (addBookmarkTrigger && addBookmarkPanel) {
+        addBookmarkTrigger.setAttribute('aria-expanded', 'true');
+        addBookmarkPanel.classList.remove('is-collapsed');
+        sessionStorage.setItem('cloudmark.accordion.add-bookmark', 'true');
+    }
 }
 
 document.getElementById('themeToggle').addEventListener('click', () => {

@@ -104,13 +104,19 @@
     <main>
 
         <!-- Manual Add Bookmark Panel -->
-        <div class="control-panel" id="addPanel" style="display: none;">
-            <div class="panel-header">
-                <span class="panel-title"><i class="fa-solid fa-link"></i> Új Könyvjelző Hozzáadása</span>
-                <span id="incomingAlert" style="display:none; color: var(--accent); font-size: 0.85rem; font-weight:600;">
-                    <i class="fa-solid fa-arrow-down"></i> Bookmarkletből beérkezett adatok!
-                </span>
-            </div>
+        <section class="dashboard-section add-bookmark-section auth-only" aria-label="Új könyvjelző hozzáadása">
+            <button type="button" class="accordion-trigger add-bookmark-toggle" data-target="addBookmarkPanelContent" data-storage-key="add-bookmark" aria-expanded="false">
+                <span class="toolbar-label"><i class="fa-solid fa-folder"></i> Új könyvjelző hozzáadása</span>
+                <i class="accordion-icon fa-solid fa-chevron-down"></i>
+            </button>
+            <div id="addBookmarkPanelContent" class="accordion-panel">
+                <div class="control-panel" id="addPanel" style="display: none;">
+                    <div class="panel-header">
+                        <span class="panel-title"><i class="fa-solid fa-link"></i> Új Könyvjelző Hozzáadása</span>
+                        <span id="incomingAlert" style="display:none; color: var(--accent); font-size: 0.85rem; font-weight:600;">
+                            <i class="fa-solid fa-arrow-down"></i> Bookmarkletből beérkezett adatok!
+                        </span>
+                    </div>
             <form id="bookmarkForm" class="add-form-grid" style="display: flex; flex-direction: column; gap: 1rem;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div class="form-control">
@@ -151,7 +157,9 @@
                     </button>
                 </div>
             </form>
-        </div>
+                </div>
+            </div>
+        </section>
 
         <section class="dashboard-section category-section auth-only" aria-label="Kategóriák">
             <div class="category-inner-content">
