@@ -819,6 +819,7 @@ input:focus, select:focus {
 .state-filter {
     flex: 0 0 auto;
     height: 1.9rem;
+    min-height: 1.9rem;
     background: transparent;
     color: var(--text-secondary);
     border-color: transparent;
