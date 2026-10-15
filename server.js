@@ -2,12 +2,14 @@ require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
+const fs = require('fs');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const net = require('net');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const { registerItemRoutes, normalizeItemLanguage, ITEM_TYPES } = require('./routes/items');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -310,8 +312,10 @@ async function initDatabase() {
         await client.query('ALTER TABLE categories ADD COLUMN IF NOT EXISTS owner_user_id BIGINT REFERENCES users(id) ON DELETE CASCADE');
         await client.query('ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL');
         await client.query('ALTER TABLE categories DROP CONSTRAINT IF EXISTS categories_name_key');
-        await client.query('CREATE UNIQUE INDEX IF NOT EXISTS categories_owner_name_unique ON categories (COALESCE(owner_user_id, 0), LOWER(name))');
         await client.query('CREATE INDEX IF NOT EXISTS categories_parent_idx ON categories(parent_id)');
+
+        // Parancsok / jegyzetek közös táblái és a típusonkénti kategóriák (categories.kind).
+        await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '005_items.sql'), 'utf8'));
 
         client.release();
         console.log(`[OK] Supabase PostgreSQL tablak sikeresen ellenorizve / letrehozva!`);
@@ -334,6 +338,13 @@ function normalizeTags(tags) {
     return [...new Set((Array.isArray(tags) ? tags : String(tags || '').split(',')).map(tag => String(tag).trim().toLowerCase()).filter(Boolean))].slice(0, 30);
 }
 
+const CATEGORY_KINDS = ['bookmark', ...ITEM_TYPES];
+
+/** Returns a valid category kind; anything unknown falls back to bookmark categories. */
+function normalizeCategoryKind(value) {
+    return CATEGORY_KINDS.includes(value) ? value : 'bookmark';
+}
+
 async function userCanUseCategory(user, name) {
     const categoryName = String(name || '').trim();
     if (!categoryName) return false;
@@ -341,6 +352,7 @@ async function userCanUseCategory(user, name) {
         `SELECT 1 FROM categories
          WHERE LOWER(name) = LOWER($1)
            AND owner_user_id = $2
+           AND kind = 'bookmark'
          LIMIT 1`,
         [categoryName, user.id]
     );
@@ -1844,23 +1856,24 @@ app.get('/api/shares/:token', async (req, res) => {
 });
 
 
-/** Returns a user's categories, or the administrator-owned MAIN category when anonymous. */
+/** Returns a user's categories of one kind (?kind=, default bookmark), or the administrator-owned MAIN category when anonymous. */
 app.get('/api/categories', async (req, res) => {
     try {
         const user = await getAuthenticatedUser(req);
+        const kind = normalizeCategoryKind(req.query.kind);
         const result = user
             ? await pool.query(
-                `SELECT id, name, parent_id, owner_user_id
+                `SELECT id, name, parent_id, owner_user_id, kind, default_language
                  FROM categories
-                 WHERE owner_user_id = $1
+                 WHERE owner_user_id = $1 AND kind = $2
                  ORDER BY id ASC`,
-                [user.id]
+                [user.id, kind]
             )
             : await pool.query(
-                `SELECT c.id, c.name, c.parent_id, c.owner_user_id
+                `SELECT c.id, c.name, c.parent_id, c.owner_user_id, c.kind, c.default_language
                  FROM categories c
                  JOIN users u ON u.id = c.owner_user_id
-                 WHERE c.name = 'MAIN' AND c.owner_user_id = 5 AND u.role = 'admin'`
+                 WHERE c.name = 'MAIN' AND c.kind = 'bookmark' AND c.owner_user_id = 5 AND u.role = 'admin'`
             );
         res.json(result.rows);
     } catch (err) {
@@ -1868,29 +1881,35 @@ app.get('/api/categories', async (req, res) => {
     }
 });
 
-/** Creates a category owned by the authenticated user. */
+/** Creates a category of one kind (body.kind, default bookmark) owned by the authenticated user. */
 app.post('/api/categories', requireAuth, async (req, res) => {
     const { name, parentId } = req.body;
+    const kind = normalizeCategoryKind(req.body.kind);
     if (!name || !name.trim()) return res.status(400).json({ error: 'Missing name' });
+    const defaultLanguage = normalizeItemLanguage(req.body.defaultLanguage);
+    if (defaultLanguage === undefined) return res.status(400).json({ error: 'Érvénytelen nyelv.' });
     try {
         const parent = parentId === null || parentId === undefined || parentId === '' ? null : Number(parentId);
         const duplicate = await pool.query(
             `SELECT 1 FROM categories
-             WHERE LOWER(name) = LOWER($1) AND owner_user_id = $2`,
-            [name.trim(), req.user.id]
+             WHERE LOWER(name) = LOWER($1) AND owner_user_id = $2 AND kind = $3`,
+            [name.trim(), req.user.id, kind]
         );
         if (duplicate.rowCount) return res.status(409).json({ error: 'Ez a kategória már létezik.' });
         if (parent !== null && (!Number.isInteger(parent) || !(await pool.query(
-            'SELECT 1 FROM categories WHERE id = $1 AND owner_user_id = $2',
-            [parent, req.user.id]
+            'SELECT 1 FROM categories WHERE id = $1 AND owner_user_id = $2 AND kind = $3',
+            [parent, req.user.id, kind]
         )).rowCount)) {
             return res.status(400).json({ error: 'Érvénytelen szülőkategória.' });
         }
-        await pool.query('INSERT INTO categories (name, owner_user_id, parent_id) VALUES ($1, $2, $3)', [name.trim(), req.user.id, parent]);
+        await pool.query(
+            'INSERT INTO categories (name, owner_user_id, parent_id, kind, default_language) VALUES ($1, $2, $3, $4, $5)',
+            [name.trim(), req.user.id, parent, kind, defaultLanguage]
+        );
         const result = await pool.query(
-            `SELECT id, name, parent_id, owner_user_id FROM categories
-             WHERE owner_user_id = $1 ORDER BY id ASC`,
-            [req.user.id]
+            `SELECT id, name, parent_id, owner_user_id, kind, default_language FROM categories
+             WHERE owner_user_id = $1 AND kind = $2 ORDER BY id ASC`,
+            [req.user.id, kind]
         );
         res.status(201).json(result.rows);
     } catch (err) {
@@ -1902,6 +1921,7 @@ app.post('/api/categories', requireAuth, async (req, res) => {
 app.put('/api/categories/:oldName', requireAuth, async (req, res) => {
     const oldName = req.params.oldName;
     const { newName } = req.body;
+    const kind = normalizeCategoryKind(req.body.kind || req.query.kind);
 
     if (!newName || !newName.trim()) {
         return res.status(400).json({ error: 'Az új név megadása kötelező!' });
@@ -1916,16 +1936,17 @@ app.put('/api/categories/:oldName', requireAuth, async (req, res) => {
             await client.query('BEGIN');
             const duplicate = await client.query(
                 `SELECT 1 FROM categories
-                 WHERE LOWER(name) = LOWER($1) AND owner_user_id = $2`,
-                [newName.trim(), req.user.id]
+                 WHERE LOWER(name) = LOWER($1) AND owner_user_id = $2 AND kind = $3`,
+                [newName.trim(), req.user.id, kind]
             );
             if (duplicate.rowCount) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'Ez a kategória már létezik.' }); }
             const renamed = await client.query(
-                'UPDATE categories SET name = $1 WHERE name = $2 AND owner_user_id = $3 RETURNING id',
-                [newName.trim(), oldName, req.user.id]
+                'UPDATE categories SET name = $1 WHERE name = $2 AND owner_user_id = $3 AND kind = $4 RETURNING id',
+                [newName.trim(), oldName, req.user.id, kind]
             );
             if (!renamed.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'A kategória nem található.' }); }
-            await client.query('UPDATE bookmarks SET category = $1 WHERE category = $2 AND user_id = $3', [newName.trim(), oldName, req.user.username]);
+            // Parancsok/jegyzetek id alapján hivatkoznak, csak a könyvjelzők tárolják a nevet.
+            if (kind === 'bookmark') await client.query('UPDATE bookmarks SET category = $1 WHERE category = $2 AND user_id = $3', [newName.trim(), oldName, req.user.username]);
             await client.query('COMMIT');
         } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
 
@@ -1939,20 +1960,22 @@ app.put('/api/categories/:oldName', requireAuth, async (req, res) => {
 /** Deletes a category owned by the authenticated user and moves its bookmarks to Inbox. */
 app.delete('/api/categories/:name', requireAuth, async (req, res) => {
     const catName = req.params.name;
+    const kind = normalizeCategoryKind(req.query.kind);
 
     try {
         // Opcionális: Ha törlöd a kategóriát, az abba tartozó könyvjelzőket áthelyezheted "Inbox"-ba, vagy törölheted. 
         // Itt átrakjuk őket "Inbox"-ba, hogy ne törlődjenek a könyvjelzők:
-        if (catName === 'Inbox') return res.status(400).json({ error: 'Az Inbox nem törölhető.' });
+        if (kind === 'bookmark' && catName === 'Inbox') return res.status(400).json({ error: 'Az Inbox nem törölhető.' });
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
             const deleted = await client.query(
-                'DELETE FROM categories WHERE name = $1 AND owner_user_id = $2 RETURNING id',
-                [catName, req.user.id]
+                'DELETE FROM categories WHERE name = $1 AND owner_user_id = $2 AND kind = $3 RETURNING id',
+                [catName, req.user.id, kind]
             );
             if (!deleted.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'A kategória nem található.' }); }
-            await client.query('UPDATE bookmarks SET category = $1 WHERE category = $2 AND user_id = $3', ['Inbox', catName, req.user.username]);
+            // A parancsok/jegyzetek category_id-ja az ON DELETE SET NULL miatt magától Inbox lesz.
+            if (kind === 'bookmark') await client.query('UPDATE bookmarks SET category = $1 WHERE category = $2 AND user_id = $3', ['Inbox', catName, req.user.username]);
             await client.query('COMMIT');
         } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
         
@@ -2154,6 +2177,9 @@ app.put('/api/admin/app-config', requireAdmin, async (req, res) => {
         res.json(settings);
     } catch (err) { res.status(500).json({ error: 'Az alkalmazásbeállítás mentése nem sikerült.' }); }
 });
+
+// Parancsok / jegyzetek API (a catch-all előtt kell regisztrálni)
+registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normalizeTags });
 
 // Főoldal kiszolgálása
 app.get('*', (req, res) => {
