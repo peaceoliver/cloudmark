@@ -10,6 +10,8 @@ const net = require('net');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { registerItemRoutes, normalizeItemLanguage, ITEM_TYPES } = require('./routes/items');
+const { registerTaskRoutes } = require('./routes/tasks');
+const taskDates = require('./public/js/task-parser');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -316,6 +318,8 @@ async function initDatabase() {
 
         // Parancsok / jegyzetek közös táblái és a típusonkénti kategóriák (categories.kind).
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '005_items.sql'), 'utf8'));
+        // Feladatok: határidő, prioritás, ismétlődés, részfeladatok, emlékeztetők, kapcsolatok.
+        await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '006_tasks.sql'), 'utf8'));
 
         client.release();
         console.log(`[OK] Supabase PostgreSQL tablak sikeresen ellenorizve / letrehozva!`);
@@ -1168,7 +1172,9 @@ app.get('/api/admin/backup/export', requireAdmin, async (req, res) => {
             pool.query('SELECT * FROM categories ORDER BY id'),
             pool.query('SELECT * FROM items ORDER BY id'),
             pool.query('SELECT * FROM item_fragments ORDER BY item_id, position'),
-            pool.query('SELECT * FROM item_tags ORDER BY item_id, tag_id')
+            pool.query('SELECT * FROM item_tags ORDER BY item_id, tag_id'),
+            pool.query('SELECT * FROM item_reminders ORDER BY id'),
+            pool.query('SELECT * FROM item_links ORDER BY item_id, target_type, target_id')
         ]);
         const payload = {
             exportedAt: new Date().toISOString(),
@@ -1184,7 +1190,9 @@ app.get('/api/admin/backup/export', requireAdmin, async (req, res) => {
                 categories: tables[7].rows,
                 items: tables[8].rows,
                 item_fragments: tables[9].rows,
-                item_tags: tables[10].rows
+                item_tags: tables[10].rows,
+                item_reminders: tables[11].rows,
+                item_links: tables[12].rows
             }
         };
         res.type('application/json').attachment('cloudmark-backup.json').send(JSON.stringify(payload, null, 2));
@@ -1200,7 +1208,7 @@ app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
         const data = payload.data || {};
         if (!data || typeof data !== 'object') return res.status(400).json({ error: 'Érvénytelen mentési csomag.' });
 
-        const tables = ['users', 'teams', 'settings_app', 'settings_user', 'tags', 'categories', 'bookmarks', 'bookmark_tags', 'items', 'item_fragments', 'item_tags'];
+        const tables = ['users', 'teams', 'settings_app', 'settings_user', 'tags', 'categories', 'bookmarks', 'bookmark_tags', 'items', 'item_fragments', 'item_tags', 'item_reminders', 'item_links'];
         for (const table of tables) {
             const rows = Array.isArray(data[table]) ? data[table] : [];
             if (!rows.length) continue;
@@ -1318,18 +1326,27 @@ app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
             if (table === 'items') {
                 for (const row of rows) {
                     await pool.query(
-                        `INSERT INTO items (id, owner_user_id, type, title, description, category_id, body, color, pinned, starred, archived, trashed, position, use_count, extra, created_at, updated_at)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                        `INSERT INTO items (id, owner_user_id, type, title, description, category_id, body, color, pinned, starred, archived, trashed, position, use_count, extra, created_at, updated_at,
+                                            status, priority, due_at, due_all_day, completed_at, recurrence_rule)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
                          ON CONFLICT (id) DO UPDATE SET
                            owner_user_id = EXCLUDED.owner_user_id, type = EXCLUDED.type, title = EXCLUDED.title,
                            description = EXCLUDED.description, category_id = EXCLUDED.category_id, body = EXCLUDED.body,
                            color = EXCLUDED.color, pinned = EXCLUDED.pinned, starred = EXCLUDED.starred,
                            archived = EXCLUDED.archived, trashed = EXCLUDED.trashed, position = EXCLUDED.position,
-                           use_count = EXCLUDED.use_count, extra = EXCLUDED.extra, updated_at = EXCLUDED.updated_at`,
+                           use_count = EXCLUDED.use_count, extra = EXCLUDED.extra, updated_at = EXCLUDED.updated_at,
+                           status = EXCLUDED.status, priority = EXCLUDED.priority, due_at = EXCLUDED.due_at,
+                           due_all_day = EXCLUDED.due_all_day, completed_at = EXCLUDED.completed_at, recurrence_rule = EXCLUDED.recurrence_rule`,
                         [row.id, row.owner_user_id, row.type, row.title, row.description, row.category_id || null, row.body, row.color,
                             Boolean(row.pinned), Boolean(row.starred), Boolean(row.archived), Boolean(row.trashed), row.position ?? null,
-                            row.use_count || 0, JSON.stringify(row.extra || {}), row.created_at || new Date(), row.updated_at || new Date()]
+                            row.use_count || 0, JSON.stringify(row.extra || {}), row.created_at || new Date(), row.updated_at || new Date(),
+                            row.type === 'task' ? (row.status || 'todo') : null, row.priority ?? null, row.due_at || null,
+                            row.due_all_day !== false, row.completed_at || null, row.recurrence_rule || null]
                     );
+                }
+                // A szülőfeladatot a második körben állítjuk be, mert a szülő későbbi id-val is jöhet.
+                for (const row of rows) {
+                    if (row.type === 'task') await pool.query('UPDATE items SET parent_item_id = $2 WHERE id = $1', [row.id, row.parent_item_id || null]);
                 }
                 continue;
             }
@@ -1349,10 +1366,34 @@ app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
                 for (const row of rows) {
                     await pool.query('INSERT INTO item_tags (item_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [row.item_id, row.tag_id]);
                 }
+                continue;
+            }
+            if (table === 'item_reminders') {
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO item_reminders (id, item_id, offset_minutes, remind_at, channels, sent_at, attempts, last_error, created_at)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                         ON CONFLICT (id) DO UPDATE SET item_id = EXCLUDED.item_id, offset_minutes = EXCLUDED.offset_minutes,
+                           remind_at = EXCLUDED.remind_at, channels = EXCLUDED.channels, sent_at = EXCLUDED.sent_at,
+                           attempts = EXCLUDED.attempts, last_error = EXCLUDED.last_error`,
+                        [row.id, row.item_id, row.offset_minutes ?? null, row.remind_at, row.channels || ['in_app', 'push', 'email'],
+                            row.sent_at || null, row.attempts || 0, row.last_error || null, row.created_at || new Date()]
+                    );
+                }
+                continue;
+            }
+            if (table === 'item_links') {
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO item_links (item_id, target_type, target_id, created_at) VALUES ($1, $2, $3, $4)
+                         ON CONFLICT DO NOTHING`,
+                        [row.item_id, row.target_type, row.target_id, row.created_at || new Date()]
+                    );
+                }
             }
         }
         // A kézzel megadott id-k után a sorozatokat a legnagyobb id-ra állítjuk, különben az új sorok ütköznének.
-        for (const table of ['users', 'teams', 'tags', 'categories', 'bookmarks', 'items', 'item_fragments']) {
+        for (const table of ['users', 'teams', 'tags', 'categories', 'bookmarks', 'items', 'item_fragments', 'item_reminders']) {
             await pool.query(`SELECT setval(pg_get_serial_sequence('${table}', 'id'), GREATEST((SELECT COALESCE(MAX(id), 0) FROM ${table}), 1))`);
         }
         await recordAuditEvent({ userId: req.user.id, action: 'backup_imported', entityType: 'backup', details: { importedTables: tables }, req });
@@ -2185,10 +2226,11 @@ app.get('/api/user/settings', requireAuth, async (req, res) => {
 
 /** Saves one supported UI preference for the authenticated user. */
 app.put('/api/user/settings/:key', requireAuth, async (req, res) => {
-    const allowedKeys = ['theme', 'viewMode', 'sortMode', 'fetchMetadata', 'fetchMetadataTitle', 'fetchMetadataImage'];
+    const allowedKeys = ['theme', 'viewMode', 'sortMode', 'fetchMetadata', 'fetchMetadataTitle', 'fetchMetadataImage', 'timezone'];
     const { key } = req.params;
     if (!allowedKeys.includes(key)) return res.status(400).json({ error: 'Ismeretlen felhasználói beállítás.' });
     if (req.body.value === undefined || req.body.value === null || String(req.body.value).trim() === '') return res.status(400).json({ error: 'Érvénytelen beállítási érték.' });
+    if (key === 'timezone' && !taskDates.isValidTimeZone(req.body.value)) return res.status(400).json({ error: 'Érvénytelen időzóna.' });
 
     try {
         await pool.query(
@@ -2243,7 +2285,8 @@ app.put('/api/admin/app-config', requireAdmin, async (req, res) => {
 });
 
 // Parancsok / jegyzetek API (a catch-all előtt kell regisztrálni)
-registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normalizeTags });
+const itemHelpers = registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normalizeTags });
+registerTaskRoutes(app, { pool, requireAuth, recordAuditEvent, ...itemHelpers });
 
 // Főoldal kiszolgálása
 app.get('*', (req, res) => {

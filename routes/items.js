@@ -1,9 +1,16 @@
 /**
- * Parancsok (és később jegyzetek, egyéb típusok) API-ja az `items` táblán.
+ * Parancsok, jegyzetek és feladatok API-ja az `items` táblán.
  * A könyvjelzők külön táblában maradnak; ez a modul csak a nem-URL típusokat kezeli.
+ * A feladat-specifikus végpontok (kipipálás, okos listák összesítője, gyors-beírás) a routes/tasks.js-ben vannak.
  */
 
-const ITEM_TYPES = ['command', 'note'];
+const taskDates = require('../public/js/task-parser');
+
+const ITEM_TYPES = ['command', 'note', 'task'];
+const TASK_STATUSES = ['todo', 'doing', 'done'];
+const TASK_VIEWS = ['today', 'upcoming', 'overdue', 'inbox', 'done'];
+const MAX_REMINDERS = 10;
+const MAX_LINKS = 50;
 const MAX_TITLE_LENGTH = 300;
 const MAX_DESCRIPTION_LENGTH = 5000;
 const MAX_BODY_LENGTH = 100000;
@@ -49,9 +56,85 @@ function normalizeFragments(input, fallbackLanguage) {
 }
 
 /** Validates the shared item fields used by create, update and import. */
+/** A validation failure detected inside a transaction; the route answers it with 400. */
+class ItemInputError extends Error {}
+
+function parseOptionalDate(value) {
+    if (value === undefined || value === null || value === '') return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+/**
+ * Validates the task-only fields. Reminders and links are left `undefined` when the request
+ * does not send them, so an update keeps the existing ones.
+ */
+function normalizeTaskInput(body) {
+    // Ha az állapot nincs megadva, új feladatnál 'todo', módosításnál a régi marad.
+    const status = body.status === undefined || body.status === null || body.status === '' ? null : String(body.status);
+    if (status !== null && !TASK_STATUSES.includes(status)) return { error: 'Érvénytelen állapot.' };
+    const priority = body.priority === undefined || body.priority === null || body.priority === '' ? null : Number(body.priority);
+    if (priority !== null && (!Number.isInteger(priority) || priority < 1 || priority > 4)) return { error: 'A prioritás 1 és 4 közötti szám lehet.' };
+    const dueAt = parseOptionalDate(body.dueAt);
+    if (dueAt === undefined) return { error: 'Érvénytelen határidő.' };
+    let recurrenceRule = null;
+    if (body.recurrenceRule !== undefined && body.recurrenceRule !== null && body.recurrenceRule !== '') {
+        recurrenceRule = taskDates.normalizeRecurrence(String(body.recurrenceRule));
+        if (!recurrenceRule) return { error: 'Nem támogatott ismétlődési szabály.' };
+        if (!dueAt) return { error: 'Ismétlődő feladathoz határidő is kell.' };
+    }
+    const parentItemId = body.parentItemId === undefined || body.parentItemId === null || body.parentItemId === '' ? null : Number(body.parentItemId);
+    if (parentItemId !== null && (!Number.isInteger(parentItemId) || parentItemId < 1)) return { error: 'Érvénytelen szülőfeladat.' };
+
+    let reminders;
+    if (body.reminders !== undefined && body.reminders !== null) {
+        if (!Array.isArray(body.reminders) || body.reminders.length > MAX_REMINDERS) return { error: `Legfeljebb ${MAX_REMINDERS} emlékeztető adható meg.` };
+        reminders = [];
+        for (const raw of body.reminders) {
+            const offset = typeof raw === 'number' ? raw : raw?.offsetMinutes;
+            if (offset !== undefined && offset !== null) {
+                if (!Number.isInteger(offset) || offset < 0 || offset > 525600) return { error: 'Érvénytelen emlékeztető.' };
+                if (!dueAt) return { error: 'A határidőhöz kötött emlékeztetőhöz határidő kell.' };
+                reminders.push({ offsetMinutes: offset, remindAt: new Date(dueAt.getTime() - offset * 60000) });
+            } else {
+                const remindAt = parseOptionalDate(raw?.remindAt);
+                if (!remindAt) return { error: 'Érvénytelen emlékeztető időpont.' };
+                reminders.push({ offsetMinutes: null, remindAt });
+            }
+        }
+    }
+
+    let links;
+    if (body.links !== undefined && body.links !== null) {
+        if (!Array.isArray(body.links) || body.links.length > MAX_LINKS) return { error: `Legfeljebb ${MAX_LINKS} kapcsolat adható meg.` };
+        const seen = new Set();
+        links = [];
+        for (const raw of body.links) {
+            const targetType = String(raw?.targetType ?? raw?.type ?? '');
+            const targetId = Number(raw?.targetId ?? raw?.id);
+            if (!['item', 'bookmark'].includes(targetType) || !Number.isInteger(targetId) || targetId < 1) return { error: 'Érvénytelen kapcsolat.' };
+            const key = `${targetType}:${targetId}`;
+            if (!seen.has(key)) { seen.add(key); links.push({ targetType, targetId }); }
+        }
+    }
+
+    return {
+        task: {
+            status,
+            priority,
+            dueAt,
+            dueAllDay: dueAt ? body.dueAllDay !== false : true,
+            recurrenceRule,
+            parentItemId,
+            reminders,
+            links
+        }
+    };
+}
+
 function normalizeItemInput(body, type) {
     const title = optionalText(body.title, MAX_TITLE_LENGTH);
-    if (type === 'command' && !title) return { error: 'A cím megadása kötelező.' };
+    if ((type === 'command' || type === 'task') && !title) return { error: 'A cím megadása kötelező.' };
     const extra = body.extra === undefined ? {} : body.extra;
     if (!extra || typeof extra !== 'object' || Array.isArray(extra)) return { error: 'Érvénytelen kiegészítő adat.' };
     if (JSON.stringify(extra).length > MAX_EXTRA_LENGTH) return { error: 'Túl nagy kiegészítő adat.' };
@@ -80,7 +163,72 @@ function normalizeItemInput(body, type) {
         tags: body.tags
     };
     if (type === 'note' && !value.title && !value.body && !extra.checklist) return { error: 'Üres jegyzet nem menthető.' };
+    if (type === 'task') {
+        const { task, error: taskError } = normalizeTaskInput(body);
+        if (taskError) return { error: taskError };
+        value.task = task;
+    }
     return { value };
+}
+
+/**
+ * Re-aligns a task's reminders with its due time: relative reminders follow the due time
+ * (and are dropped when it is cleared), and reminders whose time has already passed are marked
+ * as sent so that the scheduler never fires them late.
+ * `shiftMs` moves fixed-time reminders too, used when a repeating task jumps to its next date.
+ */
+async function syncReminders(db, itemId, shiftMs = 0) {
+    await db.query(
+        `DELETE FROM item_reminders r USING items i
+         WHERE r.item_id = i.id AND i.id = $1 AND r.offset_minutes IS NOT NULL AND i.due_at IS NULL`,
+        [itemId]
+    );
+    await db.query(
+        `UPDATE item_reminders r
+         SET remind_at = CASE WHEN r.offset_minutes IS NOT NULL THEN i.due_at - make_interval(mins => r.offset_minutes)
+                              ELSE r.remind_at + make_interval(secs => $2::double precision / 1000) END,
+             sent_at = CASE WHEN $2::double precision <> 0 THEN NULL ELSE r.sent_at END,
+             attempts = CASE WHEN $2::double precision <> 0 THEN 0 ELSE r.attempts END,
+             last_error = CASE WHEN $2::double precision <> 0 THEN NULL ELSE r.last_error END
+         FROM items i
+         WHERE r.item_id = i.id AND i.id = $1`,
+        [itemId, shiftMs]
+    );
+    await db.query(
+        `UPDATE item_reminders r SET sent_at = NOW()
+         FROM items i
+         WHERE r.item_id = i.id AND i.id = $1 AND r.sent_at IS NULL
+           AND (r.remind_at <= NOW() OR i.status = 'done')`,
+        [itemId]
+    );
+}
+
+/** SQL fragment with the start of today, tomorrow and the 8th day in time zone $tz, as timestamptz. */
+function dayBoundsSql(tzParam) {
+    return `(date_trunc('day', NOW() AT TIME ZONE ${tzParam}) AT TIME ZONE ${tzParam}) AS today_start,
+            ((date_trunc('day', NOW() AT TIME ZONE ${tzParam}) + INTERVAL '1 day') AT TIME ZONE ${tzParam}) AS tomorrow_start,
+            ((date_trunc('day', NOW() AT TIME ZONE ${tzParam}) + INTERVAL '8 days') AT TIME ZONE ${tzParam}) AS week_end`;
+}
+
+/** WHERE conditions (on alias i, with bounds alias d) for the smart task lists. */
+const TASK_VIEW_CONDITIONS = {
+    overdue: `i.status <> 'done' AND i.due_at IS NOT NULL
+              AND ((i.due_all_day AND i.due_at < d.today_start) OR (NOT i.due_all_day AND i.due_at < NOW()))`,
+    today: `i.status <> 'done' AND i.due_at < d.tomorrow_start`,
+    upcoming: `i.status <> 'done' AND i.due_at >= d.tomorrow_start AND i.due_at < d.week_end`,
+    inbox: `i.status <> 'done' AND i.category_id IS NULL AND i.parent_item_id IS NULL`,
+    done: `i.status = 'done'`
+};
+
+/** The user's time zone: a valid explicit value, then the saved setting, then Europe/Budapest. */
+async function resolveTimeZone(db, userId, explicit) {
+    if (taskDates.isValidTimeZone(explicit)) return explicit;
+    try {
+        const result = await db.query("SELECT value FROM settings_user WHERE user_id = $1 AND setting_key = 'timezone'", [userId]);
+        const saved = result.rows[0]?.value;
+        if (taskDates.isValidTimeZone(saved)) return saved;
+    } catch (err) { /* fall back to the default */ }
+    return taskDates.DEFAULT_TIME_ZONE;
 }
 
 function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normalizeTags }) {
@@ -89,7 +237,17 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                COALESCE((SELECT json_agg(json_build_object('id', f.id, 'position', f.position, 'label', f.label, 'language', f.language, 'content', f.content) ORDER BY f.position)
                          FROM item_fragments f WHERE f.item_id = i.id), '[]') AS fragments,
                COALESCE((SELECT array_agg(t.name ORDER BY t.name)
-                         FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = i.id), '{}') AS tags
+                         FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = i.id), '{}') AS tags,
+               COALESCE((SELECT json_agg(json_build_object('id', r.id, 'offsetMinutes', r.offset_minutes, 'remindAt', r.remind_at, 'sentAt', r.sent_at, 'channels', r.channels) ORDER BY r.remind_at)
+                         FROM item_reminders r WHERE r.item_id = i.id), '[]') AS reminders,
+               COALESCE((SELECT json_agg(json_build_object('targetType', l.target_type, 'targetId', l.target_id, 'itemType', li.type,
+                                                           'title', COALESCE(li.title, b.title), 'url', b.url) ORDER BY l.created_at, l.target_type DESC, l.target_id)
+                         FROM item_links l
+                         LEFT JOIN items li ON l.target_type = 'item' AND li.id = l.target_id AND li.owner_user_id = i.owner_user_id AND li.trashed = FALSE
+                         LEFT JOIN bookmarks b ON l.target_type = 'bookmark' AND b.id = l.target_id AND b.trashed = FALSE
+                         WHERE l.item_id = i.id AND (li.id IS NOT NULL OR b.id IS NOT NULL)), '[]') AS links,
+               (SELECT COUNT(*) FROM items s WHERE s.parent_item_id = i.id AND s.trashed = FALSE)::int AS subtask_count,
+               (SELECT COUNT(*) FROM items s WHERE s.parent_item_id = i.id AND s.trashed = FALSE AND s.status = 'done')::int AS subtask_done_count
         FROM items i
         LEFT JOIN categories c ON c.id = i.category_id`;
 
@@ -126,6 +284,78 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
         }
     }
 
+    /** Checks that the parent is the user's own top-level task and that this task has no subtasks itself. */
+    async function validateParent(db, itemId, parentItemId, userId) {
+        if (parentItemId === null) return null;
+        if (itemId !== null && String(parentItemId) === String(itemId)) return 'Egy feladat nem lehet a saját részfeladata.';
+        const parent = await db.query(
+            "SELECT parent_item_id FROM items WHERE id = $1 AND owner_user_id = $2 AND type = 'task'",
+            [parentItemId, userId]
+        );
+        if (!parent.rowCount) return 'A szülőfeladat nem található.';
+        if (parent.rows[0].parent_item_id !== null) return 'Részfeladatnak nem lehet további részfeladata.';
+        if (itemId !== null) {
+            const children = await db.query('SELECT 1 FROM items WHERE parent_item_id = $1 LIMIT 1', [itemId]);
+            if (children.rowCount) return 'Részfeladatokkal rendelkező feladat nem lehet részfeladat.';
+        }
+        return null;
+    }
+
+    /** Checks that every link target exists and belongs to the user. */
+    async function validateLinks(db, itemId, links, user) {
+        const itemIds = links.filter(link => link.targetType === 'item').map(link => link.targetId);
+        const bookmarkIds = links.filter(link => link.targetType === 'bookmark').map(link => link.targetId);
+        if (itemId !== null && itemIds.some(id => String(id) === String(itemId))) return 'Egy elem nem kapcsolható önmagához.';
+        if (itemIds.length) {
+            const found = await db.query('SELECT COUNT(*)::int AS count FROM items WHERE id = ANY($1) AND owner_user_id = $2', [itemIds, user.id]);
+            if (found.rows[0].count !== itemIds.length) return 'A kapcsolt elem nem található.';
+        }
+        if (bookmarkIds.length) {
+            const found = await db.query(
+                'SELECT COUNT(*)::int AS count FROM bookmarks WHERE id = ANY($1) AND (user_id = $2 OR user_id = $3)',
+                [bookmarkIds, user.username, String(user.id)]
+            );
+            if (found.rows[0].count !== bookmarkIds.length) return 'A kapcsolt könyvjelző nem található.';
+        }
+        return null;
+    }
+
+    /**
+     * Writes the task columns, reminders and links of a task inside a transaction.
+     * Returns an error message for invalid references, otherwise null.
+     */
+    async function saveTaskFields(db, itemId, task, user) {
+        const parentError = await validateParent(db, itemId, task.parentItemId, user.id);
+        if (parentError) return parentError;
+        if (task.links) {
+            const linkError = await validateLinks(db, itemId, task.links, user);
+            if (linkError) return linkError;
+        }
+        await db.query(
+            `UPDATE items SET status = COALESCE($2, status, 'todo'), priority = $3, due_at = $4, due_all_day = $5, recurrence_rule = $6, parent_item_id = $7,
+                    completed_at = CASE WHEN $8 THEN COALESCE(completed_at, NOW()) WHEN $9 THEN completed_at ELSE NULL END
+             WHERE id = $1`,
+            [itemId, task.status, task.priority, task.dueAt, task.dueAllDay, task.recurrenceRule, task.parentItemId, task.status === 'done', task.status === null]
+        );
+        if (task.reminders) {
+            await db.query('DELETE FROM item_reminders WHERE item_id = $1', [itemId]);
+            for (const reminder of task.reminders) {
+                await db.query(
+                    'INSERT INTO item_reminders (item_id, offset_minutes, remind_at) VALUES ($1, $2, $3)',
+                    [itemId, reminder.offsetMinutes, reminder.remindAt]
+                );
+            }
+        }
+        await syncReminders(db, itemId);
+        if (task.links) {
+            await db.query('DELETE FROM item_links WHERE item_id = $1', [itemId]);
+            for (const link of task.links) {
+                await db.query('INSERT INTO item_links (item_id, target_type, target_id) VALUES ($1, $2, $3)', [itemId, link.targetType, link.targetId]);
+            }
+        }
+        return null;
+    }
+
     async function withTransaction(work) {
         const client = await pool.connect();
         try {
@@ -146,10 +376,16 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
         return Number.isInteger(id) && id > 0 ? id : null;
     }
 
-    /** Lists the user's items of one type with fragments and tags, for client-side filtering. */
+    /**
+     * Lists the user's items of one type with fragments and tags, for client-side filtering.
+     * Tasks also accept a smart list (`view=today|upcoming|overdue|inbox|done`) evaluated in the
+     * user's time zone (`tz`), and are ordered by due date; the done list is paged with limit/offset.
+     */
     app.get('/api/items', requireAuth, async (req, res) => {
         const type = String(req.query.type || '');
         if (!ITEM_TYPES.includes(type)) return res.status(400).json({ error: 'Érvénytelen típus.' });
+        const view = req.query.view ? String(req.query.view) : null;
+        if (view && (type !== 'task' || !TASK_VIEWS.includes(view))) return res.status(400).json({ error: 'Érvénytelen nézet.' });
         const params = [req.user.id, type];
         const conditions = ['i.owner_user_id = $1', 'i.type = $2'];
         if (req.query.all !== 'true') {
@@ -160,9 +396,26 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
             }
         }
         try {
+            let from = '';
+            let order = 'i.pinned DESC, i.position ASC NULLS LAST, i.updated_at DESC';
+            let page = '';
+            if (type === 'task') {
+                order = `i.status = 'done', i.due_at ASC NULLS LAST, i.priority ASC NULLS LAST, i.position ASC NULLS LAST, i.created_at ASC`;
+                if (view) {
+                    params.push(await resolveTimeZone(pool, req.user.id, req.query.tz));
+                    from = `CROSS JOIN (SELECT ${dayBoundsSql(`$${params.length}`)}) d`;
+                    conditions.push(`(${TASK_VIEW_CONDITIONS[view]})`);
+                }
+                if (view === 'done') {
+                    order = 'i.completed_at DESC NULLS LAST, i.id DESC';
+                    const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 100, 1), 500);
+                    const offset = Math.max(Number.parseInt(req.query.offset, 10) || 0, 0);
+                    page = `LIMIT ${limit} OFFSET ${offset}`;
+                }
+            }
             const result = await pool.query(
-                `${ITEM_SELECT} WHERE ${conditions.join(' AND ')}
-                 ORDER BY i.pinned DESC, i.position ASC NULLS LAST, i.updated_at DESC`,
+                `${ITEM_SELECT} ${from} WHERE ${conditions.join(' AND ')}
+                 ORDER BY ${order} ${page}`,
                 params
             );
             res.json(result.rows);
@@ -182,7 +435,20 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                 [req.user.id, type]
             );
             const rows = result.rows;
+            const tz = type === 'task' ? await resolveTimeZone(pool, req.user.id, req.query.tz) : null;
             await recordAuditEvent({ userId: req.user.id, action: 'items_exported', entityType: 'item', details: { type, format: req.query.format || 'json', count: rows.length }, req });
+            if (req.query.format === 'md' && type === 'task') {
+                const line = item => {
+                    const due = item.due_at ? ` (${item.due_all_day ? taskDates.localDate(item.due_at, tz) : `${taskDates.localDate(item.due_at, tz)} ${taskDates.localTime(item.due_at, tz)}`})` : '';
+                    const extras = [item.priority ? `P${item.priority}` : '', item.recurrence_rule ? taskDates.describeRecurrence(item.recurrence_rule) : '', ...item.tags.map(tag => `#${tag}`)].filter(Boolean).join(' ');
+                    return `[${item.status === 'done' ? 'x' : ' '}] ${item.title}${due}${extras ? ` ${extras}` : ''}`;
+                };
+                const markdown = rows.filter(item => !item.parent_item_id).map(item => {
+                    const children = rows.filter(child => String(child.parent_item_id) === String(item.id)).map(child => `  - ${line(child)}`);
+                    return [`- ${line(item)}`, ...children].join('\n');
+                }).join('\n');
+                return res.type('text/markdown').attachment('cloudmark-task.md').send(markdown + '\n');
+            }
             if (req.query.format === 'md') {
                 const markdown = rows.map(item => {
                     const parts = [`### ${item.title || 'Névtelen'}`];
@@ -212,7 +478,18 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                     archived: item.archived,
                     extra: item.extra,
                     tags: item.tags,
-                    fragments: item.fragments.map(({ label, language, content }) => ({ label, language, content }))
+                    fragments: item.fragments.map(({ label, language, content }) => ({ label, language, content })),
+                    ...(type === 'task' ? {
+                        ref: String(item.id),
+                        parentRef: item.parent_item_id ? String(item.parent_item_id) : null,
+                        status: item.status,
+                        priority: item.priority,
+                        dueAt: item.due_at,
+                        dueAllDay: item.due_all_day,
+                        recurrenceRule: item.recurrence_rule,
+                        completedAt: item.completed_at,
+                        reminders: item.reminders.map(({ offsetMinutes, remindAt }) => (offsetMinutes !== null ? { offsetMinutes } : { remindAt }))
+                    } : {})
                 }))
             };
             res.type('application/json').attachment(`cloudmark-${type}.json`).send(JSON.stringify(payload, null, 2));
@@ -237,16 +514,23 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
             if (!raw || typeof raw !== 'object') return res.status(400).json({ error: `Érvénytelen elem: ${index + 1}.` });
             const fragments = Array.isArray(raw.fragments) ? raw.fragments
                 : typeof raw.code === 'string' ? [{ content: raw.code, language: raw.language }] : [];
-            const { value, error } = normalizeItemInput({ ...raw, categoryId: null, fragments }, type);
+            const { value, error } = normalizeItemInput({ ...raw, categoryId: null, fragments, parentItemId: null, links: null }, type);
             if (error) return res.status(400).json({ error: `${index + 1}. elem: ${error}` });
-            prepared.push({ value, category: optionalText(raw.category, 100)?.trim() || null, archived: Boolean(raw.archived) });
+            prepared.push({
+                value,
+                category: optionalText(raw.category, 100)?.trim() || null,
+                archived: Boolean(raw.archived),
+                ref: raw.ref === undefined || raw.ref === null ? null : String(raw.ref),
+                parentRef: raw.parentRef === undefined || raw.parentRef === null ? null : String(raw.parentRef)
+            });
         }
 
         try {
             const created = await withTransaction(async client => {
                 const categoryIds = new Map();
+                const refs = new Map();
                 let count = 0;
-                for (const { value, category, archived } of prepared) {
+                for (const { value, category, archived, ref } of prepared) {
                     let categoryId = null;
                     if (category) {
                         const key = category.toLowerCase();
@@ -264,13 +548,21 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                         categoryId = categoryIds.get(key);
                     }
                     const inserted = await client.query(
-                        `INSERT INTO items (owner_user_id, type, title, description, category_id, body, color, pinned, starred, archived, extra)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
-                        [req.user.id, type, value.title, value.description, categoryId, value.body, value.color, value.pinned, value.starred, archived, value.extra]
+                        `INSERT INTO items (owner_user_id, type, title, description, category_id, body, color, pinned, starred, archived, extra, status)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+                        [req.user.id, type, value.title, value.description, categoryId, value.body, value.color, value.pinned, value.starred, archived, value.extra, value.task ? value.task.status || 'todo' : null]
                     );
                     await replaceFragments(client, inserted.rows[0].id, value.fragments);
                     await replaceItemTags(client, inserted.rows[0].id, req.user.id, value.tags);
+                    if (value.task) await saveTaskFields(client, inserted.rows[0].id, value.task, req.user);
+                    if (ref) refs.set(ref, inserted.rows[0].id);
                     count += 1;
+                }
+                // Részfeladatok: a szülőt a csomagon belüli `ref` alapján kötjük be, ha az maga nem részfeladat.
+                for (const { ref, parentRef } of prepared) {
+                    if (type !== 'task' || !ref || !parentRef || !refs.has(parentRef) || parentRef === ref) continue;
+                    const parentIsTopLevel = !prepared.some(entry => entry.ref === parentRef && entry.parentRef && refs.has(entry.parentRef));
+                    if (parentIsTopLevel) await client.query('UPDATE items SET parent_item_id = $2 WHERE id = $1', [refs.get(ref), refs.get(parentRef)]);
                 }
                 return count;
             });
@@ -302,19 +594,23 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
             const item = await withTransaction(async client => {
                 if (!(await categoryBelongsToUser(client, value.categoryId, req.user.id, type))) return null;
                 const inserted = await client.query(
-                    `INSERT INTO items (owner_user_id, type, title, description, category_id, body, color, pinned, starred, position, extra)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
-                    [req.user.id, type, value.title, value.description, value.categoryId, value.body, value.color, value.pinned, value.starred, value.position, value.extra]
+                    `INSERT INTO items (owner_user_id, type, title, description, category_id, body, color, pinned, starred, position, extra, status)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+                    [req.user.id, type, value.title, value.description, value.categoryId, value.body, value.color, value.pinned, value.starred, value.position, value.extra, value.task ? value.task.status || 'todo' : null]
                 );
                 await replaceFragments(client, inserted.rows[0].id, value.fragments);
                 await replaceItemTags(client, inserted.rows[0].id, req.user.id, value.tags);
+                if (value.task) {
+                    const taskError = await saveTaskFields(client, inserted.rows[0].id, value.task, req.user);
+                    if (taskError) throw new ItemInputError(taskError);
+                }
                 return loadItem(client, inserted.rows[0].id, req.user.id);
             });
             if (!item) return res.status(403).json({ error: 'Nincs jogosultságod ehhez a kategóriához.' });
             await recordAuditEvent({ userId: req.user.id, action: 'item_created', entityType: 'item', entityId: item.id, details: { type, title: item.title }, req });
             res.status(201).json(item);
         } catch (err) {
-            res.status(500).json({ error: err.message });
+            res.status(err instanceof ItemInputError ? 400 : 500).json({ error: err.message });
         }
     });
 
@@ -338,13 +634,17 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                 );
                 await replaceFragments(client, id, value.fragments);
                 await replaceItemTags(client, id, req.user.id, value.tags);
+                if (value.task) {
+                    const taskError = await saveTaskFields(client, id, value.task, req.user);
+                    if (taskError) throw new ItemInputError(taskError);
+                }
                 return loadItem(client, id, req.user.id);
             });
             if (!item) return res.status(403).json({ error: 'Nincs jogosultságod ehhez a kategóriához.' });
             await recordAuditEvent({ userId: req.user.id, action: 'item_updated', entityType: 'item', entityId: id, details: { type, title: item.title }, req });
             res.json(item);
         } catch (err) {
-            res.status(500).json({ error: err.message });
+            res.status(err instanceof ItemInputError ? 400 : 500).json({ error: err.message });
         }
     });
 
@@ -360,6 +660,14 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
         try {
             const result = await pool.query(`UPDATE items SET ${fields.join(', ')} WHERE id = $1 AND owner_user_id = $2 RETURNING id`, values);
             if (!result.rowCount) return res.status(404).json({ error: 'Not found' });
+            // A részfeladatok a szülővel együtt kerülnek kukába, archívumba, és onnan vissza.
+            const cascadeFields = [], cascadeValues = [id, req.user.id];
+            for (const key of ['archived', 'trashed']) {
+                if (req.body[key] !== undefined) { cascadeValues.push(Boolean(req.body[key])); cascadeFields.push(`${key} = $${cascadeValues.length}`); }
+            }
+            if (cascadeFields.length) {
+                await pool.query(`UPDATE items SET ${cascadeFields.join(', ')} WHERE parent_item_id = $1 AND owner_user_id = $2`, cascadeValues);
+            }
             await recordAuditEvent({ userId: req.user.id, action: 'item_state_updated', entityType: 'item', entityId: id, details: { fields: Object.keys(req.body) }, req });
             res.json(await loadItem(pool, id, req.user.id));
         } catch (err) {
@@ -387,6 +695,7 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
         try {
             const result = await pool.query('UPDATE items SET trashed = TRUE, archived = FALSE WHERE id = $1 AND owner_user_id = $2 RETURNING id', [id, req.user.id]);
             if (!result.rowCount) return res.status(404).json({ error: 'Not found' });
+            await pool.query('UPDATE items SET trashed = TRUE, archived = FALSE WHERE parent_item_id = $1 AND owner_user_id = $2', [id, req.user.id]);
             await recordAuditEvent({ userId: req.user.id, action: 'item_trashed', entityType: 'item', entityId: id, req });
             res.json({ success: true });
         } catch (err) {
@@ -406,6 +715,7 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
             res.status(500).json({ error: err.message });
         }
     });
+    return { loadItem, withTransaction };
 }
 
-module.exports = { registerItemRoutes, normalizeItemLanguage, ITEM_TYPES };
+module.exports = { registerItemRoutes, normalizeItemLanguage, syncReminders, resolveTimeZone, dayBoundsSql, TASK_VIEW_CONDITIONS, ITEM_TYPES };
