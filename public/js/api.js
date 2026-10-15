@@ -205,6 +205,20 @@ apiNamespace.api = {
         return requestJson('/api/admin/audit-events');
     },
 
+    /** Returns one filtered page of audit events ({ items, total, page, pageSize, totalPages }). */
+    getAuditLogPage(filters = {}) {
+        const params = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') params.set(key, value);
+        });
+        return requestJson(`/api/admin/audit-log?${params.toString()}`);
+    },
+
+    /** Returns the distinct audit actions and entity types for the filter dropdowns. */
+    getAuditLogFacets() {
+        return requestJson('/api/admin/audit-log/facets');
+    },
+
     /** Downloads a JSON backup export for the current administrator. */
     exportBackup() {
         return fetch('/api/admin/backup/export').then(async response => {

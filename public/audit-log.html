@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="hu" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudMark - Audit log</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/styles.css?v=20261015-auditlog">
+    <style>
+        .audit-page { max-width: 1280px; width: 100%; margin: 0 auto; padding: 1.5rem 2rem 3rem; display: grid; gap: 1rem; }
+        .audit-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 1rem 1.25rem; }
+        .audit-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem; align-items: end; }
+        .audit-filters input, .audit-filters select { padding: 0.55rem 0.75rem; }
+        .audit-filter-actions { display: flex; gap: 0.5rem; }
+        .audit-table-wrap { overflow-x: auto; border: 1px solid var(--border-color); border-radius: 12px; }
+        .audit-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .audit-table th { background: rgba(148,163,184,0.08); text-align: left; padding: 0.7rem 0.75rem; white-space: nowrap; }
+        .audit-table td { padding: 0.6rem 0.75rem; border-top: 1px solid var(--border-color); vertical-align: top; }
+        .audit-table tr.audit-row { cursor: pointer; }
+        .audit-table tr.audit-row:hover td { background: var(--bg-card-hover); }
+        .audit-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; color: var(--text-secondary); }
+        .audit-details-preview { max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .audit-details-full pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; }
+        .audit-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; }
+        .audit-pager-buttons { display: flex; align-items: center; gap: 0.4rem; }
+        .audit-pager-buttons select { width: auto; padding: 0.45rem 0.6rem; }
+        #auditContent:not([hidden]) { display: grid; gap: 1rem; }
+        .audit-muted { color: var(--text-secondary); font-size: 0.85rem; }
+        @media (max-width: 640px) { .audit-page { padding: 1rem; } header { padding: 1rem; } }
+    </style>
+</head>
+<body>
+    <div id="notificationArea" class="notification-area" aria-live="polite"></div>
+
+    <header>
+        <div class="nav-container">
+            <a href="/" class="logo"><i class="fa-solid fa-bookmark"></i> CloudMark</a>
+            <div class="nav-actions">
+                <a href="/" class="btn btn-secondary" style="text-decoration: none;"><i class="fa-solid fa-arrow-left"></i> Vissza</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="audit-page">
+        <div>
+            <h1 style="font-size: 1.4rem; display: flex; align-items: center; gap: 0.5rem;"><i class="fa-solid fa-clipboard-list" style="color: var(--accent);"></i> Audit log</h1>
+            <p class="audit-muted" style="margin-top: 0.35rem;">A rendszerben rögzített események, a legújabbal kezdve. Egy sorra kattintva megjelennek a teljes részletek.</p>
+        </div>
+
+        <div id="auditForbidden" class="audit-card" hidden>
+            <p><i class="fa-solid fa-lock"></i> Az oldal megtekintéséhez admin jogosultsággal kell bejelentkezni.</p>
+            <a href="/" class="btn btn-primary" style="margin-top: 0.75rem; text-decoration: none;">Ugrás a bejelentkezéshez</a>
+        </div>
+
+        <div id="auditContent" hidden>
+            <form id="auditFilterForm" class="audit-card audit-filters">
+                <div class="form-control">
+                    <label for="auditFilterQ">Keresés</label>
+                    <input type="search" id="auditFilterQ" name="q" placeholder="pl. cím, URL, név…">
+                </div>
+                <div class="form-control">
+                    <label for="auditFilterUser">Felhasználó</label>
+                    <input type="text" id="auditFilterUser" name="user" placeholder="felhasználónév">
+                </div>
+                <div class="form-control">
+                    <label for="auditFilterAction">Művelet</label>
+                    <select id="auditFilterAction" name="action"><option value="">Mind</option></select>
+                </div>
+                <div class="form-control">
+                    <label for="auditFilterEntity">Entitás</label>
+                    <select id="auditFilterEntity" name="entityType"><option value="">Mind</option></select>
+                </div>
+                <div class="form-control">
+                    <label for="auditFilterFrom">Dátumtól</label>
+                    <input type="date" id="auditFilterFrom" name="from">
+                </div>
+                <div class="form-control">
+                    <label for="auditFilterTo">Dátumig</label>
+                    <input type="date" id="auditFilterTo" name="to">
+                </div>
+                <div class="audit-filter-actions">
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-filter"></i> Szűrés</button>
+                    <button type="button" class="btn btn-secondary" id="auditFilterReset"><i class="fa-solid fa-xmark"></i> Törlés</button>
+                </div>
+            </form>
+
+            <div class="audit-card" style="display: grid; gap: 0.75rem;">
+                <div class="audit-pager">
+                    <span id="auditSummary" class="audit-muted">Betöltés…</span>
+                    <div class="audit-pager-buttons">
+                        <label for="auditPageSize" class="audit-muted">Oldalanként</label>
+                        <select id="auditPageSize">
+                            <option value="25">25</option>
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="audit-table-wrap">
+                    <table class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Idő</th>
+                                <th>Felhasználó</th>
+                                <th>Művelet</th>
+                                <th>Entitás</th>
+                                <th>Részletek</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="audit-pager">
+                    <span id="auditPageInfo" class="audit-muted"></span>
+                    <div class="audit-pager-buttons">
+                        <button type="button" class="btn btn-secondary" id="auditFirstPage" title="Első oldal"><i class="fa-solid fa-angles-left"></i></button>
+                        <button type="button" class="btn btn-secondary" id="auditPrevPage" title="Előző oldal"><i class="fa-solid fa-angle-left"></i></button>
+                        <button type="button" class="btn btn-secondary" id="auditNextPage" title="Következő oldal"><i class="fa-solid fa-angle-right"></i></button>
+                        <button type="button" class="btn btn-secondary" id="auditLastPage" title="Utolsó oldal"><i class="fa-solid fa-angles-right"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/config.js?v=20261015-auditlog"></script>
+    <script src="/js/api.js?v=20261015-auditlog"></script>
+    <script src="/js/notifications.js?v=20261015-auditlog"></script>
+    <script src="/js/audit-log.js?v=20261015-auditlog"></script>
+</body>
+</html>
