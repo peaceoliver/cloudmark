@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261015-commands">
+    <link rel="stylesheet" href="/css/styles.css?v=20261015-notes">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -110,6 +110,9 @@
             </button>
             <button type="button" class="app-tab" role="tab" data-view-tab="commands" aria-selected="false" title="Parancsok (Alt+2)">
                 <i class="fa-solid fa-terminal"></i><span>Parancsok</span>
+            </button>
+            <button type="button" class="app-tab" role="tab" data-view-tab="notes" aria-selected="false" title="Jegyzetek (Alt+3)">
+                <i class="fa-solid fa-note-sticky"></i><span>Jegyzetek</span>
             </button>
         </nav>
 
@@ -294,6 +297,25 @@
                 <div class="categories-bar commands-categories" id="commandCategoriesBar" aria-label="Parancs kategóriák"></div>
             </section>
             <div class="commands-grid" id="commandGrid" aria-live="polite"></div>
+        </div>
+
+        <!-- Jegyzetek (Google Keep-szerű) -->
+        <div class="app-view" id="notesView" data-view="notes" hidden>
+            <section class="dashboard-section notes-toolbar" aria-label="Jegyzetek eszköztár">
+                <div class="commands-search enterprise-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input id="noteSearch" type="search" placeholder="Keresés a jegyzetekben…" autocomplete="off">
+                    <button type="button" class="btn-icon commands-search-clear" id="noteSearchClear" title="Keresés törlése" hidden><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="bookmark-state-group commands-state-group" aria-label="Jegyzet nézetek">
+                    <button type="button" class="btn btn-secondary cmd-state active" data-note-state="active"><i class="fa-regular fa-lightbulb"></i> Jegyzetek</button>
+                    <button type="button" class="btn btn-secondary cmd-state" data-note-state="archived"><i class="fa-solid fa-box-archive"></i> Archívum</button>
+                    <button type="button" class="btn btn-secondary cmd-state" data-note-state="trash"><i class="fa-solid fa-trash"></i> Kuka</button>
+                </div>
+                <div class="categories-bar commands-categories" id="noteLabelsBar" aria-label="Címkék"></div>
+            </section>
+            <div class="note-composer-wrap" id="noteComposerWrap"></div>
+            <div id="noteSections" aria-live="polite"></div>
         </div>
     </main>
 
@@ -739,6 +761,11 @@
         </div>
     </div>
 
+    <!-- Modal: Jegyzet szerkesztése (automatikus mentés) -->
+    <div class="modal-overlay" id="noteEditModal">
+        <div class="modal note-edit-modal" id="noteEditBox"></div>
+    </div>
+
     <!-- Modal: Parancs kategóriák -->
     <div class="modal-overlay" id="commandCategoryModal" style="z-index: 2200;">
         <div class="modal">
@@ -858,6 +885,7 @@
     <script src="/js/app.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/main-menu.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/commands-ui.js?v=20261015-commands"></script>
-    <script src="/js/views.js?v=20261015-commands"></script>
+    <script src="/js/notes-ui.js?v=20261015-notes"></script>
+    <script src="/js/views.js?v=20261015-notes"></script>
 </body>
 </html>

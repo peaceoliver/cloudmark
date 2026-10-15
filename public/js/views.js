@@ -1,10 +1,12 @@
-/* Főoldali nézetváltó: könyvjelzők és parancsok között, oldalbetöltés nélkül. */
+/* Főoldali nézetváltó: könyvjelzők, parancsok és jegyzetek között, oldalbetöltés nélkül. */
 (function () {
     const VIEW_STORAGE_KEY = 'cloudmark_active_view';
     const VIEWS = {
         bookmarks: { hash: '#/konyvjelzok', searchId: 'bookmarkSearch' },
-        commands: { hash: '#/parancsok', searchId: 'commandSearch' }
+        commands: { hash: '#/parancsok', searchId: 'commandSearch' },
+        notes: { hash: '#/jegyzetek', searchId: 'noteSearch' }
     };
+    const SHORTCUTS = { 1: 'bookmarks', 2: 'commands', 3: 'notes' };
     const tabs = document.getElementById('appTabs');
     if (!tabs) return;
 
@@ -37,6 +39,7 @@
             history.replaceState(null, '', VIEWS[name].hash);
         }
         if (name === 'commands') window.CloudMark.commands?.show();
+        if (name === 'notes') window.CloudMark.notes?.show();
     }
 
     /** Called from updateUserUI on page load, login and logout. */
@@ -44,7 +47,10 @@
         signedIn = Boolean(user);
         tabs.hidden = !signedIn;
         const userId = user ? String(user.id ?? user.username) : null;
-        if (userId !== lastUserId) window.CloudMark.commands?.reset();
+        if (userId !== lastUserId) {
+            window.CloudMark.commands?.reset();
+            window.CloudMark.notes?.reset();
+        }
         lastUserId = userId;
         if (!signedIn) {
             if (viewFromHash()) history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -70,9 +76,9 @@
 
     document.addEventListener('keydown', event => {
         if (!signedIn) return;
-        if (event.altKey && !event.ctrlKey && !event.metaKey && (event.key === '1' || event.key === '2')) {
+        if (event.altKey && !event.ctrlKey && !event.metaKey && SHORTCUTS[event.key]) {
             event.preventDefault();
-            showView(event.key === '1' ? 'bookmarks' : 'commands');
+            showView(SHORTCUTS[event.key]);
             return;
         }
         if (event.ctrlKey || event.metaKey || event.altKey || isTyping(event.target)) return;
@@ -83,6 +89,9 @@
         } else if ((event.key === 'n' || event.key === 'N') && activeView === 'commands') {
             event.preventDefault();
             window.CloudMark.commands?.openEditor(null);
+        } else if ((event.key === 'n' || event.key === 'N') && activeView === 'notes') {
+            event.preventDefault();
+            window.CloudMark.notes?.openComposer();
         }
     });
 
