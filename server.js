@@ -1164,7 +1164,11 @@ app.get('/api/admin/backup/export', requireAdmin, async (req, res) => {
             pool.query('SELECT * FROM tags ORDER BY id'),
             pool.query('SELECT * FROM bookmark_tags ORDER BY bookmark_id, tag_id'),
             pool.query('SELECT * FROM settings_app ORDER BY key'),
-            pool.query('SELECT * FROM settings_user ORDER BY user_id, setting_key')
+            pool.query('SELECT * FROM settings_user ORDER BY user_id, setting_key'),
+            pool.query('SELECT * FROM categories ORDER BY id'),
+            pool.query('SELECT * FROM items ORDER BY id'),
+            pool.query('SELECT * FROM item_fragments ORDER BY item_id, position'),
+            pool.query('SELECT * FROM item_tags ORDER BY item_id, tag_id')
         ]);
         const payload = {
             exportedAt: new Date().toISOString(),
@@ -1176,7 +1180,11 @@ app.get('/api/admin/backup/export', requireAdmin, async (req, res) => {
                 tags: tables[3].rows,
                 bookmark_tags: tables[4].rows,
                 settings_app: tables[5].rows,
-                settings_user: tables[6].rows
+                settings_user: tables[6].rows,
+                categories: tables[7].rows,
+                items: tables[8].rows,
+                item_fragments: tables[9].rows,
+                item_tags: tables[10].rows
             }
         };
         res.type('application/json').attachment('cloudmark-backup.json').send(JSON.stringify(payload, null, 2));
@@ -1192,7 +1200,7 @@ app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
         const data = payload.data || {};
         if (!data || typeof data !== 'object') return res.status(400).json({ error: 'Érvénytelen mentési csomag.' });
 
-        const tables = ['users', 'teams', 'settings_app', 'settings_user', 'tags', 'bookmarks', 'bookmark_tags'];
+        const tables = ['users', 'teams', 'settings_app', 'settings_user', 'tags', 'categories', 'bookmarks', 'bookmark_tags', 'items', 'item_fragments', 'item_tags'];
         for (const table of tables) {
             const rows = Array.isArray(data[table]) ? data[table] : [];
             if (!rows.length) continue;
@@ -1231,7 +1239,7 @@ app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
                     await pool.query(
                         `INSERT INTO settings_app (key, value, updated_at) VALUES ($1, $2, $3)
                          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
-                        [row.key, row.value, row.updated_at]
+                        [row.key, JSON.stringify(row.value ?? null), row.updated_at]
                     );
                 }
                 continue;
@@ -1241,7 +1249,7 @@ app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
                     await pool.query(
                         `INSERT INTO settings_user (user_id, setting_key, value, updated_at) VALUES ($1, $2, $3, $4)
                          ON CONFLICT (user_id, setting_key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
-                        [row.user_id, row.setting_key, row.value, row.updated_at]
+                        [row.user_id, row.setting_key, JSON.stringify(row.value ?? null), row.updated_at]
                     );
                 }
                 continue;
@@ -1289,7 +1297,63 @@ app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
                         [row.bookmark_id, row.tag_id]
                     );
                 }
+                continue;
             }
+            if (table === 'categories') {
+                // A szülőket a második körben állítjuk be, mert egy szülő későbbi id-val is jöhet.
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO categories (id, name, owner_user_id, kind, default_language)
+                         VALUES ($1, $2, $3, $4, $5)
+                         ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, owner_user_id = EXCLUDED.owner_user_id,
+                           kind = EXCLUDED.kind, default_language = EXCLUDED.default_language`,
+                        [row.id, row.name, row.owner_user_id, row.kind || 'bookmark', row.default_language || null]
+                    );
+                }
+                for (const row of rows) {
+                    await pool.query('UPDATE categories SET parent_id = $2 WHERE id = $1', [row.id, row.parent_id || null]);
+                }
+                continue;
+            }
+            if (table === 'items') {
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO items (id, owner_user_id, type, title, description, category_id, body, color, pinned, starred, archived, trashed, position, use_count, extra, created_at, updated_at)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                         ON CONFLICT (id) DO UPDATE SET
+                           owner_user_id = EXCLUDED.owner_user_id, type = EXCLUDED.type, title = EXCLUDED.title,
+                           description = EXCLUDED.description, category_id = EXCLUDED.category_id, body = EXCLUDED.body,
+                           color = EXCLUDED.color, pinned = EXCLUDED.pinned, starred = EXCLUDED.starred,
+                           archived = EXCLUDED.archived, trashed = EXCLUDED.trashed, position = EXCLUDED.position,
+                           use_count = EXCLUDED.use_count, extra = EXCLUDED.extra, updated_at = EXCLUDED.updated_at`,
+                        [row.id, row.owner_user_id, row.type, row.title, row.description, row.category_id || null, row.body, row.color,
+                            Boolean(row.pinned), Boolean(row.starred), Boolean(row.archived), Boolean(row.trashed), row.position ?? null,
+                            row.use_count || 0, JSON.stringify(row.extra || {}), row.created_at || new Date(), row.updated_at || new Date()]
+                    );
+                }
+                continue;
+            }
+            if (table === 'item_fragments') {
+                // Egy elem fülei együtt cserélődnek, így a sorrend (position) nem ütközik.
+                const itemIds = [...new Set(rows.map(row => row.item_id))];
+                await pool.query('DELETE FROM item_fragments WHERE item_id = ANY($1)', [itemIds]);
+                for (const row of rows) {
+                    await pool.query(
+                        'INSERT INTO item_fragments (id, item_id, position, label, language, content) VALUES ($1, $2, $3, $4, $5, $6)',
+                        [row.id, row.item_id, row.position || 0, row.label, row.language, row.content]
+                    );
+                }
+                continue;
+            }
+            if (table === 'item_tags') {
+                for (const row of rows) {
+                    await pool.query('INSERT INTO item_tags (item_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [row.item_id, row.tag_id]);
+                }
+            }
+        }
+        // A kézzel megadott id-k után a sorozatokat a legnagyobb id-ra állítjuk, különben az új sorok ütköznének.
+        for (const table of ['users', 'teams', 'tags', 'categories', 'bookmarks', 'items', 'item_fragments']) {
+            await pool.query(`SELECT setval(pg_get_serial_sequence('${table}', 'id'), GREATEST((SELECT COALESCE(MAX(id), 0) FROM ${table}), 1))`);
         }
         await recordAuditEvent({ userId: req.user.id, action: 'backup_imported', entityType: 'backup', details: { importedTables: tables }, req });
         res.json({ success: true, importedTables: tables });
