@@ -401,6 +401,20 @@ apiNamespace.api = {
         return requestJson(`/api/tasks/summary?tz=${encodeURIComponent(tz)}`);
     },
 
+    /** The bell: latest notifications and the unread count. */
+    getNotifications(limit = 30) {
+        return requestJson(`/api/notifications?limit=${limit}`);
+    },
+    markNotificationsRead(body) {
+        return requestJson('/api/notifications/read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    },
+    getNotificationSettings() {
+        return requestJson('/api/notifications/settings');
+    },
+    sendTestNotification() {
+        return requestJson('/api/notifications/test', { method: 'POST' });
+    },
+
     /** Category calls scoped to a content kind (command, note); the plain ones above are for bookmarks. */
     getCategoriesOfKind(kind) {
         return requestJson(`/api/categories?kind=${encodeURIComponent(kind)}`);

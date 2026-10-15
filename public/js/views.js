@@ -55,6 +55,7 @@
             window.CloudMark.tasks?.reset();
         }
         lastUserId = userId;
+        window.CloudMark.inbox?.onAuthChange(user);
         if (signedIn) window.CloudMark.tasks?.refreshBadge();
         if (!signedIn) {
             if (viewFromHash()) history.replaceState(null, '', window.location.pathname + window.location.search);

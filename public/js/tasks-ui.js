@@ -665,7 +665,7 @@
                     </select>
                     <input type="datetime-local" data-detail-input="reminder-at" hidden aria-label="Emlékeztető időpontja">
                 </div>
-                <p class="task-detail-note">Az értesítések kiküldése a következő lépésben érkezik; addig az emlékeztetők csak mentődnek.</p>`}
+                <p class="task-detail-note">Az emlékeztető a csengő ikonnál és e-mailben érkezik (a csengő panelen kapcsolható).</p>`}
             </section>
 
             ${isSub ? '' : `<section class="task-detail-section">
@@ -1209,6 +1209,14 @@
         show: () => load(),
         reset,
         refreshBadge,
-        focusQuickAdd: () => quickInput.focus()
+        focusQuickAdd: () => quickInput.focus(),
+        /** Opens a task's detail panel by id (used by the bell and by links). */
+        async openById(id) {
+            await load();
+            if (findItem(id)) {
+                if (state.view !== 'all' && !state.project) await setView('all');
+                openDetail(id);
+            }
+        }
     };
 })();

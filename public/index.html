@@ -26,6 +26,21 @@
                     <i class="fa-solid fa-moon"></i>
                 </button>
 
+                <!-- Értesítések (csengő) -->
+                <div class="bell-wrapper" id="bellWrapper" hidden>
+                    <button type="button" class="btn-icon bell-toggle" id="bellToggle" aria-haspopup="true" aria-expanded="false" aria-label="Értesítések" title="Értesítések">
+                        <i class="fa-regular fa-bell"></i><span class="bell-badge" id="bellBadge" hidden></span>
+                    </button>
+                    <div class="bell-panel" id="bellPanel" role="dialog" aria-label="Értesítések" hidden>
+                        <div class="bell-head">
+                            <strong>Értesítések</strong>
+                            <button type="button" class="bell-link" data-bell="read-all">Mind olvasott</button>
+                        </div>
+                        <div class="bell-list" id="bellList"></div>
+                        <div class="bell-settings" id="bellSettings"></div>
+                    </div>
+                </div>
+
                 <!-- Dynamic User / Superuser Menu Area -->
                 <div id="userStateArea">
                     <button class="btn btn-primary" onclick="openModal('authModal')">
@@ -922,7 +937,7 @@
         </div>
     </div>
     <script src="/js/config.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/api.js?v=20261015-tasks"></script>
+    <script src="/js/api.js?v=20261015-notify"></script>
     <script src="/js/task-parser.js?v=20261015-tasks"></script>
     <script src="/js/notifications.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/modal.js?v=20260905k-pagesize-setting"></script>
@@ -934,7 +949,8 @@
     <script src="/js/main-menu.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/commands-ui.js?v=20261015-tasks"></script>
     <script src="/js/notes-ui.js?v=20261015-tasks"></script>
-    <script src="/js/tasks-ui.js?v=20261015-tasks"></script>
-    <script src="/js/views.js?v=20261015-tasks"></script>
+    <script src="/js/tasks-ui.js?v=20261015-notify"></script>
+    <script src="/js/notification-center.js?v=20261015-notify"></script>
+    <script src="/js/views.js?v=20261015-notify"></script>
 </body>
 </html>
