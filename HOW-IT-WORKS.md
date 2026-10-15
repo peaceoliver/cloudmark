@@ -36,9 +36,9 @@ Rendezési lehetőségek:
 
 Egy könyvjelző lehet aktív, kedvenc, későbbi olvasásra jelölt, ellenőrzésre váró, archivált vagy kukába helyezett. A kijelölt könyvjelzők csoportosan is módosíthatók vagy más kategóriába mozgathatók.
 
-## Nézetek: Könyvjelzők, Parancsok, Jegyzetek
+## Nézetek: Könyvjelzők, Parancsok, Jegyzetek, Feladatok
 
-Bejelentkezés után a főoldal tetején lehet váltani a három nézet között (gyorsbillentyű: Alt+1, Alt+2, Alt+3). A választott nézet frissítés után is megmarad. Mindegyik nézetben a `/` billentyű a keresőbe ugrik.
+Bejelentkezés után a főoldal tetején lehet váltani a négy nézet között (gyorsbillentyű: Alt+1, Alt+2, Alt+3, Alt+4). A választott nézet frissítés után is megmarad. Mindegyik nézetben a `/` billentyű a keresőbe ugrik.
 
 ### Parancsok
 
@@ -58,6 +58,22 @@ Google Keep-szerű jegyzetek.
 - Szöveges jegyzet vagy jelölőnégyzetes lista. A kettő között egy gombbal lehet váltani.
 - Háttérszín, rögzítés (a rögzített jegyzetek felül), címkék, archiválás, kuka.
 - Egy jegyzetre kattintva megnyílik a szerkesztő, ami gépelés közben automatikusan ment.
+
+### Feladatok
+
+Teendők határidővel, ismétlődéssel és részfeladatokkal. A fülön lévő szám a mai és a lejárt feladatok számát mutatja.
+
+- **Gyors felvétel magyarul:** a felső mezőbe egy mondatban beírható minden, gépelés közben alatta látszik, mit ismert fel. Példák:
+  - `holnap 9-kor számla befizetése !1 #pénzügy @Otthon`
+  - `minden hétfőn heti tervezés`, `minden hónap 1-jén lakbér`, `kéthetente szemét`
+  - `jövő szerdán fél 3-kor fogorvos ^30` (emlékeztető 30 perccel előtte)
+  - `!1`–`!4` prioritás, `#címke`, `@Projekt` (ha nincs ilyen projekt, létrejön).
+- **Okos listák:** Ma (a lejártakkal együtt), Következő 7 nap, Beérkezett (projekt nélküliek), Mind, Kész, Kuka.
+- **Projektek:** a listák alatt, a ⋮ menüben átnevezhetők és törölhetők.
+- **Részletek:** egy feladatra kattintva jobb oldalt megnyílik a panel, ami automatikusan ment. Itt állítható a határidő és időpont, az ismétlődés, a prioritás, a projekt, az állapot, az emlékeztetők, a részfeladatok és a kapcsolt jegyzetek, parancsok, könyvjelzők.
+- **Kipipálás:** az ismétlődő feladat a következő esedékességre ugrik (a részfeladatai újra nyitottak lesznek). Alul „Visszavonás” gomb jelenik meg.
+- **Billentyűk:** `N` új feladat, `/` keresés, a listában `↑`/`↓` mozgás, `Enter` részletek, `szóköz` kész, `T` áthelyezés mára, `Esc` panel bezárása.
+- Az emlékeztetők már menthetők, a kiküldésük (felületen belül, push, e-mail) a következő lépésben érkezik.
 
 ## Egyéb lehetőségek
 
