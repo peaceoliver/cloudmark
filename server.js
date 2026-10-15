@@ -1034,6 +1034,72 @@ app.get('/api/admin/audit-events', requireAdmin, async (req, res) => {
     }
 });
 
+/** Returns one filtered page of audit events plus the total count for the admin audit log screen. */
+app.get('/api/admin/audit-log', requireAdmin, async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.min(200, Math.max(1, parseInt(req.query.pageSize, 10) || 50));
+    const conditions = [];
+    const params = [];
+    const addCondition = (sql, value) => {
+        params.push(value);
+        conditions.push(sql.replaceAll('?', `$${params.length}`));
+    };
+
+    if (req.query.action) addCondition('ae.action = ?', String(req.query.action));
+    if (req.query.entityType) addCondition('ae.entity_type = ?', String(req.query.entityType));
+    if (req.query.user) addCondition('u.username ILIKE ?', `%${String(req.query.user).trim()}%`);
+    if (req.query.q) addCondition('(ae.details::text ILIKE ? OR ae.action ILIKE ?)', `%${String(req.query.q).trim()}%`);
+    if (req.query.from && !Number.isNaN(Date.parse(req.query.from))) addCondition('ae.created_at >= ?', new Date(req.query.from));
+    if (req.query.to && !Number.isNaN(Date.parse(req.query.to))) {
+        // Inclusive end date: a bare YYYY-MM-DD covers the whole day.
+        const to = new Date(req.query.to);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(String(req.query.to))) to.setUTCDate(to.getUTCDate() + 1);
+        addCondition('ae.created_at < ?', to);
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    try {
+        const countResult = await pool.query(
+            `SELECT COUNT(*)::int AS total
+             FROM audit_events ae
+             LEFT JOIN users u ON u.id = ae.user_id
+             ${where}`,
+            params
+        );
+        const total = countResult.rows[0].total;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        const result = await pool.query(
+            `SELECT ae.id, ae.user_id, ae.action, ae.entity_type, ae.entity_id, ae.details, ae.created_at,
+                    u.username AS actor_username
+             FROM audit_events ae
+             LEFT JOIN users u ON u.id = ae.user_id
+             ${where}
+             ORDER BY ae.created_at DESC, ae.id DESC
+             LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+            [...params, pageSize, (page - 1) * pageSize]
+        );
+        res.json({ items: result.rows, total, page, pageSize, totalPages });
+    } catch (err) {
+        res.status(500).json({ error: 'Az audit log nem tölthető be.' });
+    }
+});
+
+/** Returns the distinct actions and entity types present in the audit log, for filter dropdowns. */
+app.get('/api/admin/audit-log/facets', requireAdmin, async (req, res) => {
+    try {
+        const [actions, entityTypes] = await Promise.all([
+            pool.query('SELECT DISTINCT action FROM audit_events ORDER BY action'),
+            pool.query('SELECT DISTINCT entity_type FROM audit_events ORDER BY entity_type')
+        ]);
+        res.json({
+            actions: actions.rows.map(row => row.action),
+            entityTypes: entityTypes.rows.map(row => row.entity_type)
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Az audit log szűrői nem tölthetők be.' });
+    }
+});
+
 app.get('/api/admin/backup/export', requireAdmin, async (req, res) => {
     try {
         const tables = await Promise.all([
