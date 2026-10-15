@@ -103,7 +103,7 @@
 
     <main>
 
-        <!-- Nézetváltó: könyvjelzők / parancsok (Alt+1, Alt+2) -->
+        <!-- Nézetváltó: könyvjelzők / parancsok / jegyzetek / feladatok (Alt+1 … Alt+4) -->
         <nav class="app-tabs" id="appTabs" aria-label="Tartalomtípus" role="tablist" hidden>
             <button type="button" class="app-tab active" role="tab" data-view-tab="bookmarks" aria-selected="true" title="Könyvjelzők (Alt+1)">
                 <i class="fa-solid fa-bookmark"></i><span>Könyvjelzők</span>
@@ -113,6 +113,9 @@
             </button>
             <button type="button" class="app-tab" role="tab" data-view-tab="notes" aria-selected="false" title="Jegyzetek (Alt+3)">
                 <i class="fa-solid fa-note-sticky"></i><span>Jegyzetek</span>
+            </button>
+            <button type="button" class="app-tab" role="tab" data-view-tab="tasks" aria-selected="false" title="Feladatok (Alt+4)">
+                <i class="fa-solid fa-list-check"></i><span>Feladatok</span><span class="app-tab-badge" id="taskTabBadge" hidden></span>
             </button>
         </nav>
 
@@ -316,6 +319,50 @@
             </section>
             <div class="note-composer-wrap" id="noteComposerWrap"></div>
             <div id="noteSections" aria-live="polite"></div>
+        </div>
+
+        <!-- Feladatok -->
+        <div class="app-view" id="tasksView" data-view="tasks" hidden>
+            <section class="dashboard-section commands-toolbar tasks-toolbar" aria-label="Feladatok eszköztár">
+                <form class="task-quick-add" id="taskQuickAddForm" autocomplete="off">
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                    <input id="taskQuickAdd" type="text" maxlength="500" placeholder="Új feladat, pl. „holnap 9-kor számla befizetése !1 #pénzügy”" aria-label="Új feladat (N)">
+                    <button type="submit" class="btn btn-primary">Hozzáadás</button>
+                </form>
+                <div class="task-quick-preview" id="taskQuickPreview" aria-live="polite"></div>
+                <div class="tasks-toolbar-row">
+                    <div class="commands-search enterprise-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input id="taskSearch" type="search" placeholder="Keresés a feladatokban…" autocomplete="off">
+                        <button type="button" class="btn-icon commands-search-clear" id="taskSearchClear" title="Keresés törlése" hidden><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="commands-more">
+                        <button type="button" class="btn btn-secondary" id="taskMoreBtn" aria-haspopup="true" aria-expanded="false" title="További műveletek"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                        <div class="cmd-dropdown" id="taskMoreMenu" role="menu">
+                            <button type="button" class="cmd-dropdown-item" data-task-menu="new-project"><i class="fa-solid fa-folder-plus"></i> Új projekt</button>
+                            <button type="button" class="cmd-dropdown-item" data-task-menu="rename-project" data-needs-project hidden><i class="fa-solid fa-pen"></i> Projekt átnevezése</button>
+                            <button type="button" class="cmd-dropdown-item" data-task-menu="delete-project" data-needs-project hidden><i class="fa-solid fa-folder-minus"></i> Projekt törlése</button>
+                            <label class="cmd-dropdown-item"><i class="fa-solid fa-upload"></i> Import (JSON)<input type="file" id="taskImportInput" accept=".json,application/json" hidden></label>
+                            <button type="button" class="cmd-dropdown-item" data-task-menu="export-json"><i class="fa-solid fa-download"></i> Export JSON</button>
+                            <button type="button" class="cmd-dropdown-item" data-task-menu="export-md"><i class="fa-brands fa-markdown"></i> Export Markdown</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="bookmark-state-group commands-state-group task-views" id="taskViewGroup" aria-label="Feladat nézetek">
+                    <button type="button" class="btn btn-secondary cmd-state active" data-task-view="today"><i class="fa-regular fa-sun"></i> Ma <span class="task-count" data-count="today"></span></button>
+                    <button type="button" class="btn btn-secondary cmd-state" data-task-view="upcoming"><i class="fa-regular fa-calendar-days"></i> Következő 7 nap <span class="task-count" data-count="upcoming"></span></button>
+                    <button type="button" class="btn btn-secondary cmd-state" data-task-view="inbox"><i class="fa-solid fa-inbox"></i> Beérkezett <span class="task-count" data-count="inbox"></span></button>
+                    <button type="button" class="btn btn-secondary cmd-state" data-task-view="all"><i class="fa-solid fa-list-ul"></i> Mind <span class="task-count" data-count="all"></span></button>
+                    <button type="button" class="btn btn-secondary cmd-state" data-task-view="done"><i class="fa-solid fa-circle-check"></i> Kész</button>
+                    <button type="button" class="btn btn-secondary cmd-state" data-task-view="trash"><i class="fa-solid fa-trash"></i> Kuka</button>
+                </div>
+                <div class="categories-bar commands-categories" id="taskProjectsBar" aria-label="Projektek"></div>
+            </section>
+            <div class="tasks-layout">
+                <div class="task-list" id="taskList" aria-live="polite"></div>
+                <aside class="task-detail" id="taskDetail" hidden aria-label="Feladat részletei"></aside>
+            </div>
+            <div class="task-toast" id="taskToast" role="status" hidden></div>
         </div>
     </main>
 
@@ -875,7 +922,8 @@
         </div>
     </div>
     <script src="/js/config.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/api.js?v=20261015-commands"></script>
+    <script src="/js/api.js?v=20261015-tasks"></script>
+    <script src="/js/task-parser.js?v=20261015-tasks"></script>
     <script src="/js/notifications.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/modal.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/categories-ui.js?v=20260905k-pagesize-setting"></script>
@@ -884,8 +932,9 @@
     <script src="/js/auth.js?v=20261015-commands"></script>
     <script src="/js/app.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/main-menu.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/commands-ui.js?v=20261015-commands"></script>
-    <script src="/js/notes-ui.js?v=20261015-notes"></script>
-    <script src="/js/views.js?v=20261015-notes"></script>
+    <script src="/js/commands-ui.js?v=20261015-tasks"></script>
+    <script src="/js/notes-ui.js?v=20261015-tasks"></script>
+    <script src="/js/tasks-ui.js?v=20261015-tasks"></script>
+    <script src="/js/views.js?v=20261015-tasks"></script>
 </body>
 </html>

@@ -631,6 +631,12 @@
         show: () => load(),
         reset,
         openEditor,
+        /** Opens a command's editor by id (used by links from tasks). */
+        async openById(id) {
+            await load();
+            const item = findItem(id);
+            if (item) openEditor(item);
+        },
         focusSearch: () => searchInput.focus(),
         copyRules
     };

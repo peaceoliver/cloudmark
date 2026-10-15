@@ -356,7 +356,7 @@ apiNamespace.api = {
         return requestJson(`/api/shares/${encodeURIComponent(token)}`);
     },
 
-    /** Lists the current user's items of one type (command, note). */
+    /** Lists the current user's items of one type (command, note, task). */
     getItems(type, params = {}) {
         const query = new URLSearchParams({ type, ...params });
         return requestJson(`/api/items?${query.toString()}`);
@@ -383,9 +383,22 @@ apiNamespace.api = {
     importItems(type, items) {
         return requestJson('/api/items/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, items }) });
     },
-    exportItems(type, format) {
-        const query = new URLSearchParams({ type, format });
+    exportItems(type, format, params = {}) {
+        const query = new URLSearchParams({ type, format, ...params });
         return fetch(`/api/items/export?${query.toString()}`).then(response => { if (!response.ok) throw new Error('Export failed'); return response.blob(); });
+    },
+
+    /** Completes a task; a repeating task moves to its next date (the response says so and returns the previous date). */
+    completeTask(id, tz) {
+        return requestJson(`/api/items/${id}/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tz }) });
+    },
+    /** Reopens a task; `dueAt` restores a repeating task's previous date when undoing a completion. */
+    uncompleteTask(id, dueAt = null) {
+        return requestJson(`/api/items/${id}/uncomplete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dueAt }) });
+    },
+    /** Open task counts per smart list, for the tab badge. */
+    getTaskSummary(tz) {
+        return requestJson(`/api/tasks/summary?tz=${encodeURIComponent(tz)}`);
     },
 
     /** Category calls scoped to a content kind (command, note); the plain ones above are for bookmarks. */

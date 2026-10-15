@@ -526,6 +526,12 @@
     window.CloudMark.notes = {
         show: () => load(),
         reset,
-        openComposer
+        openComposer,
+        /** Opens a note's editor by id (used by links from tasks). */
+        async openById(id) {
+            await load();
+            const item = findItem(id);
+            if (item && !item.trashed) openEditor(item);
+        }
     };
 })();

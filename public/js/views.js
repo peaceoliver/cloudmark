@@ -1,12 +1,13 @@
-/* Főoldali nézetváltó: könyvjelzők, parancsok és jegyzetek között, oldalbetöltés nélkül. */
+/* Főoldali nézetváltó: könyvjelzők, parancsok, jegyzetek és feladatok között, oldalbetöltés nélkül. */
 (function () {
     const VIEW_STORAGE_KEY = 'cloudmark_active_view';
     const VIEWS = {
         bookmarks: { hash: '#/konyvjelzok', searchId: 'bookmarkSearch' },
         commands: { hash: '#/parancsok', searchId: 'commandSearch' },
-        notes: { hash: '#/jegyzetek', searchId: 'noteSearch' }
+        notes: { hash: '#/jegyzetek', searchId: 'noteSearch' },
+        tasks: { hash: '#/feladatok', searchId: 'taskSearch' }
     };
-    const SHORTCUTS = { 1: 'bookmarks', 2: 'commands', 3: 'notes' };
+    const SHORTCUTS = { 1: 'bookmarks', 2: 'commands', 3: 'notes', 4: 'tasks' };
     const tabs = document.getElementById('appTabs');
     if (!tabs) return;
 
@@ -40,6 +41,7 @@
         }
         if (name === 'commands') window.CloudMark.commands?.show();
         if (name === 'notes') window.CloudMark.notes?.show();
+        if (name === 'tasks') window.CloudMark.tasks?.show();
     }
 
     /** Called from updateUserUI on page load, login and logout. */
@@ -50,8 +52,10 @@
         if (userId !== lastUserId) {
             window.CloudMark.commands?.reset();
             window.CloudMark.notes?.reset();
+            window.CloudMark.tasks?.reset();
         }
         lastUserId = userId;
+        if (signedIn) window.CloudMark.tasks?.refreshBadge();
         if (!signedIn) {
             if (viewFromHash()) history.replaceState(null, '', window.location.pathname + window.location.search);
             showView('bookmarks', { updateHash: false });
@@ -92,6 +96,9 @@
         } else if ((event.key === 'n' || event.key === 'N') && activeView === 'notes') {
             event.preventDefault();
             window.CloudMark.notes?.openComposer();
+        } else if ((event.key === 'n' || event.key === 'N') && activeView === 'tasks') {
+            event.preventDefault();
+            window.CloudMark.tasks?.focusQuickAdd();
         }
     });
 
