@@ -11,6 +11,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { registerItemRoutes, normalizeItemLanguage, ITEM_TYPES } = require('./routes/items');
 const { registerTaskRoutes } = require('./routes/tasks');
+const { registerNotificationRoutes, DIGEST_TIME_PATTERN } = require('./routes/notifications');
 const taskDates = require('./public/js/task-parser');
 
 const app = express();
@@ -320,6 +321,8 @@ async function initDatabase() {
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '005_items.sql'), 'utf8'));
         // Feladatok: határidő, prioritás, ismétlődés, részfeladatok, emlékeztetők, kapcsolatok.
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '006_tasks.sql'), 'utf8'));
+        // Értesítések (csengő) és a pg_cron által használt notification_work_pending() függvény.
+        await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '007_notifications.sql'), 'utf8'));
 
         client.release();
         console.log(`[OK] Supabase PostgreSQL tablak sikeresen ellenorizve / letrehozva!`);
@@ -585,6 +588,17 @@ async function sendEmailWithConfig(smtp, { to, subject, text, html }) {
     const info = await transport.sendMail({ from: smtp?.user || from, to, subject, text, html });
     transport.close();
     return { messageId: info.messageId, response: info.response };
+}
+
+/** Returns a function that sends e-mail with the saved provider settings, or null when e-mail is not set up. */
+async function getConfiguredMailer() {
+    const result = await pool.query("SELECT value FROM settings_app WHERE key = 'smtp'");
+    const smtp = result.rows[0]?.value || {};
+    const provider = smtp.provider || 'smtp';
+    const configured = ((provider === 'resend' || provider === 'sendgrid') && smtp.apiKey)
+        || (provider === 'smtp' && smtp.host && smtp.user && smtp.password)
+        || mailTransport;
+    return configured ? message => sendEmailWithConfig(smtp, message) : null;
 }
 
 /** Sends an account verification link or logs it in local development. */
@@ -2226,11 +2240,13 @@ app.get('/api/user/settings', requireAuth, async (req, res) => {
 
 /** Saves one supported UI preference for the authenticated user. */
 app.put('/api/user/settings/:key', requireAuth, async (req, res) => {
-    const allowedKeys = ['theme', 'viewMode', 'sortMode', 'fetchMetadata', 'fetchMetadataTitle', 'fetchMetadataImage', 'timezone'];
+    const allowedKeys = ['theme', 'viewMode', 'sortMode', 'fetchMetadata', 'fetchMetadataTitle', 'fetchMetadataImage', 'timezone', 'notifyEmail', 'dailyDigestTime'];
     const { key } = req.params;
     if (!allowedKeys.includes(key)) return res.status(400).json({ error: 'Ismeretlen felhasználói beállítás.' });
     if (req.body.value === undefined || req.body.value === null || String(req.body.value).trim() === '') return res.status(400).json({ error: 'Érvénytelen beállítási érték.' });
     if (key === 'timezone' && !taskDates.isValidTimeZone(req.body.value)) return res.status(400).json({ error: 'Érvénytelen időzóna.' });
+    if (key === 'notifyEmail' && !['true', 'false'].includes(String(req.body.value))) return res.status(400).json({ error: 'Érvénytelen érték.' });
+    if (key === 'dailyDigestTime' && req.body.value !== 'off' && !DIGEST_TIME_PATTERN.test(String(req.body.value))) return res.status(400).json({ error: 'Érvénytelen időpont (ÓÓ:PP).' });
 
     try {
         await pool.query(
@@ -2287,6 +2303,7 @@ app.put('/api/admin/app-config', requireAdmin, async (req, res) => {
 // Parancsok / jegyzetek API (a catch-all előtt kell regisztrálni)
 const itemHelpers = registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normalizeTags });
 registerTaskRoutes(app, { pool, requireAuth, recordAuditEvent, ...itemHelpers });
+registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer: getConfiguredMailer, getPublicBaseUrl });
 
 // Főoldal kiszolgálása
 app.get('*', (req, res) => {

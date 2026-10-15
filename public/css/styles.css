@@ -2160,3 +2160,82 @@ input:focus, select:focus {
     .app-tab { flex: 1 1 auto; justify-content: center; padding: 0.5rem 0.6rem; }
     .app-tab:not(.active) > span:not(.app-tab-badge) { display: none; }
 }
+
+/* ===== Értesítések (csengő) ===== */
+.bell-wrapper { position: relative; }
+.bell-wrapper[hidden], .bell-panel[hidden] { display: none; }
+.bell-toggle { position: relative; }
+.bell-badge {
+    position: absolute;
+    top: -0.3rem;
+    right: -0.3rem;
+    min-width: 1.15rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--danger);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.15rem;
+    text-align: center;
+}
+.bell-badge[hidden] { display: none; }
+.bell-panel {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    z-index: 2400;
+    width: min(380px, calc(100vw - 2rem));
+    max-height: min(80vh, 640px);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--bg-card);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+.bell-head { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-primary); }
+.bell-link { border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.bell-list { flex: 1; overflow-y: auto; }
+.bell-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 0;
+    border-bottom: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.bell-item:hover { background: var(--bg-card-hover); }
+.bell-item.is-unread { background: var(--accent-glow); }
+.bell-item.is-unread .bell-item-title::before { content: ''; display: inline-block; width: 0.45rem; height: 0.45rem; margin-right: 0.4rem; border-radius: 50%; background: var(--accent); vertical-align: middle; }
+.bell-item > i { margin-top: 0.2rem; color: var(--accent); }
+.bell-item-main { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.bell-item-title { color: var(--text-primary); font-size: 0.9rem; font-weight: 600; word-break: break-word; }
+.bell-item-body, .bell-item-time { font-size: 0.78rem; }
+.bell-empty { padding: 1.5rem 1rem; font-size: 0.85rem; color: var(--text-secondary); text-align: center; }
+.bell-settings { display: flex; flex-direction: column; gap: 0.45rem; padding: 0.8rem 1rem; border-top: 1px solid var(--border-color); background: var(--bg-main); }
+.bell-settings:empty { display: none; }
+.bell-settings-title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); }
+.bell-setting { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; font-size: 0.85rem; color: var(--text-primary); }
+.bell-setting input[type="checkbox"] { width: auto; accent-color: var(--accent); }
+.bell-setting input[type="time"] { width: auto; padding: 0.25rem 0.4rem; font-size: 0.82rem; }
+.bell-setting-note { font-size: 0.76rem; color: var(--text-secondary); }
+.bell-test { align-self: flex-start; min-height: 0; padding: 0.35rem 0.8rem; font-size: 0.8rem; }
+@media (max-width: 640px) {
+    .bell-panel { position: fixed; top: 4.2rem; left: 1rem; right: 1rem; width: auto; }
+}
+@media (max-width: 640px) {
+    /* A csengővel eggyel több ikon került a fejlécbe; keskeny kijelzőn szorosabb elrendezés. */
+    .nav-actions { gap: 0.35rem; }
+    .logo { font-size: 1.15rem; gap: 0.5rem; }
+}
+@media (max-width: 480px) {
+    .nav-actions .status-badge { display: none; }
+}

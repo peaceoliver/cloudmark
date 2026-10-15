@@ -73,7 +73,8 @@ Teendők határidővel, ismétlődéssel és részfeladatokkal. A fülön lévő
 - **Részletek:** egy feladatra kattintva jobb oldalt megnyílik a panel, ami automatikusan ment. Itt állítható a határidő és időpont, az ismétlődés, a prioritás, a projekt, az állapot, az emlékeztetők, a részfeladatok és a kapcsolt jegyzetek, parancsok, könyvjelzők.
 - **Kipipálás:** az ismétlődő feladat a következő esedékességre ugrik (a részfeladatai újra nyitottak lesznek). Alul „Visszavonás” gomb jelenik meg.
 - **Billentyűk:** `N` új feladat, `/` keresés, a listában `↑`/`↓` mozgás, `Enter` részletek, `szóköz` kész, `T` áthelyezés mára, `Esc` panel bezárása.
-- Az emlékeztetők már menthetők, a kiküldésük (felületen belül, push, e-mail) a következő lépésben érkezik.
+- **Értesítések:** az esedékes emlékeztető megjelenik a fejléc csengő ikonjánál, és e-mailben is megérkezik (ha az e-mail címed meg van erősítve). A csengőre kattintva látod az értesítéseket, egy értesítésre kattintva megnyílik a feladat.
+- **Napi összefoglaló:** a csengő panel alján bekapcsolható. A választott időpontban e-mailt kapsz a lejárt, mai és holnapi feladataidról. Ugyanitt kapcsolhatók ki az e-mail emlékeztetők, és küldhető teszt értesítés.
 
 ## Egyéb lehetőségek
 
