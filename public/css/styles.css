@@ -13,6 +13,9 @@
     --success: #10b981;
     --warning: #f59e0b;
     --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    --code-bg: #090d16;
+    --code-text: #e2e8f0;
+    --code-border: #1e293b;
 }
 
 :root[data-theme="light"] {
@@ -30,6 +33,9 @@
     --success: #059669;
     --warning: #d97706;
     --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+    --code-bg: #f1f5f9;
+    --code-text: #0f172a;
+    --code-border: #cbd5e1;
 }
 
 * {
@@ -1531,3 +1537,216 @@ input:focus, select:focus {
         padding: 0.85rem;
     }
 }
+/* ===== Nézetváltó (Könyvjelzők / Parancsok) ===== */
+.app-view[hidden], .app-tabs[hidden] { display: none !important; }
+.app-tabs {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.3rem;
+    margin-bottom: 1.25rem;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: var(--bg-card);
+}
+.app-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.1rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.app-tab:hover { color: var(--text-primary); background: var(--bg-card-hover); }
+.app-tab.active { background: var(--accent); color: #fff; }
+
+/* ===== Parancstár ===== */
+.commands-toolbar { display: flex; flex-direction: column; gap: 0.9rem; }
+.commands-toolbar > * { flex: 0 0 auto; }
+.commands-toolbar > .commands-state-group { align-self: flex-start; max-width: 100%; }
+.commands-search { position: relative; flex-wrap: nowrap; }
+.commands-search input { padding-right: 2.6rem; }
+.commands-search-clear {
+    position: absolute;
+    right: 0.5rem;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+.commands-search-clear:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.commands-search-clear[hidden] { display: none; }
+.commands-toolbar-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.commands-toolbar-actions select { width: auto; min-width: 200px; }
+.commands-more { position: relative; }
+.commands-state-group .cmd-state {
+    flex: 0 0 auto;
+    height: 1.9rem;
+    min-height: 1.9rem;
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: transparent;
+    padding: 0 .8rem;
+    border-radius: 999px;
+    font-weight: 600;
+}
+.commands-state-group .cmd-state:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.commands-state-group .cmd-state.active { background: var(--accent-glow); color: var(--accent); border-color: rgba(56, 189, 248, 0.32); }
+.commands-categories { flex-wrap: wrap; overflow-x: visible; }
+.command-chip-count { font-size: 0.72rem; opacity: 0.75; }
+
+.commands-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.25rem;
+    margin-top: 1.25rem;
+}
+@media (max-width: 1024px) { .commands-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 680px) { .commands-grid { grid-template-columns: minmax(0, 1fr); } }
+.commands-grid > .empty-state { grid-column: 1 / -1; text-align: center; color: var(--text-secondary); padding: 3rem 1rem; }
+
+.command-card { gap: 0.9rem; }
+.command-card:hover { transform: none; }
+.command-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+.command-card-head .card-title { word-break: break-word; }
+.command-card-actions { display: flex; gap: 0.6rem; flex-shrink: 0; }
+.command-card-actions .action-btn:hover { color: var(--accent); }
+.command-card-actions [data-action="trash"]:hover, .command-card-actions [data-action="delete"]:hover { color: var(--danger); }
+.command-card-meta { display: flex; gap: 0.4rem; align-items: center; margin-top: 0.5rem; flex-wrap: wrap; }
+.command-lang {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+.command-desc { margin-top: 0.6rem; color: var(--text-secondary); font-size: 0.88rem; line-height: 1.45; }
+.command-tags { margin: 0.6rem 0 0; }
+
+.command-tabs { display: flex; gap: 0.25rem; overflow-x: auto; margin-bottom: -1px; }
+.command-tab {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--code-border);
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.command-tab.active { background: var(--code-bg); color: var(--accent); }
+.command-tabs + .code-wrapper { border-top-left-radius: 0; }
+
+.code-wrapper {
+    position: relative;
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 10px;
+    padding: 0.6rem 0.5rem;
+}
+.code-wrapper.has-multiple { padding-right: 4.6rem; }
+.code-lines { display: flex; flex-direction: column; gap: 0.15rem; }
+.code-line { display: flex; align-items: flex-start; gap: 0.35rem; }
+.code-line pre {
+    margin: 0;
+    padding: 0.15rem 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--code-text);
+    white-space: pre-wrap;
+    word-break: break-all;
+    flex-grow: 1;
+}
+.line-copy-btn, .code-action-btn {
+    flex-shrink: 0;
+    width: 1.7rem;
+    height: 1.7rem;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+.line-copy-btn { opacity: 0.35; }
+.code-line:hover .line-copy-btn, .line-copy-btn:focus-visible, .line-copy-btn:has(.copy-ok) { opacity: 1; }
+@media (hover: none) { .line-copy-btn { opacity: 0.8; } }
+.line-copy-btn:hover, .code-action-btn:hover { color: var(--accent); border-color: var(--code-border); background: var(--bg-card-hover); }
+.copy-ok { color: var(--success); }
+.code-actions { position: absolute; top: 0.4rem; right: 0.4rem; z-index: 10; display: flex; gap: 0.2rem; padding: 0.15rem; border-radius: 6px; background: var(--code-bg); }
+
+.cmd-dropdown {
+    position: absolute;
+    top: 2.2rem;
+    right: 0;
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+    min-width: 190px;
+    padding: 0.3rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-card);
+    box-shadow: var(--shadow);
+}
+.cmd-dropdown.show { display: flex; }
+.cmd-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.85rem;
+    text-align: left;
+    cursor: pointer;
+}
+.cmd-dropdown-item:hover { background: var(--bg-card-hover); }
+
+.command-edit-modal { max-width: 720px; width: min(94vw, 720px); }
+.command-edit-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem; }
+@media (max-width: 640px) { .command-edit-row { grid-template-columns: 1fr; } }
+.command-fragments-editor { display: flex; flex-direction: column; gap: 0.75rem; }
+.fragment-row { display: flex; flex-direction: column; gap: 0.4rem; }
+.fragment-row-head { display: flex; gap: 0.5rem; align-items: center; }
+.fragment-row-head input { padding: 0.5rem 0.75rem; }
+.fragment-row-head .fragment-language { max-width: 180px; }
+.fragment-remove { flex-shrink: 0; border: 0; background: transparent; color: var(--text-secondary); cursor: pointer; padding: 0.4rem; }
+.fragment-remove:hover { color: var(--danger); }
+.fragment-content {
+    width: 100%;
+    min-height: 7rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--code-border);
+    background: var(--code-bg);
+    color: var(--code-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    resize: vertical;
+    outline: none;
+}
+.fragment-content:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.command-add-fragment { align-self: flex-start; margin-top: 0.5rem; }
+.command-category-list { display: flex; flex-direction: column; gap: 0.4rem; max-height: 300px; overflow-y: auto; margin-bottom: 1rem; }
+.command-category-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border-color); border-radius: 8px; }
+.command-category-name { flex: 1; font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; gap: 0.4rem; }
+.command-category-row .btn-icon { border: 0; background: transparent; color: var(--text-secondary); cursor: pointer; padding: 0.35rem; }
+.command-category-row .btn-icon:hover { color: var(--accent); }
