@@ -6,6 +6,8 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const net = require('net');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -55,6 +57,47 @@ const mailTransport = process.env.SMTP_HOST ? nodemailer.createTransport({
     greetingTimeout: 10000,
     socketTimeout: 15000
 }) : null;
+
+// Biztonsági fejlécek. A CSP engedi az inline eseménykezelőket és stílusokat,
+// mert a jelenlegi UI (index.html, innerHTML sablonok) ezekre épül.
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            scriptSrcAttr: ["'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com'],
+            fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
+            imgSrc: ["'self'", 'data:', 'https:'],
+            connectSrc: ["'self'"],
+            objectSrc: ["'none'"],
+            frameAncestors: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"]
+        }
+    }
+}));
+
+// Rate limiting az auth végpontokon (brute-force védelem).
+// A 'trust proxy' true marad a hosting proxy miatt, ezért az IP alapú limitet
+// kiegészíti egy felhasználónév alapú limit, amit X-Forwarded-For hamisítással sem lehet megkerülni.
+const rateLimitMessage = { error: 'Túl sok próbálkozás. Próbáld újra később.' };
+const ipLimiterOptions = {
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: rateLimitMessage,
+    validate: { trustProxy: false }
+};
+const loginIpLimiter = rateLimit({ ...ipLimiterOptions, windowMs: 15 * 60 * 1000, limit: 20, skipSuccessfulRequests: true });
+const loginUserLimiter = rateLimit({
+    ...ipLimiterOptions,
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    skipSuccessfulRequests: true,
+    keyGenerator: (req) => 'user:' + String(req.body.username || '').trim().toLowerCase()
+});
+const authLimiter = rateLimit({ ...ipLimiterOptions, windowMs: 60 * 60 * 1000, limit: 10 });
+const passwordLimiter = rateLimit({ ...ipLimiterOptions, windowMs: 15 * 60 * 1000, limit: 10 });
 
 // Középrétegek (Middleware)
 app.use(express.json());
@@ -1244,7 +1287,7 @@ app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
 });
 
 /** Registers a user with a bcrypt-hashed password and starts a session. */
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', authLimiter, async (req, res) => {
     const username = String(req.body.username || '').trim();
     const email = String(req.body.email || '').trim() || null;
     const password = String(req.body.password || '');
@@ -1335,7 +1378,7 @@ app.get('/api/auth/verify-email', async (req, res) => {
 });
 
 /** Verifies a user's password against the database and starts a session. */
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginIpLimiter, loginUserLimiter, async (req, res) => {
     const username = String(req.body.username || '').trim();
     const password = String(req.body.password || '');
 
@@ -2124,7 +2167,7 @@ app.listen(PORT, async () => {
 });
 
 /** Issues a fresh verification token for an unverified account. */
-app.post('/api/auth/resend-verification', async (req, res) => {
+app.post('/api/auth/resend-verification', authLimiter, async (req, res) => {
     const username = String(req.body.username || '').trim();
     if (!username) return res.status(400).json({ error: 'A felhasználónév kötelező.' });
     if (isRegistrationRateLimited(req)) {
@@ -2152,7 +2195,7 @@ app.post('/api/auth/resend-verification', async (req, res) => {
 });
 
 /** Changes the authenticated user's password after verifying the current one. */
-app.put('/api/auth/password', requireAuth, async (req, res) => {
+app.put('/api/auth/password', passwordLimiter, requireAuth, async (req, res) => {
     const currentPassword = String(req.body.currentPassword || '');
     const newPassword = String(req.body.newPassword || '');
     if (newPassword.length < 4) return res.status(400).json({ error: 'Az új jelszó legalább 4 karakter legyen.' });
