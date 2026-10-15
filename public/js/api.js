@@ -354,6 +354,52 @@ apiNamespace.api = {
     },
     getSharedBookmark(token) {
         return requestJson(`/api/shares/${encodeURIComponent(token)}`);
+    },
+
+    /** Lists the current user's items of one type (command, note). */
+    getItems(type, params = {}) {
+        const query = new URLSearchParams({ type, ...params });
+        return requestJson(`/api/items?${query.toString()}`);
+    },
+    createItem(item) {
+        return requestJson('/api/items', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item) });
+    },
+    updateItem(id, item) {
+        return requestJson(`/api/items/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item) });
+    },
+    /** Toggles starred / pinned / archived / trashed on an item. */
+    setItemState(id, state) {
+        return requestJson(`/api/items/${id}/state`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state) });
+    },
+    trashItem(id) {
+        return requestJson(`/api/items/${id}`, { method: 'DELETE' });
+    },
+    deleteItemPermanently(id) {
+        return requestJson(`/api/items/${id}/permanent`, { method: 'DELETE' });
+    },
+    markItemUsed(id) {
+        return requestJson(`/api/items/${id}/used`, { method: 'POST' });
+    },
+    importItems(type, items) {
+        return requestJson('/api/items/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, items }) });
+    },
+    exportItems(type, format) {
+        const query = new URLSearchParams({ type, format });
+        return fetch(`/api/items/export?${query.toString()}`).then(response => { if (!response.ok) throw new Error('Export failed'); return response.blob(); });
+    },
+
+    /** Category calls scoped to a content kind (command, note); the plain ones above are for bookmarks. */
+    getCategoriesOfKind(kind) {
+        return requestJson(`/api/categories?kind=${encodeURIComponent(kind)}`);
+    },
+    createCategoryOfKind(kind, name, parentId = null, defaultLanguage = null) {
+        return requestJson('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, name, parentId, defaultLanguage }) });
+    },
+    renameCategoryOfKind(kind, oldName, newName) {
+        return requestJson(`/api/categories/${encodeURIComponent(oldName)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, newName }) });
+    },
+    deleteCategoryOfKind(kind, name) {
+        return requestJson(`/api/categories/${encodeURIComponent(name)}?kind=${encodeURIComponent(kind)}`, { method: 'DELETE' });
     }
 };
 

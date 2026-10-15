@@ -78,6 +78,7 @@ function updateAuthOnlyVisibility() {
 function updateUserUI() {
     const area = document.getElementById('userStateArea');
     updateAuthOnlyVisibility();
+    window.CloudMark?.views?.onAuthChange(currentUser);
     if (!currentUser) { area.innerHTML = '<button class="btn btn-primary" onclick="openModal(\'authModal\')"><i class="fa-solid fa-user"></i> Bejelentkezés / Regisztráció</button>'; return; }
     const admin = currentUser.isSuperuser
         ? '<div style="display:flex; align-items:center; gap:0.5rem;"><button class="btn btn-admin" onclick="openAdminPanel()"><i class="fa-solid fa-shield-halved"></i> Admin panel</button><button class="btn btn-secondary" onclick="openAdminConfig()"><i class="fa-solid fa-sliders"></i> Beállítások</button></div>'
