@@ -50,6 +50,7 @@ routes/search.js        GET /api/search: one search across notes, tasks, bookmar
 routes/ai.js            AI kitöltés: users' own keys (encrypted) + POST /api/ai/fill (suggestions only)
 routes/ai-actions.js    per-action prompt, JSON schema and server-side validation of the answer
 routes/ai-providers.js  Gemini (@google/genai), Anthropic (@anthropic-ai/sdk), OpenAI-compatible (fetch)
+routes/safe-fetch.js    fetch a user-given URL safely (no private / metadata addresses), used by bookmark metadata
 migrations/NNN_*.sql    schema changes, run on every server start
 public/index.html       the whole single-page UI (all four views are in this file)
 public/css/styles.css   one stylesheet, themed with CSS variables
@@ -164,8 +165,16 @@ redraw after sign-in.
 - The form side uses `CloudMark.ai` (`public/js/ai-ui.js`): `status()`, `fill()`, and `createReview(bar, { onUndo })`,
   which highlights changed fields (`.ai-suggested`) until Elfogadom / Visszavonom. Fill only empty fields unless
   "Mindent újraír" is ticked. The command form (`commands-ui.js`) is the reference integration.
-- To add AI to another form: a new action in `ACTIONS` + tests in `test/ai.test.js`, the ✨ row and review bar markup
-  like `#cmdAiRow` / `#cmdAiReview`, and the apply logic in that view's module.
+- Actions: `command.fill`, `bookmark.fill` (the server adds the page's title/description via `fetchPageMetadata`),
+  `task.fill`, `task.parse` (gets `today` in the user's time zone; dates are re-checked), `task.subtasks`, `note.fill`,
+  `note.summary`, `note.tasks`. `kind` picks which categories (and tags) go into the prompt; `null` sends none.
+- Forms without autosave (commands, bookmarks: `bookmark-ai.js`) put the suggestion into the fields with `createReview`.
+  Autosaving editors (task panel, notes) show `CloudMark.ai.suggestionCard()` (one checkbox per change) and change nothing
+  before Elfogadom. `CloudMark.ai.run(action, input, button)` handles the spinner, the no-key case and error toasts.
+- To add AI to another form: a new action in `ACTIONS` + tests in `test/ai.test.js`, then either the ✨ row and review bar
+  markup like `#cmdAiRow` / `#cmdAiReview`, or a ✨ button and a slot for a suggestion card, and the apply logic in that view's module.
+- Fetching a URL on a user's behalf goes through `routes/safe-fetch.js` (`fetchPublicText`): public addresses only, checked in
+  the socket's DNS lookup and again after each redirect.
 
 ### Notes kanban
 

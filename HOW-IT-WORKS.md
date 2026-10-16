@@ -22,7 +22,9 @@ A Beállítások ablak Könyvjelzők fülén külön kapcsolható:
 
 Ha a leírás mezőt üresen hagyod, az oldal meta-leírása is elmenthető. A kézzel beírt leírás mindig elsőbbséget élvez.
 
-Az automatikus beolvasás nem garantált: az oldal blokkolhatja a lekérést, vagy nem adhat meg megfelelő metaadatot.
+Az automatikus beolvasás nem garantált: az oldal blokkolhatja a lekérést, vagy nem adhat meg megfelelő metaadatot. A szerver csak nyilvános címet kér le (belső hálózati, localhost vagy felhő metaadat címet nem, átirányítás után sem).
+
+**AI kitöltés** (ha van AI kulcsod): az Új könyvjelző és a Szerkesztés ablak tetején az **AI kitöltés** gomb (`Ctrl`+`Enter`) az URL, valamint az oldal címe és leírása alapján javasol címet (az oldal nyelvén, márkanévvel), leírást, címkéket és kategóriát, vagy új kategóriát (**Létrehozom**). Alapból csak az üres mezőket tölti ki (a „Mindent újraír” jelölővel mindet), a javaslat kiemelve jelenik meg: Elfogadom / Visszavonom.
 
 ## Megjelenítés és rendezés
 
@@ -84,7 +86,9 @@ Gyakran használt parancssorok tárolása, kategóriákba rendezve.
 ### AI kitöltés saját kulccsal
 
 - Minden felhasználó a saját kulcsát adja meg (Beállítások → AI). A kulcsot a szerver AES-256-GCM titkosítással tárolja (`AI_KEY_ENCRYPTION_SECRET`), a böngésző soha nem kapja vissza; az admin biztonsági mentésbe nem kerül bele.
-- Az AI-t a szerver hívja (`POST /api/ai/fill`), rögzített JSON sémával, és a választ még egyszer ellenőrzi: csak az engedélyezett mezők, meglévő kategória, legfeljebb 5 címke, legfeljebb 1 új fül.
+- Hol érhető el: Új parancs és parancs szerkesztése, Új könyvjelző és szerkesztése, a feladat gyors felvétele és részletes panelje, a jegyzetszerkesztő. Mindenhol csak gombnyomásra fut, és csak javasol.
+- Az AI-t a szerver hívja (`POST /api/ai/fill`), műveletenként rögzített JSON sémával, és a választ még egyszer ellenőrzi: csak az engedélyezett mezők, meglévő kategória vagy projekt, legfeljebb 5 címke, legfeljebb 1 új fül, valódi és nem múltbeli dátum.
+- A feladatoknál és a jegyzeteknél (amelyek automatikusan mentenek) a javaslat egy kártyán jelenik meg, soronként pipával; csak az **Elfogadom** után változik bármi.
 - Ajánlott modellek: Gemini Flash (`gemini-flash-latest`, van ingyenes szint), Claude Haiku 5.5 (`claude-haiku-5-5`). A listát a szolgáltatótól kéri le.
 - Ha a szolgáltató túlterhelt (pl. Gemini 503), a szerver kétszer újrapróbálja rövid várakozással, Geminin utána a Flash-Lite modellel is.
 - Korlát: 10 AI kérés percenként felhasználónként, kb. 8000 karakter bemenet. Az audit naplóba csak a művelet és a szolgáltató kerül, a szöveg nem.
@@ -100,6 +104,7 @@ Google Keep-szerű jegyzetek.
 - Egy jegyzetre kattintva megnyílik a szerkesztő, ami gépelés közben automatikusan ment.
 - **Kanban nézet:** oszloponként egy kategória („Kategória nélkül” + a saját kategóriák). Egy jegyzetet másik oszlopba húzva a kategóriája megváltozik és azonnal mentődik (egérrel húzással, telefonon hosszú nyomás után húzással; a tábla széléhez érve az oszlopok továbbgördülnek). Az oszlop alján a „+ Jegyzet” abba a kategóriába nyit új jegyzetet, a sor végén „Új kategória” oszlop hozható létre. Ha fent egy kategória van kiválasztva, csak az az oszlop látszik.
 - A Jegyzetek ⋮ menüjében: új kategória, import (JSON) és export (JSON, Markdown).
+- **AI segítség** (ha van AI kulcsod): a szerkesztő alsó sávjában a ✨ gomb menüje: **Cím, címkék, kategória** (javaslatkártya pipákkal, új kategóriát is javasolhat), **Összefoglaló** (2–4 mondat, a „Beszúrás az elejére” gombbal kerül a jegyzetbe; listás jegyzetnél nem érhető el) és **Teendők kiszedése** (a kipipált teendőkből feladat lesz, a jegyzethez kapcsolva; mentett jegyzetnél). A jegyzet szövegét az AI nem írja át. Első használatkor egy figyelmeztetés jelzi, hogy a jegyzet szövege elmegy az AI szolgáltatóhoz.
 
 ### Feladatok
 
@@ -110,9 +115,10 @@ Teendők határidővel, ismétlődéssel és részfeladatokkal. A fülön lévő
   - `minden hétfőn heti tervezés`, `minden hónap 1-jén lakbér`, `kéthetente szemét`
   - `jövő szerdán fél 3-kor fogorvos ^30` (emlékeztető 30 perccel előtte)
   - `!1`–`!4` prioritás, `#címke`, `@Projekt` (ha nincs ilyen projekt, létrejön).
+- **AI gyors felvétel** (ha van AI kulcsod): a sor végi ✨ gomb (`Ctrl`+`Enter`) egy kötetlen mondatból (pl. „jövő kedden fel kéne hívni a könyvelőt a számlák miatt, fontos”) rendes címet, határidőt, prioritást, címkéket és projektet készít. Az eredmény az előnézeti sorban látszik („AI”), Enterrel mentődik, „Elvetem”-mel vagy a szöveg átírásával eltűnik.
 - **Okos listák:** Ma (a lejártakkal együtt), Következő 7 nap, Beérkezett (projekt nélküliek), Mind, Kész, Kuka.
 - **Projektek:** a listák alatt, a ⋮ menüben átnevezhetők és törölhetők.
-- **Részletek:** egy feladatra kattintva jobb oldalt megnyílik a panel, ami automatikusan ment. Itt állítható a határidő és időpont, az ismétlődés, a prioritás, a projekt, az állapot, az emlékeztetők, a részfeladatok és a kapcsolt jegyzetek, parancsok, könyvjelzők.
+- **Részletek:** egy feladatra kattintva jobb oldalt megnyílik a panel, ami automatikusan ment. Itt állítható a határidő és időpont, az ismétlődés, a prioritás, a projekt, az állapot, az emlékeztetők, a részfeladatok és a kapcsolt jegyzetek, parancsok, könyvjelzők. AI kulccsal az **AI: címkék, projekt** gomb címkéket, projektet és prioritást javasol, a Részfeladatoknál a **Bontsd lépésekre** 3–7 lépést; a javaslatkártyán kipipálod, mi kell, és **Elfogadom**.
 - **Kipipálás:** az ismétlődő feladat a következő esedékességre ugrik (a részfeladatai újra nyitottak lesznek). Alul „Visszavonás” gomb jelenik meg.
 - **Billentyűk:** `N` új feladat, `/` keresés, a listában `↑`/`↓` mozgás, `Enter` részletek, `szóköz` kész, `T` áthelyezés mára, `Esc` panel bezárása.
 - **Értesítések:** az esedékes emlékeztető megjelenik a fejléc csengő ikonjánál, a telefonodon vagy gépeden rendszerértesítésként (ha bekapcsoltad), és e-mailben is (ha az e-mail címed meg van erősítve). A csengőre kattintva látod az értesítéseket, egy értesítésre kattintva megnyílik a feladat.

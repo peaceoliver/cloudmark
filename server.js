@@ -15,6 +15,7 @@ const { registerSearchRoutes } = require('./routes/search');
 const { createPushService, registerPushRoutes } = require('./routes/push');
 const { registerNotificationRoutes, DIGEST_TIME_PATTERN, QUIET_HOURS_PATTERN } = require('./routes/notifications');
 const { registerAiRoutes } = require('./routes/ai');
+const { fetchPublicText } = require('./routes/safe-fetch');
 const taskDates = require('./public/js/task-parser');
 
 const app = express();
@@ -508,12 +509,10 @@ function resolveBookmarkTitle(title, metadata, url) {
 /** Fetches lightweight article metadata without making metadata mandatory. */
 async function fetchBookmarkMetadata(url) {
     try {
-        const response = await fetch(url, {
-            headers: { 'User-Agent': 'CloudMark/1.0 metadata fetcher' },
-            signal: AbortSignal.timeout(5000)
-        });
-        if (!response.ok) return {};
-        const html = (await response.text()).slice(0, 512 * 1024);
+        // Csak nyilvános címre (belső gépre, metaadat címre nem), átirányításonként újra ellenőrizve.
+        const response = await fetchPublicText(url, { headers: { 'User-Agent': 'CloudMark/1.0 metadata fetcher' } });
+        if (response.status < 200 || response.status >= 300) return {};
+        const html = response.body;
         const image = extractMetaValue(html, ['og:image', 'twitter:image']);
         return {
             title: extractMetaValue(html, ['og:title', 'twitter:title']) || extractMetaValue(html, ['title']),
@@ -2337,7 +2336,7 @@ const taskActions = registerTaskRoutes(app, { pool, requireAuth, recordAuditEven
 const push = createPushService({ pool, getSubject: () => (getPublicBaseUrl().startsWith('https://') ? getPublicBaseUrl() : null) });
 registerPushRoutes(app, { pool, requireAuth, recordAuditEvent, push });
 registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer: getConfiguredMailer, getPublicBaseUrl, push, taskActions });
-registerAiRoutes(app, { pool, requireAuth, recordAuditEvent });
+registerAiRoutes(app, { pool, requireAuth, recordAuditEvent, fetchPageMetadata: fetchBookmarkMetadata });
 
 // Főoldal kiszolgálása
 app.get('*', (req, res) => {

@@ -19,6 +19,7 @@ Ha bekapcsoltad a Beállítások → Könyvjelzők fülön, a CloudMark beolvass
 
 ## Tippek
 
+- **AI kitöltés:** saját AI kulccsal az űrlap tetején lévő ✨ gomb az URL-ből címet, leírást, címkéket és kategóriát javasol. Lásd [ai-assist.md](ai-assist.md).
 - Állapotok: aktív, kedvenc, később olvasom, ellenőrzésre vár, archivált, kuka.
 - Több könyvjelzőt kijelölve csoportosan módosíthatod vagy áthelyezheted őket.
 - Import JSON- vagy HTML-fájlból (pl. a böngésző exportjából), export JSON-ba vagy HTML-be a ⋮ menüben.

@@ -146,3 +146,86 @@ test('generate retries an overloaded provider, then tries the fallback model', a
         PROVIDERS.gemini.generate = original;
     }
 });
+
+test('every action schema requires all of its fields and allows nothing else', () => {
+    const { ACTIONS } = require('../routes/ai-actions');
+    const ctx = { ...context, today: '2026-10-16', timeZone: 'Europe/Budapest', page: {} };
+    const input = { url: 'https://example.com', title: 'x', body: 'y', text: 'z' };
+    const check = schema => {
+        if (schema.type === 'object') {
+            assert.deepStrictEqual([...schema.required].sort(), Object.keys(schema.properties).sort());
+            assert.strictEqual(schema.additionalProperties, false);
+            Object.values(schema.properties).forEach(check);
+        }
+        if (schema.type === 'array') check(schema.items);
+    };
+    Object.entries(ACTIONS).forEach(([name, action]) => {
+        const prompt = action.build(input, ctx);
+        assert.ok(prompt.user.includes('<form>'), name);
+        check(prompt.schema);
+    });
+});
+
+test('bookmark.fill needs a web address and maps the category', () => {
+    const { ACTIONS } = require('../routes/ai-actions');
+    const action = ACTIONS['bookmark.fill'];
+    assert.strictEqual(action.needsInput({ url: 'javascript:alert(1)' }), null);
+    assert.strictEqual(action.needsInput({ url: 'https://github.com/peaceoliver/cloudmark' }), 'fromUrl');
+    const prompt = action.build({ url: 'https://github.com' }, { ...context, page: { title: 'GitHub', description: 'Code hosting' } });
+    assert.ok(prompt.user.includes('<page_title>GitHub</page_title>'));
+    const result = action.validate({ title: 'GitHub', description: 'Kódtárhely.', tags: ['git', 'Git'], category: 'GIT', newCategory: 'Fejlesztés' }, {}, context);
+    assert.deepStrictEqual(result.tags, ['git']);
+    assert.strictEqual(result.categoryId, 9);
+    assert.strictEqual(result.newCategory, '');
+});
+
+test('task.fill keeps only existing projects and sane priorities', () => {
+    const { ACTIONS } = require('../routes/ai-actions');
+    const validate = ACTIONS['task.fill'].validate;
+    assert.deepStrictEqual(validate({ tags: ['pénzügy'], project: 'docker', priority: 2 }, {}, context), { tags: ['pénzügy'], categoryId: 7, categoryName: 'Docker', priority: 2 });
+    assert.deepStrictEqual(validate({ tags: [], project: 'Új projekt', priority: 9 }, {}, context), { tags: [], categoryId: null, categoryName: '', priority: null });
+});
+
+test('task.parse drops past or invalid dates and times', () => {
+    const { ACTIONS } = require('../routes/ai-actions');
+    const ctx = { ...context, today: '2026-10-16', timeZone: 'Europe/Budapest' };
+    const validate = ACTIONS['task.parse'].validate;
+    const good = validate({ title: 'Könyvelő felhívása', dueDate: '2026-10-20', dueTime: '09:30', priority: 2, tags: ['pénzügy'], project: '' }, { text: 'kedden hívd fel' }, ctx);
+    assert.deepStrictEqual([good.dueDate, good.dueTime, good.priority], ['2026-10-20', '09:30', 2]);
+    assert.strictEqual(validate({ title: 'x', dueDate: '2026-10-15', dueTime: '09:30' }, { text: 'x' }, ctx).dueDate, '');
+    assert.strictEqual(validate({ title: 'x', dueDate: '2026-02-30' }, { text: 'x' }, ctx).dueDate, '');
+    const noDate = validate({ title: '', dueDate: '', dueTime: '25:00' }, { text: 'valami teendő' }, ctx);
+    assert.strictEqual(noDate.dueTime, '');
+    assert.strictEqual(noDate.title, 'valami teendő');
+    assert.ok(ACTIONS['task.parse'].build({ text: 'x' }, ctx).system.includes('2026-10-16 (péntek)'));
+});
+
+test('task.subtasks drops duplicates and existing steps, at most seven', () => {
+    const { ACTIONS } = require('../routes/ai-actions');
+    const result = ACTIONS['task.subtasks'].validate({ subtasks: ['Ajánlat kérése', 'ajánlat kérése', 'Számla', '', 'a', 'b', 'c', 'd', 'e', 'f'] }, { subtasks: ['Számla'] });
+    assert.deepStrictEqual(result.subtasks, ['Ajánlat kérése', 'a', 'b', 'c', 'd', 'e', 'f']);
+});
+
+test('note actions read checklists and clean the answers', () => {
+    const { ACTIONS } = require('../routes/ai-actions');
+    const ctx = { ...context, today: '2026-10-16', timeZone: 'Europe/Budapest' };
+    assert.strictEqual(ACTIONS['note.summary'].needsInput({ title: 'csak cím' }), null);
+    assert.strictEqual(ACTIONS['note.fill'].needsInput({ checklist: ['tej', 'kenyér'] }), 'fromText');
+    assert.ok(ACTIONS['note.fill'].build({ checklist: ['tej'] }, ctx).user.includes('- tej'));
+    assert.strictEqual(ACTIONS['note.summary'].validate({ summary: 'x'.repeat(900) }).summary.length, 600);
+    const tasks = ACTIONS['note.tasks'].validate({ tasks: [{ title: 'Tej vétele', dueDate: '2026-10-17' }, { title: 'tej vétele', dueDate: '' }, { title: 'Régi', dueDate: '2020-01-01' }] }, {}, ctx);
+    assert.deepStrictEqual(tasks.tasks, [{ title: 'Tej vétele', dueDate: '2026-10-17' }, { title: 'Régi', dueDate: '' }]);
+});
+
+test('publicHttpUrl refuses private and non-web addresses', () => {
+    const { publicHttpUrl } = require('../routes/safe-fetch');
+    assert.ok(publicHttpUrl('http://example.com/a?b=1'));
+    ['http://127.0.0.1/', 'http://169.254.169.254/latest/meta-data', 'http://[::1]/', 'http://localhost:3000', 'file:///etc/passwd', 'http://u:p@example.com', 'http://10.0.0.5', 'http://printer.local']
+        .forEach(url => assert.strictEqual(publicHttpUrl(url), null, url));
+});
+
+test('publicLookup refuses a host name that resolves to a private address', async () => {
+    const { publicLookup } = require('../routes/safe-fetch');
+    const error = await new Promise(resolve => publicLookup('localhost', {}, err => resolve(err)));
+    assert.strictEqual(error && error.code, 'EPRIVATE');
+});

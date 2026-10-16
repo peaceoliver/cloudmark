@@ -79,6 +79,6 @@ Az aktuális ötletek feladatként vannak felvéve az appban (Feladatok, „Clou
 4. Dashboard kezdőlap (mai/lejárt feladatok, kitűzött jegyzetek, legutóbbi parancsok)
 5. Clipper (böngésző gomb és telefonos megosztás menü)
 6. Képek és Mermaid ábrák a jegyzetekben
-7. AI asszisztens: saját kulcsos AI kitöltés. Első lépés kész: Új parancs (terv: `cloudmark-plan/ai-assist-plan.md`); következik a Feladatok (címke, projekt) és a Jegyzetek (cím, címke, kategória, összefoglalás)
+7. AI asszisztens: saját kulcsos AI kitöltés. Kész: Parancsok, Könyvjelzők, Feladatok (gyors felvétel, címke/projekt, bontás), Jegyzetek (cím/címke/kategória, összefoglaló, teendők) (tervek: `cloudmark-plan/ai-assist-plan.md`, `ai-assist-2-plan.md`). Később: címkézetlen könyvjelzők tömeges címkézése, parancs elmagyarázása, helyesírás-javítás jegyzetben
 8. Megosztás más felhasználókkal (e-mail cím, ismerősök vagy a Team funkció alapján), minden elemtípusra
 9. Saját domain és e-mail domain-hitelesítés (elhalasztva)

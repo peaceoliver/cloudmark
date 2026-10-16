@@ -226,11 +226,86 @@
         };
     }
 
+    // ---------- közös segédek a ✨ gombokhoz (könyvjelző, feladat, jegyzet) ----------
+
+    /**
+     * Runs one AI action for a ✨ button: without an active key it opens Settings → AI instead.
+     * Shows a spinner on the button meanwhile; returns the suggestion, or null on error (with a toast).
+     */
+    async function run(action, input, button) {
+        const current = await status();
+        if (!current.enabled) { notify('Az AI funkció a szerveren még nincs bekapcsolva.', 'error'); return null; }
+        if (!current.active) {
+            notify('Az AI kitöltéshez add meg a saját kulcsodat a Beállítások AI fülén.', 'info');
+            if (typeof openUserSettings === 'function') openUserSettings('ai');
+            return null;
+        }
+        if (button?.dataset.aiBusy) return null;
+        const original = button ? button.innerHTML : '';
+        if (button) {
+            button.dataset.aiBusy = '1';
+            button.disabled = true;
+            button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        }
+        try {
+            const result = await aiApi.aiFill(action, input);
+            return { ...result.suggestion, providerLabel: result.providerLabel };
+        } catch (err) {
+            notify(err.message || 'Az AI kitöltés nem sikerült.', 'error');
+            return null;
+        } finally {
+            if (button) {
+                delete button.dataset.aiBusy;
+                button.disabled = false;
+                button.innerHTML = original;
+            }
+        }
+    }
+
+    /**
+     * A suggestion card with one checkbox per proposed change. Nothing changes until Elfogadom;
+     * `onAccept(keys)` gets the ticked row keys. Rows: { key, html (already escaped), checked }.
+     */
+    function suggestionCard({ title, rows, acceptLabel = 'Elfogadom', onAccept, onDismiss }) {
+        const card = document.createElement('div');
+        card.className = 'ai-suggest-card';
+        card.innerHTML = `
+            <div class="ai-suggest-head"><i class="fa-solid fa-wand-magic-sparkles"></i> ${esc(title)}</div>
+            <div class="ai-suggest-rows">${rows.map((row, index) => `
+                <label class="ai-suggest-row"><input type="checkbox" data-ai-row="${index}" ${row.checked === false ? '' : 'checked'}> <span>${row.html}</span></label>`).join('')}
+            </div>
+            <div class="ai-suggest-actions">
+                <button type="button" class="btn btn-secondary" data-ai-card="dismiss"><i class="fa-solid fa-xmark"></i> Elvetem</button>
+                <button type="button" class="btn btn-primary" data-ai-card="accept"><i class="fa-solid fa-check"></i> ${esc(acceptLabel)}</button>
+            </div>`;
+        card.addEventListener('click', async event => {
+            const button = event.target.closest('[data-ai-card]');
+            if (!button) return;
+            event.stopPropagation();
+            if (button.dataset.aiCard === 'dismiss') { card.remove(); onDismiss?.(); return; }
+            const keys = Array.from(card.querySelectorAll('[data-ai-row]:checked')).map(box => rows[Number(box.dataset.aiRow)].key);
+            if (!keys.length) { notify('Jelölj ki legalább egy javaslatot, vagy vesd el.', 'info'); return; }
+            button.disabled = true;
+            try {
+                await onAccept(keys);
+                card.remove();
+            } catch (err) {
+                button.disabled = false;
+                notify(err.message || 'A javaslat alkalmazása nem sikerült.', 'error');
+            }
+        });
+        return card;
+    }
+
     window.CloudMark = window.CloudMark || {};
     window.CloudMark.ai = {
         status,
         loadSettings,
         createReview,
+        run,
+        refresh: changed,
+        suggestionCard,
+        esc,
         fill: (action, input) => aiApi.aiFill(action, input),
         reset() { statusPromise = null; state.keys = []; state.models.clear(); }
     };

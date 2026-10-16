@@ -21,6 +21,7 @@ Google Keep-szerű gyors jegyzetek és jelölőnégyzetes listák, kategóriákb
 
 ## Tippek
 
+- **AI:** saját AI kulccsal a szerkesztő ✨ gombja címet, címkéket, kategóriát, összefoglalót javasol, és teendőket szed ki. Lásd [ai-assist.md](ai-assist.md).
 - Egy jegyzetre kattintva megnyílik a szerkesztő, gépelés közben ment.
 - Archívum és Kuka az állapotgombokkal érhető el.
 - Import és export (JSON, Markdown) a Jegyzetek ⋮ menüjében.

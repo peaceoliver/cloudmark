@@ -10,7 +10,7 @@ itt az áll, hogyan kell használni az egyes részeket.
 | [tasks.md](tasks.md) | Feladatok gyors felvétele, projektek, emlékeztetők |
 | [bookmarks.md](bookmarks.md) | Könyvjelzők mentése, gyorsmentő, import/export |
 | [commands.md](commands.md) | Parancskönyvtár, másolás, fülek |
-| [ai-assist.md](ai-assist.md) | AI kitöltés saját API kulccsal (Gemini, Claude, OpenAI-kompatibilis) |
+| [ai-assist.md](ai-assist.md) | AI kitöltés saját API kulccsal (Gemini, Claude, OpenAI-kompatibilis): parancsok, könyvjelzők, feladatok, jegyzetek |
 | [notifications.md](notifications.md) | Értesítések: csengő, telefon, e-mail, napi összefoglaló |
 | [settings.md](settings.md) | A közös Beállítások ablak |
 | [install-app.md](install-app.md) | Telepítés telefonra és gépre |

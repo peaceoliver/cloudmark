@@ -420,9 +420,67 @@
         return parser.parse(quickInput.value, { timeZone: TIME_ZONE });
     }
 
+    // ---------- gyors-beírás AI-val: kötetlen mondatból cím, határidő, prioritás, címkék, projekt ----------
+
+    const ai = window.CloudMark.ai;
+    const quickAiButton = document.getElementById('taskQuickAi');
+    let aiEnabled = false;
+    // Az AI javaslata addig érvényes, amíg a beírt szöveg nem változik.
+    let aiQuick = null;
+
+    function currentAiQuick() {
+        return aiQuick && aiQuick.text === quickInput.value ? aiQuick.suggestion : null;
+    }
+
+    function renderAiQuickPreview(suggestion) {
+        const chips = [];
+        if (suggestion.dueDate) chips.push(`<span class="task-chip task-chip-date"><i class="fa-regular fa-calendar"></i> ${esc(dayLabel(suggestion.dueDate))}${suggestion.dueTime ? ` ${esc(suggestion.dueTime)}` : ''}</span>`);
+        if (suggestion.priority) chips.push(`<span class="task-chip task-p${suggestion.priority}"><i class="fa-solid fa-flag"></i> P${suggestion.priority}</span>`);
+        if (suggestion.categoryName) chips.push(`<span class="task-chip"><i class="fa-solid fa-folder"></i> ${esc(suggestion.categoryName)}</span>`);
+        suggestion.tags.forEach(tag => chips.push(`<span class="task-chip">#${esc(tag)}</span>`));
+        quickPreview.innerHTML = `<span class="task-chip task-chip-ai"><i class="fa-solid fa-wand-magic-sparkles"></i> AI</span>
+            <span class="task-quick-title">${esc(suggestion.title)}</span>${chips.join('')}
+            <span class="task-quick-hint">Enter: mentés</span>
+            <button type="button" class="ai-link task-quick-ai-dismiss" data-quick-ai="dismiss">Elvetem</button>`;
+    }
+
+    async function runQuickAi() {
+        if (!ai || !aiEnabled) return;
+        const text = quickInput.value.trim();
+        if (!text) { notify('Írd be, mit kell csinálni, pl. „jövő kedden fel kéne hívni a könyvelőt, fontos”.', 'info'); quickInput.focus(); return; }
+        const sent = quickInput.value;
+        const suggestion = await ai.run('task.parse', { text, timeZone: TIME_ZONE }, quickAiButton);
+        if (!suggestion || quickInput.value !== sent) return;
+        aiQuick = { text: sent, suggestion };
+        renderQuickPreview();
+        quickInput.focus();
+    }
+
+    function showAiButtons(current) {
+        aiEnabled = Boolean(current && current.enabled);
+        quickAiButton.hidden = !aiEnabled;
+        if (state.selectedId && !detailBox.hidden) refreshDetail();
+    }
+
+    if (ai) {
+        quickAiButton.addEventListener('click', runQuickAi);
+        document.addEventListener('cloudmark:ai', event => showAiButtons(event.detail));
+        ai.status().then(showAiButtons);
+    }
+
+    quickPreview.addEventListener('click', event => {
+        if (!event.target.closest('[data-quick-ai="dismiss"]')) return;
+        aiQuick = null;
+        renderQuickPreview();
+        quickInput.focus();
+    });
+
     function renderQuickPreview() {
         const text = quickInput.value.trim();
-        if (!text) { quickPreview.innerHTML = ''; return; }
+        if (!text) { aiQuick = null; quickPreview.innerHTML = ''; return; }
+        const suggestion = currentAiQuick();
+        if (suggestion) { renderAiQuickPreview(suggestion); return; }
+        aiQuick = null;
         const parsed = quickParse();
         const chips = [];
         if (parsed.dueDate) chips.push(`<span class="task-chip task-chip-date"><i class="fa-regular fa-calendar"></i> ${esc(dayLabel(parsed.dueDate))}${parsed.dueTime ? ` ${parsed.dueTime}` : ''}</span>`);
@@ -446,10 +504,26 @@
         return state.projects.find(project => project.name.toLowerCase() === name.toLowerCase())?.id ?? null;
     }
 
+    /** The AI suggestion in the shape of quickParse(), so quickAdd saves it the same way. */
+    function parsedFromAi(suggestion) {
+        return {
+            title: suggestion.title,
+            dueAt: suggestion.dueDate ? parser.zonedTimeToUtc(suggestion.dueDate, suggestion.dueTime || '00:00', TIME_ZONE).toISOString() : null,
+            dueAllDay: Boolean(suggestion.dueDate) && !suggestion.dueTime,
+            priority: suggestion.priority,
+            tags: suggestion.tags,
+            project: null,
+            categoryId: suggestion.categoryId,
+            recurrenceRule: null,
+            reminders: []
+        };
+    }
+
     async function quickAdd() {
         const text = quickInput.value.trim();
         if (!text) return;
-        const parsed = quickParse();
+        const suggestion = currentAiQuick();
+        const parsed = suggestion ? parsedFromAi(suggestion) : quickParse();
         if (!parsed.title) { notify('Adj címet a feladatnak.', 'error'); return; }
         let dueAt = parsed.dueAt;
         let dueAllDay = parsed.dueAllDay;
@@ -460,7 +534,7 @@
         }
         quickInput.disabled = true;
         try {
-            const categoryId = parsed.project ? await ensureProject(parsed.project) : state.project;
+            const categoryId = parsed.project ? await ensureProject(parsed.project) : (parsed.categoryId ?? state.project);
             const created = await taskApi.createItem({
                 type: 'task',
                 title: parsed.title,
@@ -475,6 +549,7 @@
             });
             upsert(created);
             quickInput.value = '';
+            aiQuick = null;
             renderQuickPreview();
             render();
             notify(`Feladat hozzáadva: ${created.title}`, 'success');
@@ -487,6 +562,12 @@
     }
 
     quickInput.addEventListener('input', renderQuickPreview);
+    quickInput.addEventListener('keydown', event => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            event.preventDefault();
+            runQuickAi();
+        }
+    });
     quickForm.addEventListener('submit', event => { event.preventDefault(); quickAdd(); });
 
     // ---------- kipipálás, visszavonás ----------
@@ -625,6 +706,10 @@
             </div>
             ${parent ? `<button type="button" class="task-detail-parent" data-open-task="${Number(parent.id)}"><i class="fa-solid fa-turn-up fa-rotate-90"></i> ${esc(parent.title)}</button>` : ''}
             <textarea class="task-detail-body" data-field="body" rows="3" maxlength="100000" placeholder="Leírás, megjegyzés…" aria-label="Leírás" ${trashed ? 'disabled' : ''}>${esc(item.body || '')}</textarea>
+            ${aiEnabled && !trashed ? `<div class="task-ai-tools">
+                <button type="button" class="btn btn-secondary ai-fill-btn" data-detail="ai-fill" title="Címkék, projekt és prioritás javaslata a cím és a leírás alapján"><i class="fa-solid fa-wand-magic-sparkles"></i> AI: címkék, projekt</button>
+            </div>
+            <div class="task-ai-slot" data-ai-slot="fill"></div>` : ''}
             <div class="task-detail-grid">
                 <label class="task-field"><span>Határidő</span>
                     <input type="date" data-field="dueDate" value="${due ? due.date : ''}" ${trashed ? 'disabled' : ''}>
@@ -684,7 +769,9 @@
             </section>
 
             ${isSub ? '' : `<section class="task-detail-section">
-                <h4><i class="fa-solid fa-list-check"></i> Részfeladatok ${children.length ? `<span class="task-section-count">${children.filter(child => child.status === 'done').length}/${children.length}</span>` : ''}</h4>
+                <h4><i class="fa-solid fa-list-check"></i> Részfeladatok ${children.length ? `<span class="task-section-count">${children.filter(child => child.status === 'done').length}/${children.length}</span>` : ''}
+                    ${aiEnabled && !trashed ? '<button type="button" class="ai-link task-ai-split" data-detail="ai-subtasks" title="Részfeladatok javaslata"><i class="fa-solid fa-wand-magic-sparkles"></i> Bontsd lépésekre</button>' : ''}</h4>
+                <div class="task-ai-slot" data-ai-slot="subtasks"></div>
                 <div class="task-detail-subtasks">
                     ${children.map(child => `
                         <div class="task-subtask ${child.status === 'done' ? 'is-done' : ''}" data-task-id="${Number(child.id)}">
@@ -886,6 +973,69 @@
         }
     }
 
+    // ---------- AI a részletes panelben: javaslatkártya, semmi nem változik Elfogadom előtt ----------
+
+    function showAiCard(slotName, card) {
+        const slot = detailBox.querySelector(`[data-ai-slot="${slotName}"]`);
+        if (!slot) return;
+        slot.innerHTML = '';
+        slot.appendChild(card);
+    }
+
+    async function aiFillDetail(item, button) {
+        readFields();
+        const taskId = item.id;
+        const suggestion = await ai.run('task.fill', { title: draft.title, body: draft.body }, button);
+        if (!suggestion || String(state.selectedId) !== String(taskId)) return;
+        const rows = [];
+        const newTags = suggestion.tags.filter(tag => !draft.tags.some(existing => existing.toLowerCase() === tag.toLowerCase()));
+        if (newTags.length) rows.push({ key: 'tags', html: `Címkék: ${newTags.map(tag => `<strong>#${esc(tag)}</strong>`).join(' ')}` });
+        if (suggestion.categoryId && suggestion.categoryId !== draft.categoryId) {
+            rows.push({ key: 'project', html: `Projekt: <strong>${esc(suggestion.categoryName)}</strong>`, checked: !draft.categoryId });
+        }
+        if (suggestion.priority && suggestion.priority !== draft.priority) {
+            rows.push({ key: 'priority', html: `Prioritás: <strong>${esc(PRIORITY_LABELS[suggestion.priority])}</strong>`, checked: !draft.priority });
+        }
+        if (!rows.length) { notify('Az AI nem talált új címkét, projektet vagy prioritást.', 'info'); return; }
+        showAiCard('fill', ai.suggestionCard({
+            title: `AI javaslat (${suggestion.providerLabel})`,
+            rows,
+            onAccept: async keys => {
+                if (String(state.selectedId) !== String(taskId)) return;
+                const field = name => detailBox.querySelector(`[data-field="${name}"]`);
+                if (keys.includes('tags')) field('tags').value = [...draft.tags, ...newTags].join(', ');
+                if (keys.includes('project')) field('categoryId').value = String(suggestion.categoryId);
+                if (keys.includes('priority')) field('priority').value = String(suggestion.priority);
+                await flushSave({ rerender: true });
+            }
+        }));
+    }
+
+    async function aiSplitDetail(item, button) {
+        readFields();
+        const taskId = item.id;
+        const existing = childrenOf(item).map(child => child.title);
+        const suggestion = await ai.run('task.subtasks', { title: draft.title, body: draft.body, subtasks: existing }, button);
+        if (!suggestion || String(state.selectedId) !== String(taskId)) return;
+        if (!suggestion.subtasks.length) { notify('Az AI nem javasolt új lépést.', 'info'); return; }
+        showAiCard('subtasks', ai.suggestionCard({
+            title: `Javasolt lépések (${suggestion.providerLabel})`,
+            rows: suggestion.subtasks.map((title, index) => ({ key: index, html: esc(title) })),
+            acceptLabel: 'Részfeladatok létrehozása',
+            onAccept: async keys => {
+                const parent = findItem(taskId);
+                if (!parent) return;
+                for (const index of keys) {
+                    upsert(await taskApi.createItem({ type: 'task', title: suggestion.subtasks[index], parentItemId: parent.id, categoryId: parent.category_id ?? null, fragments: [] }));
+                }
+                state.items = await taskApi.getItems('task');
+                render();
+                refreshDetail();
+                notify(`${keys.length} részfeladat létrehozva.`, 'success');
+            }
+        }));
+    }
+
     detailBox.addEventListener('input', event => {
         if (event.target.matches('[data-field="title"]')) autoGrow(event.target);
         if (event.target.matches('[data-field="title"], [data-field="body"], [data-field="tags"]')) queueSave();
@@ -952,6 +1102,8 @@
         const item = findItem(state.selectedId);
         if (!item) return;
         if (action === 'close') { closeDetail(); return; }
+        if (action === 'ai-fill') { aiFillDetail(item, button); return; }
+        if (action === 'ai-subtasks') { aiSplitDetail(item, button); return; }
         if (action === 'toggle') { await flushSave(); toggleComplete(findItem(item.id)); return; }
         if (action === 'toggle-sub') {
             const child = findItem(button.closest('[data-task-id]').dataset.taskId);
@@ -1243,6 +1395,8 @@
         show: () => load(),
         reset,
         refreshBadge,
+        /** Reloads the list if it was already loaded (after tasks were created elsewhere, e.g. from a note). */
+        reload: () => (state.loaded ? reloadItems() : Promise.resolve()),
         focusQuickAdd: () => quickInput.focus(),
         /** Adds a task from free text the same way as the quick-add bar (used by the Ctrl+K palette). */
         async addFromText(text) {
