@@ -78,6 +78,11 @@ tutorials/*.md          Hungarian user guides, one per feature (index: tutorials
   `server.js` (search for `008_push.sql`), with a one-line Hungarian comment above it.
 - **Every statement must be idempotent** (`IF NOT EXISTS`, `DO $$ … IF NOT EXISTS (SELECT … pg_constraint) …`),
   because the files run on every start. Never drop user data.
+- **Row-level security:** `010_row_level_security.sql` turns RLS on (with no policies) for every table in
+  `public` on each start, so new tables are covered automatically. This closes Supabase's REST API
+  (anon / authenticated keys) completely; the server connects as `postgres` (table owner, bypasses RLS).
+  Never add RLS policies or call Supabase from the browser: all data access goes through the Express API.
+  Functions in `public` get `SET search_path = public`, and EXECUTE is revoked from anon/authenticated.
 - When you add a table that holds user content, add it to the admin backup export/import in `server.js`
   (`/api/admin/backup/export` and `/import`). Exception: `user_ai_keys` (secrets) stays out of the backup.
 - New tables get `ENABLE ROW LEVEL SECURITY` with no policies when they hold secrets, so Supabase's REST API can't read them.

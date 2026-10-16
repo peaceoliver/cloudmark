@@ -339,6 +339,8 @@ async function initDatabase() {
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '008_push.sql'), 'utf8'));
         // Saját AI kulcsok (Gemini, Claude, OpenAI-kompatibilis) titkosítva az „AI kitöltés” gombokhoz.
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '009_ai.sql'), 'utf8'));
+        // Minden public tábla zárva a Supabase REST API (anon/authenticated) elől: RLS szabályok nélkül.
+        await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '010_row_level_security.sql'), 'utf8'));
 
         client.release();
         console.log(`[OK] Supabase PostgreSQL tablak sikeresen ellenorizve / letrehozva!`);
