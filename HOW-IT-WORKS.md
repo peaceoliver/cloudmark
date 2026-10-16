@@ -86,6 +86,7 @@ Gyakran használt parancssorok tárolása, kategóriákba rendezve.
 - Minden felhasználó a saját kulcsát adja meg (Beállítások → AI). A kulcsot a szerver AES-256-GCM titkosítással tárolja (`AI_KEY_ENCRYPTION_SECRET`), a böngésző soha nem kapja vissza; az admin biztonsági mentésbe nem kerül bele.
 - Az AI-t a szerver hívja (`POST /api/ai/fill`), rögzített JSON sémával, és a választ még egyszer ellenőrzi: csak az engedélyezett mezők, meglévő kategória, legfeljebb 5 címke, legfeljebb 1 új fül.
 - Ajánlott modellek: Gemini Flash (`gemini-flash-latest`, van ingyenes szint), Claude Haiku 5.5 (`claude-haiku-5-5`). A listát a szolgáltatótól kéri le.
+- Ha a szolgáltató túlterhelt (pl. Gemini 503), a szerver kétszer újrapróbálja rövid várakozással, Geminin utána a Flash-Lite modellel is.
 - Korlát: 10 AI kérés percenként felhasználónként, kb. 8000 karakter bemenet. Az audit naplóba csak a művelet és a szolgáltató kerül, a szöveg nem.
 
 ### Jegyzetek
