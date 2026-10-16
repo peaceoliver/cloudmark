@@ -1,6 +1,8 @@
 # CloudMark roadmap
 
-## Valós projekt állapot (2026.09.03)
+## Valós projekt állapot (2026.10.16)
+
+A fejlesztési szabályok és a felület egységességének szabályai a `CLAUDE.md`-ben vannak.
 
 ## 1. Kész ✅
 
@@ -30,13 +32,21 @@
 - e-mail megerősítés ki/bekapcsolása admin felületről + regisztrált felhasználók manuális aktiválása/deaktiválása admin panelből
 - egységesített, könnyen olvasható csapat (team) kezelő felület (szerepkör-magyarázattal, kártyás nézettel)
 - kliens-oldali lapozás a könyvjelző listánál (60 elem/oldal), nagy listáknál is gyors marad a renderelés
+- rate limiting (login, regisztráció) és helmet/CSP security headerek
+- audit log admin UI (szűrés, keresés)
+- Parancsok nézet (masscode-szerű parancskönyvtár, fülek, soronkénti másolás, import/export)
+- Jegyzetek nézet (Keep-szerű jegyzetek, listák, színek, kategóriák)
+- Feladatok nézet (magyar gyors felvétel, ismétlődés, részfeladatok, emlékeztetők)
+- értesítések: csengő, e-mail, napi összefoglaló, Web Push (Supabase pg_cron ütemezéssel)
+- PWA: telepíthető app, offline oldal, push értesítés Kész/Szundi gombokkal
+- egységes nézetek: fülek, „+ Új …” sáv, eszközsor, kártyák (kategória és #címkék) mind a négy nézetben
 
 ## 2. Részben kész ⚠️
 
 - rich preview / előnézet — metaadat-fetch (cím, kép, leírás, oldalnév) megvan, de UI preview modal nincs végigvezetve
-- audit log — az adatgyűjtés és admin lekérdezés megvan, de nincs hozzá szűrhető/kereshető admin UI felület
 - backup/restore — export/import endpoint megvan, de nincs ütemezett/automatikus backup, sem offsite mentés
 - import/export — JSON és HTML export működik, de nincs tesztelve/garantálva a teljes Chrome/Firefox export kompatibilitás minden változatra
+- `trust proxy` = true, ezért az IP alapú korlátozás megkerülhető, amíg nincs beállítva a Render helyes hop-száma
 - e-mail küldés HTTPS API providerrel — a kód kész és tesztelve saját címre, de éles (bármely felhasználónak történő) küldéshez saját, ellenőrzött domain kell a Resend/SendGrid oldalon — **ez még nincs beállítva, domain vásárlása elhalasztva**
 
 ## 3. Még hiányzik ❌
@@ -45,8 +55,7 @@
 - RBAC bővítése (guest szerepkör, finomabb jogosultsági szintek a jelenlegi admin/user/team_admin felett)
 - SSO / OAuth2 / OIDC bejelentkezés (Google, Microsoft, GitHub)
 - 2FA / MFA
-- rate limiting és brute-force védelem (login endpointokon nincs korlátozás)
-- security hardening: helmet/CSP, CSRF védelem, security headerek — jelenleg nincs beállítva
+- CSRF védelem
 - token rotation / session lejárat finomhangolása
 - teljesen validált keresés cím+URL+kategória+címke+leírás kombinációban UI szinten
 - search index bővítés (jelenlegi Postgres full-text alapszintű, nincs Elastic/OpenSearch)
@@ -56,17 +65,19 @@
 - job queue / async background worker (pl. metadata fetch háttérben)
 - application monitoring, error tracking (pl. Sentry)
 - browser extension (Chrome/Firefox)
-- mobil app
+- natív mobil app (Capacitor), a PWA már telepíthető
 - webhookok, Slack/Teams/Discord értesítések
-- AI alapú címke/összefoglaló generálás
+- AI asszisztens (összefoglaló, parancs magyarázat, feladatok kiszedése jegyzetből)
 
 ## 4. Következő prioritások
 
-1. Saját domain beszerzése és Resend/SendGrid domain-hitelesítés → valódi e-mail küldés minden felhasználónak (jelenleg elhalasztva)
-2. Rate limiting és alap security hardening (helmet, CSP, login brute-force védelem)
-3. Audit log admin UI (szűrés, keresés a meglévő audit_events adaton)
-4. Rich preview modal a meglévő metaadatokból
-5. Automatikus/ütemezett backup a meglévő export endpointra építve
-6. Valódi mappa/collection hierarchia a bookmarkokhoz
-7. Pagination és caching a teljesítmény javításához
-8. SSO/2FA biztonsági réteg
+Az aktuális ötletek feladatként vannak felvéve az appban (Feladatok, „CloudMark” projekt). Mindegyikhez előbb terv készül, és csak jóváhagyás után indul a fejlesztés.
+
+1. Teljesítmény ellenőrzés (az oldal megjelenítése lagosnak tűnik)
+2. Command Palette (Ctrl+K): közös keresés és gyors létrehozás mind a négy nézetben
+3. Belső hivatkozások (`[[`) jegyzetek, feladatok és parancsok között
+4. Dashboard kezdőlap (mai/lejárt feladatok, kitűzött jegyzetek, legutóbbi parancsok)
+5. Clipper (böngésző gomb és telefonos megosztás menü)
+6. Képek és Mermaid ábrák a jegyzetekben
+7. AI asszisztens
+8. Saját domain és e-mail domain-hitelesítés (elhalasztva)
