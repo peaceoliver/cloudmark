@@ -2293,3 +2293,12 @@ input:focus, select:focus {
         padding-top: max(1rem, env(safe-area-inset-top));
     }
 }
+
+/* --- Telefonos értesítések (csengő panel) és szundi --- */
+.bell-quiet-times { display: inline-flex; align-items: center; gap: 0.3rem; }
+.bell-quiet-times input[type="time"] { width: auto; min-width: 6.8rem; }
+.bell-devices { display: flex; flex-direction: column; gap: 0.25rem; margin: 0.2rem 0 0.4rem; }
+.bell-device { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; color: var(--text-secondary); }
+.bell-device span { flex: 1; }
+.bell-device em { color: #e11d48; font-style: normal; }
+.task-snooze { align-self: flex-start; padding: 0.35rem 0.75rem; font-size: 0.82rem; }

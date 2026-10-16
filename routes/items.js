@@ -239,7 +239,7 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                COALESCE((SELECT array_agg(t.name ORDER BY t.name)
                          FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = i.id), '{}') AS tags,
                COALESCE((SELECT json_agg(json_build_object('id', r.id, 'offsetMinutes', r.offset_minutes, 'remindAt', r.remind_at, 'sentAt', r.sent_at, 'channels', r.channels) ORDER BY r.remind_at)
-                         FROM item_reminders r WHERE r.item_id = i.id), '[]') AS reminders,
+                         FROM item_reminders r WHERE r.item_id = i.id AND r.is_snooze = FALSE), '[]') AS reminders,
                COALESCE((SELECT json_agg(json_build_object('targetType', l.target_type, 'targetId', l.target_id, 'itemType', li.type,
                                                            'title', COALESCE(li.title, b.title), 'url', b.url) ORDER BY l.created_at, l.target_type DESC, l.target_id)
                          FROM item_links l
@@ -338,7 +338,7 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
             [itemId, task.status, task.priority, task.dueAt, task.dueAllDay, task.recurrenceRule, task.parentItemId, task.status === 'done', task.status === null]
         );
         if (task.reminders) {
-            await db.query('DELETE FROM item_reminders WHERE item_id = $1', [itemId]);
+            await db.query('DELETE FROM item_reminders WHERE item_id = $1 AND is_snooze = FALSE', [itemId]);
             for (const reminder of task.reminders) {
                 await db.query(
                     'INSERT INTO item_reminders (item_id, offset_minutes, remind_at) VALUES ($1, $2, $3)',

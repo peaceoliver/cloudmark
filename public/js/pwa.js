@@ -102,7 +102,51 @@
     }
     new MutationObserver(syncThemeColor).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
+    /** Shows a task that a notification pointed at, and marks that notification read. */
+    async function openFromNotification(itemId, notificationId) {
+        const cloudMark = window.CloudMark;
+        if (notificationId) cloudMark.api?.markNotificationsRead({ ids: [Number(notificationId)] }).catch(() => {});
+        cloudMark.views?.showView('tasks');
+        if (itemId) await cloudMark.tasks?.openById?.(Number(itemId));
+        cloudMark.inbox?.refresh();
+    }
+
+    // Üzenetek a service workertől: új értesítés jött, egy gomb megváltoztatott egy feladatot, vagy meg kell nyitni egyet.
+    navigator.serviceWorker?.addEventListener('message', event => {
+        const message = event.data || {};
+        if (message.type === 'cloudmark:notification') window.CloudMark.inbox?.refresh();
+        if (message.type === 'cloudmark:task-changed') {
+            window.CloudMark.inbox?.refresh();
+            window.CloudMark.tasks?.refreshBadge();
+            if (window.CloudMark.views?.active === 'tasks') window.CloudMark.tasks?.show();
+        }
+        if (message.type === 'cloudmark:open') openFromNotification(message.itemId, message.notificationId);
+    });
+
+    /** A notification opened a new window as /?task=…&notification=…: open that task once signed in. */
+    function handleLaunchParams() {
+        const params = new URLSearchParams(window.location.search);
+        const itemId = params.get('task');
+        const notificationId = params.get('notification');
+        if (!itemId && !notificationId) return;
+        const clean = () => history.replaceState(null, '', window.location.pathname + window.location.hash);
+        let tries = 0;
+        const timer = setInterval(() => {
+            tries += 1;
+            const signedIn = !document.getElementById('bellWrapper')?.hidden;
+            if (signedIn) {
+                clearInterval(timer);
+                clean();
+                openFromNotification(itemId, notificationId);
+            } else if (tries > 40) {
+                clearInterval(timer);
+                clean();
+            }
+        }, 250);
+    }
+
     syncThemeColor();
+    handleLaunchParams();
     renderInstall();
     renderOnline();
     if (document.readyState === 'complete') registerServiceWorker();

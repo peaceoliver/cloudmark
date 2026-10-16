@@ -8,6 +8,8 @@ const taskDates = require('../public/js/task-parser');
 const { syncReminders, resolveTimeZone, dayBoundsSql, TASK_VIEW_CONDITIONS } = require('./items');
 
 const MAX_PARSE_LENGTH = 1000;
+const DEFAULT_SNOOZE_MINUTES = 10;
+const MAX_SNOOZE_MINUTES = 24 * 60;
 
 /**
  * The next due time of a repeating task after `dueAt`, skipping dates before today so that a task
@@ -33,38 +35,79 @@ function registerTaskRoutes(app, { pool, requireAuth, recordAuditEvent, loadItem
     /**
      * Completes a task. A repeating task stays open and moves to its next occurrence
      * (its reminders and subtasks are re-armed); any other task and its subtasks become done.
+     * Pending snoozes are dropped either way. Returns null when the user has no such task.
      */
+    async function completeTask(userId, id, tz, req = null) {
+        const timeZone = await resolveTimeZone(pool, userId, tz);
+        const outcome = await withTransaction(async client => {
+            const found = await client.query(
+                "SELECT * FROM items WHERE id = $1 AND owner_user_id = $2 AND type = 'task' FOR UPDATE",
+                [id, userId]
+            );
+            const task = found.rows[0];
+            if (!task) return null;
+            const previousDueAt = task.due_at;
+            const nextDue = task.recurrence_rule && task.due_at && task.status !== 'done' ? nextDueAt(task, timeZone) : null;
+            await client.query('DELETE FROM item_reminders WHERE item_id = $1 AND is_snooze = TRUE AND sent_at IS NULL', [id]);
+            if (nextDue) {
+                await client.query("UPDATE items SET due_at = $2, status = 'todo', completed_at = NULL, updated_at = NOW() WHERE id = $1", [id, nextDue]);
+                await syncReminders(client, id, nextDue.getTime() - new Date(previousDueAt).getTime());
+                await client.query("UPDATE items SET status = 'todo', completed_at = NULL WHERE parent_item_id = $1 AND trashed = FALSE", [id]);
+            } else {
+                await client.query("UPDATE items SET status = 'done', completed_at = COALESCE(completed_at, NOW()), updated_at = NOW() WHERE id = $1", [id]);
+                await client.query("UPDATE items SET status = 'done', completed_at = COALESCE(completed_at, NOW()) WHERE parent_item_id = $1 AND status <> 'done'", [id]);
+                await syncReminders(client, id);
+            }
+            return { item: await loadItem(client, id, userId), recurring: Boolean(nextDue), previousDueAt, title: task.title };
+        });
+        if (outcome) {
+            await recordAuditEvent({
+                userId, action: 'task_completed', entityType: 'item', entityId: id,
+                details: { title: outcome.title, recurring: outcome.recurring, occurrence: outcome.previousDueAt }, req
+            });
+        }
+        return outcome;
+    }
+
+    /** Reminds the user again in `minutes` (a one-off reminder). Returns null for an unknown or finished task. */
+    async function snoozeTask(userId, id, minutes = DEFAULT_SNOOZE_MINUTES) {
+        const result = await pool.query(
+            `INSERT INTO item_reminders (item_id, offset_minutes, remind_at, is_snooze)
+             SELECT i.id, NULL, NOW() + make_interval(mins => $3), TRUE FROM items i
+             WHERE i.id = $1 AND i.owner_user_id = $2 AND i.type = 'task' AND i.trashed = FALSE AND i.status <> 'done'
+             RETURNING remind_at`,
+            [id, userId, minutes]
+        );
+        if (!result.rowCount) return null;
+        await pool.query(
+            "DELETE FROM item_reminders WHERE item_id = $1 AND is_snooze = TRUE AND sent_at IS NOT NULL AND remind_at < NOW() - INTERVAL '1 day'",
+            [id]
+        );
+        return { remindAt: result.rows[0].remind_at };
+    }
+
     app.post('/api/items/:id/complete', requireAuth, async (req, res) => {
         const id = parseId(req.params.id);
         if (!id) return res.status(404).json({ error: 'Not found' });
         try {
-            const timeZone = await resolveTimeZone(pool, req.user.id, req.body?.tz);
-            const outcome = await withTransaction(async client => {
-                const found = await client.query(
-                    "SELECT * FROM items WHERE id = $1 AND owner_user_id = $2 AND type = 'task' FOR UPDATE",
-                    [id, req.user.id]
-                );
-                const task = found.rows[0];
-                if (!task) return null;
-                const previousDueAt = task.due_at;
-                const nextDue = task.recurrence_rule && task.due_at && task.status !== 'done' ? nextDueAt(task, timeZone) : null;
-                if (nextDue) {
-                    await client.query("UPDATE items SET due_at = $2, status = 'todo', completed_at = NULL, updated_at = NOW() WHERE id = $1", [id, nextDue]);
-                    await syncReminders(client, id, nextDue.getTime() - new Date(previousDueAt).getTime());
-                    await client.query("UPDATE items SET status = 'todo', completed_at = NULL WHERE parent_item_id = $1 AND trashed = FALSE", [id]);
-                } else {
-                    await client.query("UPDATE items SET status = 'done', completed_at = COALESCE(completed_at, NOW()), updated_at = NOW() WHERE id = $1", [id]);
-                    await client.query("UPDATE items SET status = 'done', completed_at = COALESCE(completed_at, NOW()) WHERE parent_item_id = $1 AND status <> 'done'", [id]);
-                    await syncReminders(client, id);
-                }
-                return { item: await loadItem(client, id, req.user.id), recurring: Boolean(nextDue), previousDueAt, title: task.title };
-            });
+            const outcome = await completeTask(req.user.id, id, req.body?.tz, req);
             if (!outcome) return res.status(404).json({ error: 'Not found' });
-            await recordAuditEvent({
-                userId: req.user.id, action: 'task_completed', entityType: 'item', entityId: id,
-                details: { title: outcome.title, recurring: outcome.recurring, occurrence: outcome.previousDueAt }, req
-            });
             res.json({ item: outcome.item, recurring: outcome.recurring, previousDueAt: outcome.previousDueAt });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    /** „Szundi”: one more reminder in a few minutes (default 10). */
+    app.post('/api/items/:id/snooze', requireAuth, async (req, res) => {
+        const id = parseId(req.params.id);
+        if (!id) return res.status(404).json({ error: 'Not found' });
+        const minutes = req.body?.minutes === undefined ? DEFAULT_SNOOZE_MINUTES : Number(req.body.minutes);
+        if (!Number.isInteger(minutes) || minutes < 1 || minutes > MAX_SNOOZE_MINUTES) return res.status(400).json({ error: 'Érvénytelen szundi időtartam.' });
+        try {
+            const result = await snoozeTask(req.user.id, id, minutes);
+            if (!result) return res.status(404).json({ error: 'Not found' });
+            res.json(result);
         } catch (err) {
             res.status(500).json({ error: err.message });
         }
@@ -143,6 +186,8 @@ function registerTaskRoutes(app, { pool, requireAuth, recordAuditEvent, loadItem
             res.status(500).json({ error: err.message });
         }
     });
+
+    return { completeTask, snoozeTask };
 }
 
 module.exports = { registerTaskRoutes, nextDueAt };

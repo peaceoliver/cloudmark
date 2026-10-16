@@ -11,7 +11,8 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { registerItemRoutes, normalizeItemLanguage, ITEM_TYPES } = require('./routes/items');
 const { registerTaskRoutes } = require('./routes/tasks');
-const { registerNotificationRoutes, DIGEST_TIME_PATTERN } = require('./routes/notifications');
+const { createPushService, registerPushRoutes } = require('./routes/push');
+const { registerNotificationRoutes, DIGEST_TIME_PATTERN, QUIET_HOURS_PATTERN } = require('./routes/notifications');
 const taskDates = require('./public/js/task-parser');
 
 const app = express();
@@ -332,6 +333,8 @@ async function initDatabase() {
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '006_tasks.sql'), 'utf8'));
         // Értesítések (csengő) és a pg_cron által használt notification_work_pending() függvény.
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '007_notifications.sql'), 'utf8'));
+        // Telefonos/böngészős push feliratkozások és az értesítések „Kész”/„Szundi” gombjainak tokenjei.
+        await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '008_push.sql'), 'utf8'));
 
         client.release();
         console.log(`[OK] Supabase PostgreSQL tablak sikeresen ellenorizve / letrehozva!`);
@@ -1394,13 +1397,13 @@ app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
             if (table === 'item_reminders') {
                 for (const row of rows) {
                     await pool.query(
-                        `INSERT INTO item_reminders (id, item_id, offset_minutes, remind_at, channels, sent_at, attempts, last_error, created_at)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                        `INSERT INTO item_reminders (id, item_id, offset_minutes, remind_at, channels, sent_at, attempts, last_error, created_at, is_snooze)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                          ON CONFLICT (id) DO UPDATE SET item_id = EXCLUDED.item_id, offset_minutes = EXCLUDED.offset_minutes,
                            remind_at = EXCLUDED.remind_at, channels = EXCLUDED.channels, sent_at = EXCLUDED.sent_at,
-                           attempts = EXCLUDED.attempts, last_error = EXCLUDED.last_error`,
+                           attempts = EXCLUDED.attempts, last_error = EXCLUDED.last_error, is_snooze = EXCLUDED.is_snooze`,
                         [row.id, row.item_id, row.offset_minutes ?? null, row.remind_at, row.channels || ['in_app', 'push', 'email'],
-                            row.sent_at || null, row.attempts || 0, row.last_error || null, row.created_at || new Date()]
+                            row.sent_at || null, row.attempts || 0, row.last_error || null, row.created_at || new Date(), row.is_snooze === true]
                     );
                 }
                 continue;
@@ -2249,13 +2252,14 @@ app.get('/api/user/settings', requireAuth, async (req, res) => {
 
 /** Saves one supported UI preference for the authenticated user. */
 app.put('/api/user/settings/:key', requireAuth, async (req, res) => {
-    const allowedKeys = ['theme', 'viewMode', 'sortMode', 'fetchMetadata', 'fetchMetadataTitle', 'fetchMetadataImage', 'timezone', 'notifyEmail', 'dailyDigestTime'];
+    const allowedKeys = ['theme', 'viewMode', 'sortMode', 'fetchMetadata', 'fetchMetadataTitle', 'fetchMetadataImage', 'timezone', 'notifyEmail', 'dailyDigestTime', 'quietHours'];
     const { key } = req.params;
     if (!allowedKeys.includes(key)) return res.status(400).json({ error: 'Ismeretlen felhasználói beállítás.' });
     if (req.body.value === undefined || req.body.value === null || String(req.body.value).trim() === '') return res.status(400).json({ error: 'Érvénytelen beállítási érték.' });
     if (key === 'timezone' && !taskDates.isValidTimeZone(req.body.value)) return res.status(400).json({ error: 'Érvénytelen időzóna.' });
     if (key === 'notifyEmail' && !['true', 'false'].includes(String(req.body.value))) return res.status(400).json({ error: 'Érvénytelen érték.' });
     if (key === 'dailyDigestTime' && req.body.value !== 'off' && !DIGEST_TIME_PATTERN.test(String(req.body.value))) return res.status(400).json({ error: 'Érvénytelen időpont (ÓÓ:PP).' });
+    if (key === 'quietHours' && req.body.value !== 'off' && !QUIET_HOURS_PATTERN.test(String(req.body.value))) return res.status(400).json({ error: 'Érvénytelen csendes időszak (ÓÓ:PP-ÓÓ:PP).' });
 
     try {
         await pool.query(
@@ -2311,8 +2315,11 @@ app.put('/api/admin/app-config', requireAdmin, async (req, res) => {
 
 // Parancsok / jegyzetek API (a catch-all előtt kell regisztrálni)
 const itemHelpers = registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normalizeTags });
-registerTaskRoutes(app, { pool, requireAuth, recordAuditEvent, ...itemHelpers });
-registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer: getConfiguredMailer, getPublicBaseUrl });
+const taskActions = registerTaskRoutes(app, { pool, requireAuth, recordAuditEvent, ...itemHelpers });
+// A push szolgáltatók egy elérhetőséget kérnek a küldőtől; alapból az app címe.
+const push = createPushService({ pool, getSubject: () => (getPublicBaseUrl().startsWith('https://') ? getPublicBaseUrl() : null) });
+registerPushRoutes(app, { pool, requireAuth, recordAuditEvent, push });
+registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer: getConfiguredMailer, getPublicBaseUrl, push, taskActions });
 
 // Főoldal kiszolgálása
 app.get('*', (req, res) => {

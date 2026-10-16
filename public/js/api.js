@@ -414,6 +414,24 @@ apiNamespace.api = {
     sendTestNotification() {
         return requestJson('/api/notifications/test', { method: 'POST' });
     },
+    /** „Szundi”: one more reminder for a task in `minutes` (default 10). */
+    snoozeTask(id, minutes = 10) {
+        return requestJson(`/api/items/${id}/snooze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ minutes }) });
+    },
+
+    /** Push notifications on this device: server key, and the user's subscribed devices. */
+    getPushConfig() {
+        return requestJson('/api/push/config');
+    },
+    getPushSubscriptions() {
+        return requestJson('/api/push/subscriptions');
+    },
+    savePushSubscription(subscription) {
+        return requestJson('/api/push/subscriptions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription }) });
+    },
+    deletePushSubscription(id) {
+        return requestJson(`/api/push/subscriptions/${id}`, { method: 'DELETE' });
+    },
 
     /** Category calls scoped to a content kind (command, note); the plain ones above are for bookmarks. */
     getCategoriesOfKind(kind) {
