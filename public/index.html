@@ -4,14 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CloudMark - Modern Multi-User Bookmark Hub</title>
+    <meta name="description" content="Könyvjelzők, parancsok, jegyzetek és feladatok egy helyen.">
+    <meta name="theme-color" content="#0b0f19">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+    <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="CloudMark">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261015-notes">
+    <link rel="stylesheet" href="/css/styles.css?v=20261016-pwa">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
+    <div id="offlineBar" class="offline-bar" role="status" hidden><i class="fa-solid fa-wifi" aria-hidden="true"></i> Nincs internetkapcsolat, a változások nem mentődnek.</div>
 
     <!-- Header Navigation -->
     <header>
@@ -70,6 +81,15 @@
                                         <i class="fa-solid fa-plus-circle"></i> + Mentés CloudMarkba
                                     </a>
                                 </div>
+                            </div>
+
+                            <div class="menu-section" id="installAppSection" hidden>
+                                <div class="menu-section-title"><i class="fa-solid fa-mobile-screen"></i> Alkalmazás</div>
+                                <p class="install-app-text">Telepítsd a CloudMarkot, hogy saját ikonnal, külön ablakban nyíljon, és értesítéseket kaphass a telefonodon is.</p>
+                                <div class="enterprise-actions">
+                                    <button class="btn btn-primary" id="installAppBtn" type="button" hidden><i class="fa-solid fa-download"></i> Telepítés</button>
+                                </div>
+                                <p class="install-app-hint" id="installAppHint" hidden>iPhone-on és iPaden: Safariban koppints a <strong>Megosztás</strong> <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i> gombra, majd válaszd a <strong>Hozzáadás a Főképernyőhöz</strong> lehetőséget.</p>
                             </div>
 
                             <div class="menu-section">
@@ -952,5 +972,6 @@
     <script src="/js/tasks-ui.js?v=20261015-notify"></script>
     <script src="/js/notification-center.js?v=20261015-notify"></script>
     <script src="/js/views.js?v=20261015-notify"></script>
+    <script src="/js/pwa.js?v=20261016-pwa"></script>
 </body>
 </html>

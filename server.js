@@ -75,6 +75,8 @@ app.use(helmet({
             fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
             imgSrc: ["'self'", 'data:', 'https:'],
             connectSrc: ["'self'"],
+            workerSrc: ["'self'"],
+            manifestSrc: ["'self'"],
             objectSrc: ["'none'"],
             frameAncestors: ["'none'"],
             baseUri: ["'self'"],
@@ -114,8 +116,15 @@ app.use((req, res, next) => {
     next();
 });
 
-// Statikus fájlok kiszolgálása (a 'public' mappából)
-app.use(express.static(path.join(__dirname, 'public')));
+// Statikus fájlok kiszolgálása (a 'public' mappából).
+// A service workert és a manifestet a böngésző mindig frissen kérje le, különben az app frissítései késnének.
+app.use(express.static(path.join(__dirname, 'public'), {
+    setHeaders(res, filePath) {
+        const name = path.basename(filePath);
+        if (name === 'sw.js' || name === 'manifest.webmanifest') res.setHeader('Cache-Control', 'no-cache');
+        if (name === 'manifest.webmanifest') res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+    }
+}));
 
 // PostgreSQL Adatbázis kapcsolat inicializálása Supabase-hez
 const pool = new Pool({

@@ -76,6 +76,15 @@ Teendők határidővel, ismétlődéssel és részfeladatokkal. A fülön lévő
 - **Értesítések:** az esedékes emlékeztető megjelenik a fejléc csengő ikonjánál, és e-mailben is megérkezik (ha az e-mail címed meg van erősítve). A csengőre kattintva látod az értesítéseket, egy értesítésre kattintva megnyílik a feladat.
 - **Napi összefoglaló:** a csengő panel alján bekapcsolható. A választott időpontban e-mailt kapsz a lejárt, mai és holnapi feladataidról. Ugyanitt kapcsolhatók ki az e-mail emlékeztetők, és küldhető teszt értesítés.
 
+## Telepítés alkalmazásként
+
+A CloudMark telepíthető a telefonra és a számítógépre is, ilyenkor saját ikonnal, külön ablakban, böngészősáv nélkül nyílik.
+
+- **Android, asztali Chrome és Edge:** a ⋮ menü „Alkalmazás” részében a **Telepítés** gombbal (vagy a böngésző címsorában megjelenő telepítés ikonnal).
+- **iPhone és iPad:** Safariban a **Megosztás** gomb, majd **Hozzáadás a Főképernyőhöz**.
+- **Hálózat nélkül:** az app elindul, felül sáv jelzi, hogy nincs kapcsolat; az adatok a kapcsolat visszatérése után töltődnek be.
+- **Frissítés:** ha új verzió érhető el, egy „Frissítés” gomb jelenik meg.
+
 ## Egyéb lehetőségek
 
 - Saját kategóriák és címkék kezelése.

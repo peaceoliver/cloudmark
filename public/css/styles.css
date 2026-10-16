@@ -2239,3 +2239,57 @@ input:focus, select:focus {
 @media (max-width: 480px) {
     .nav-actions .status-badge { display: none; }
 }
+
+/* --- Telepíthető app (PWA) --- */
+#installAppSection[hidden], #installAppBtn[hidden], .install-app-hint[hidden], .offline-bar[hidden] { display: none; }
+
+.offline-bar {
+    position: sticky;
+    top: 0;
+    z-index: 150;
+    padding: 0.45rem 1rem;
+    background: #b45309;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.offline-bar i {
+    margin-right: 0.4rem;
+}
+
+.install-app-text,
+.install-app-hint {
+    margin: 0 0 0.6rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.install-app-hint {
+    margin: 0.6rem 0 0;
+    padding: 0.6rem 0.75rem;
+    border-radius: 8px;
+    background: var(--accent-glow);
+    color: var(--text-primary);
+}
+
+.pwa-update {
+    align-items: center;
+}
+
+.pwa-update span {
+    flex: 1;
+}
+
+.pwa-update .btn {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.85rem;
+}
+
+@media (display-mode: standalone) {
+    header {
+        padding-top: max(1rem, env(safe-area-inset-top));
+    }
+}
