@@ -55,8 +55,8 @@
     window.addEventListener('online', renderOnline);
     window.addEventListener('offline', renderOnline);
 
-    /** Offers a reload when a new app version is installed and waiting. */
-    function offerUpdate(worker) {
+    /** Offers a reload after a new app version has taken over. */
+    function offerReload() {
         const container = document.getElementById('notificationArea');
         if (!container || container.querySelector('.pwa-update')) return;
         const toast = document.createElement('div');
@@ -65,7 +65,7 @@
         toast.innerHTML = '<span>Új CloudMark verzió érhető el.</span>'
             + '<button type="button" class="btn btn-primary btn-sm" data-pwa-reload>Frissítés</button>'
             + '<button type="button" class="notification-close" aria-label="Később">&times;</button>';
-        toast.querySelector('[data-pwa-reload]').addEventListener('click', () => worker.postMessage({ type: 'SKIP_WAITING' }));
+        toast.querySelector('[data-pwa-reload]').addEventListener('click', () => window.location.reload());
         toast.querySelector('.notification-close').addEventListener('click', () => toast.remove());
         container.appendChild(toast);
     }
@@ -74,20 +74,9 @@
         if (!('serviceWorker' in navigator)) return;
         try {
             const hadController = Boolean(navigator.serviceWorker.controller);
+            // Az új service worker azonnal átveszi az irányítást; az oldal újratöltése a felhasználóra marad.
+            navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) offerReload(); });
             const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' });
-            if (registration.waiting && hadController) offerUpdate(registration.waiting);
-            registration.addEventListener('updatefound', () => {
-                const worker = registration.installing;
-                worker?.addEventListener('statechange', () => {
-                    if (worker.state === 'installed' && navigator.serviceWorker.controller) offerUpdate(worker);
-                });
-            });
-            let reloading = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (!hadController || reloading) return;
-                reloading = true;
-                window.location.reload();
-            });
             // A sokáig nyitva hagyott app is észrevegye az új verziót.
             setInterval(() => registration.update().catch(() => {}), 60 * 60 * 1000);
         } catch (err) {

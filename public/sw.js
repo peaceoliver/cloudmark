@@ -3,11 +3,11 @@
  * és megjeleníti a push értesítéseket „Kész” és „Szundi” gombokkal.
  * Adatot nem tárol offline: az /api hívások mindig a szerverre mennek.
  * A saját fájlokat hálózatról tölti (így mindig a legfrissebb verzió fut), és csak hálózati hiba esetén
- * adja a gyorsítótárból. A CDN-es betűkészletek verziózott címűek, ezeket a gyorsítótárból adja.
+ * adja a gyorsítótárból. Más címekre (CDN betűkészletek, ikonok) menő kéréseket nem érinti: azokat a böngésző
+ * maga tölti, mert a service worker saját CSP-je (connect-src 'self') nem engedné őket.
  */
-const VERSION = '2026-10-16-push';
+const VERSION = '2026-10-16-cdn-fix';
 const APP_CACHE = `cloudmark-app-${VERSION}`;
-const CDN_CACHE = 'cloudmark-cdn-v1';
 const OFFLINE_URL = '/offline.html';
 const PRECACHE = [
     OFFLINE_URL,
@@ -18,25 +18,20 @@ const PRECACHE = [
     '/icons/icon-512.png',
     '/icons/badge-96.png'
 ];
-const CDN_HOSTS = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
+// Az új verzió azonnal átveszi az irányítást; az oldal egy „Frissítés” gombot mutat az újratöltéshez.
 self.addEventListener('install', event => {
-    event.waitUntil(caches.open(APP_CACHE).then(cache => cache.addAll(PRECACHE)));
+    event.waitUntil(caches.open(APP_CACHE).then(cache => cache.addAll(PRECACHE)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', event => {
     event.waitUntil((async () => {
-        const keep = new Set([APP_CACHE, CDN_CACHE]);
         const names = await caches.keys();
-        await Promise.all(names.filter(name => name.startsWith('cloudmark-') && !keep.has(name)).map(name => caches.delete(name)));
+        await Promise.all(names.filter(name => name.startsWith('cloudmark-') && name !== APP_CACHE).map(name => caches.delete(name)));
         await self.clients.claim();
     })());
 });
 
-/** The page asks a waiting new version to take over when the user taps „Frissítés”. */
-self.addEventListener('message', event => {
-    if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
-});
 
 function stripSearch(href) {
     const url = new URL(href);
@@ -58,15 +53,6 @@ async function networkFirst(request) {
     }
 }
 
-async function cacheFirst(request) {
-    const cache = await caches.open(CDN_CACHE);
-    const cached = await cache.match(request);
-    if (cached) return cached;
-    const response = await fetch(request);
-    if (response.ok || response.type === 'opaque') cache.put(request, response.clone());
-    return response;
-}
-
 self.addEventListener('fetch', event => {
     const { request } = event;
     if (request.method !== 'GET') return;
@@ -74,8 +60,6 @@ self.addEventListener('fetch', event => {
     if (url.origin === self.location.origin) {
         if (url.pathname.startsWith('/api/') || url.pathname === '/sw.js') return;
         event.respondWith(networkFirst(request));
-    } else if (CDN_HOSTS.includes(url.hostname)) {
-        event.respondWith(cacheFirst(request));
     }
 });
 
