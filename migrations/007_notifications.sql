@@ -18,7 +18,7 @@ CREATE INDEX IF NOT EXISTS notifications_unread_idx ON notifications(user_id) WH
 -- The Supabase pg_cron job calls this every minute and only wakes the web service when it is TRUE,
 -- so a sleeping free-tier instance is not woken up for nothing.
 CREATE OR REPLACE FUNCTION notification_work_pending() RETURNS BOOLEAN
-LANGUAGE sql STABLE AS $$
+LANGUAGE sql STABLE SET search_path = public AS $$
   SELECT EXISTS (
     SELECT 1 FROM item_reminders r JOIN items i ON i.id = r.item_id
     WHERE r.sent_at IS NULL AND r.remind_at <= NOW()
