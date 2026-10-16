@@ -117,3 +117,32 @@ test('pickDefaultModel prefers the recommended model when listed', () => {
     assert.strictEqual(pickDefaultModel('openai', [{ id: 'some-model' }]), 'some-model');
     assert.strictEqual(pickDefaultModel('gemini', []), 'gemini-flash-latest');
 });
+
+test('generate retries an overloaded provider, then tries the fallback model', async () => {
+    const { PROVIDERS, generate } = require('../routes/ai-providers');
+    const original = PROVIDERS.gemini.generate;
+    const calls = [];
+    const overloaded = Object.assign(new Error('The model is overloaded.'), { status: 503 });
+    try {
+        PROVIDERS.gemini.generate = async ({ model }) => {
+            calls.push(model);
+            if (model === 'gemini-flash-latest') throw overloaded;
+            return { ok: true };
+        };
+        const result = await generate('gemini', { model: 'gemini-flash-latest' }, { sleep: async () => {} });
+        assert.deepStrictEqual(result, { ok: true });
+        assert.deepStrictEqual(calls, ['gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-lite-latest']);
+
+        calls.length = 0;
+        PROVIDERS.gemini.generate = async ({ model }) => { calls.push(model); throw overloaded; };
+        await assert.rejects(generate('gemini', { model: 'gemini-flash-latest' }, { sleep: async () => {} }), err => err.status === 503 && /túlterhelt/.test(err.message));
+        assert.strictEqual(calls.length, 6);
+
+        calls.length = 0;
+        PROVIDERS.gemini.generate = async ({ model }) => { calls.push(model); throw Object.assign(new Error('API key not valid'), { status: 400 }); };
+        await assert.rejects(generate('gemini', { model: 'gemini-flash-latest' }, { sleep: async () => {} }), err => err.status === 400);
+        assert.strictEqual(calls.length, 1);
+    } finally {
+        PROVIDERS.gemini.generate = original;
+    }
+});

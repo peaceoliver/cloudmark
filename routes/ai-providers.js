@@ -10,6 +10,9 @@ const { isPrivateAddress, normalizeBaseUrl } = require('./ai-actions');
 const REQUEST_TIMEOUT_MS = 30000;
 const MAX_OUTPUT_TOKENS = 8000;
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
+// Túlterhelés (pl. Gemini 503 „model is overloaded”): rövid várakozás után újrapróbálja.
+const RETRY_STATUSES = [500, 502, 503, 529];
+const RETRY_DELAYS_MS = [1000, 2500];
 
 /** An error with a Hungarian message and the HTTP status the API returns to the browser. */
 class AiError extends Error {
@@ -26,6 +29,7 @@ function providerError(status) {
     if (status === 404) return new AiError(400, 'A kiválasztott modell nem érhető el. Válassz másikat a Beállítások AI fülén.');
     if (status === 402) return new AiError(400, 'A szolgáltatónál elfogyott az egyenleg.');
     if (status === 400) return new AiError(400, 'A szolgáltató elutasította a kérést (rossz modell vagy beállítás).');
+    if (status === 503 || status === 529) return new AiError(503, 'Az AI szolgáltató most túlterhelt. Próbáld újra pár perc múlva, vagy válassz másik modellt (pl. Flash-Lite) a Beállítások AI fülén.');
     if (status === 408 || status === 504) return new AiError(504, 'Az AI nem válaszolt időben. Próbáld újra.');
     return new AiError(502, `Az AI hívás nem sikerült${status ? ` (HTTP ${status})` : ''}. Próbáld újra később.`);
 }
@@ -56,6 +60,8 @@ function parseJsonText(text) {
 const gemini = {
     label: 'Gemini',
     defaultModels: ['gemini-flash-latest', 'gemini-flash-lite-latest'],
+    // Ha a választott modell túlterhelt marad, egyszer ezzel is megpróbálja.
+    fallbackModel: 'gemini-flash-lite-latest',
     client(apiKey) {
         return new GoogleGenAI({ apiKey, vertexai: false, httpOptions: { timeout: REQUEST_TIMEOUT_MS } });
     },
@@ -214,12 +220,35 @@ async function listModels(provider, credentials) {
     }
 }
 
-async function generate(provider, request) {
-    try {
-        return await PROVIDERS[provider].generate(request);
-    } catch (err) {
-        throw wrapError(err);
+function isOverloaded(err) {
+    return !(err instanceof AiError) && typeof err?.status === 'number' && RETRY_STATUSES.includes(err.status);
+}
+
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Calls the provider; on an overload error it retries after a short wait, then (Gemini) once more with
+ * the fallback model. Other errors are not retried.
+ */
+async function generate(provider, request, { sleep = wait } = {}) {
+    const impl = PROVIDERS[provider];
+    const models = [request.model];
+    if (impl.fallbackModel && impl.fallbackModel !== request.model) models.push(impl.fallbackModel);
+    let lastError;
+    for (const model of models) {
+        for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+            try {
+                return await impl.generate({ ...request, model });
+            } catch (err) {
+                lastError = err;
+                // A hibaüzenet nem tartalmazza a kulcsot (fejlécben megy), így naplózható.
+                console.warn(`[AI] ${provider} ${model} ${err?.status ?? ''} ${String(err?.message || err).slice(0, 200)}`);
+                if (!isOverloaded(err)) throw wrapError(err);
+                if (attempt < RETRY_DELAYS_MS.length) await sleep(RETRY_DELAYS_MS[attempt]);
+            }
+        }
     }
+    throw wrapError(lastError);
 }
 
 module.exports = { PROVIDERS, AiError, listModels, generate, pickDefaultModel, assertPublicBaseUrl, DEFAULT_OPENAI_BASE_URL };
