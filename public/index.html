@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261016-taborder">
+    <link rel="stylesheet" href="/css/styles.css?v=20261016-cards">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -165,11 +165,8 @@
             </button>
             <div id="addBookmarkPanelContent" class="accordion-panel">
                 <div class="control-panel" id="addPanel" style="display: none;">
-                    <div class="panel-header">
-                        <span class="panel-title"><i class="fa-solid fa-link"></i> Új Könyvjelző Hozzáadása</span>
-                        <span id="incomingAlert" style="display:none; color: var(--accent); font-size: 0.85rem; font-weight:600;">
-                            <i class="fa-solid fa-arrow-down"></i> Bookmarkletből beérkezett adatok!
-                        </span>
+                    <div id="incomingAlert" style="display:none; margin-bottom: 1rem; color: var(--accent); font-size: 0.85rem; font-weight:600;">
+                        <i class="fa-solid fa-arrow-down"></i> Bookmarkletből beérkezett adatok!
                     </div>
             <form id="bookmarkForm" class="add-form-grid" style="display: flex; flex-direction: column; gap: 1rem;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -1037,15 +1034,15 @@
     <script src="/js/notifications.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/modal.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/categories-ui.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/bookmarks-ui.js?v=20261016-toolbar"></script>
+    <script src="/js/bookmarks-ui.js?v=20261016-cards"></script>
     <script src="/js/enterprise.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/auth.js?v=20261015-commands"></script>
     <script src="/js/app.js?v=20261016-toolbar"></script>
     <script src="/js/view-prefs.js?v=20261016-toolbar"></script>
     <script src="/js/main-menu.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/commands-ui.js?v=20261016-newform"></script>
-    <script src="/js/notes-ui.js?v=20261016-taborder"></script>
-    <script src="/js/tasks-ui.js?v=20261016-toolbar"></script>
+    <script src="/js/commands-ui.js?v=20261016-cards"></script>
+    <script src="/js/notes-ui.js?v=20261016-cards"></script>
+    <script src="/js/tasks-ui.js?v=20261016-cards"></script>
     <script src="/js/notification-center.js?v=20261016-push"></script>
     <script src="/js/views.js?v=20261016-taborder"></script>
     <script src="/js/pwa.js?v=20261016-cdnfix"></script>

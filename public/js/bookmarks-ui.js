@@ -346,18 +346,10 @@ function createBookmarkCard(bookmark) {
     title.onclick = event => { event.preventDefault(); trackClickAndOpen(bookmark.id, bookmark.url); };
     const titleContainer = document.createElement('div'); titleContainer.className = 'card-title-container'; titleContainer.appendChild(title);
     const category = document.createElement('span'); category.className = 'card-category'; category.textContent = bookmark.category;
-    if (bulkSelectionEnabled) {
-        if (!shouldShowImage) {
-            header.appendChild(selectionControl);
-        }
-        header.append(titleContainer, category);
-    } else {
-        header.append(titleContainer, category);
-    }
-    if (bookmark.tags && bookmark.tags.length) {
-        const tags = document.createElement('div'); tags.className = 'card-tags'; tags.textContent = bookmark.tags.map(tag => `#${tag}`).join(' '); left.appendChild(tags);
-    }
-    const url = document.createElement('div'); url.className = 'card-url'; url.textContent = bookmark.url; left.append(header, url);
+    const meta = document.createElement('div'); meta.className = 'card-meta'; meta.appendChild(category);
+    if (bulkSelectionEnabled && !shouldShowImage) header.appendChild(selectionControl);
+    header.appendChild(titleContainer);
+    const url = document.createElement('div'); url.className = 'card-url'; url.textContent = bookmark.url; left.append(header, meta, url);
     if (bookmark.description && bookmark.description.trim()) {
         const desc = document.createElement('div');
         desc.className = 'card-description';
@@ -367,6 +359,9 @@ function createBookmarkCard(bookmark) {
     }
     if (fetchMetadataTitleEnabled && bookmark.metadataTitle && bookmark.metadataTitle.trim() && bookmark.metadataTitle.trim() !== primaryTitle.trim()) {
         const articleTitle = document.createElement('div'); articleTitle.className = 'card-metadata-title'; articleTitle.textContent = bookmark.metadataTitle; left.appendChild(articleTitle);
+    }
+    if (bookmark.tags && bookmark.tags.length) {
+        const tags = document.createElement('div'); tags.className = 'card-tags'; tags.textContent = bookmark.tags.map(tag => `#${tag}`).join(' '); left.appendChild(tags);
     }
     const footer = document.createElement('div'); footer.className = 'card-footer'; footer.innerHTML = `<span><i class="fa-regular fa-clock"></i> ${bookmark.createdAt}</span>`;
     const actions = document.createElement('div'); actions.className = 'card-actions';

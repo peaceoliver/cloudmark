@@ -249,7 +249,7 @@
                             ${stateButtons}
                         </div>
                     </div>
-                    <div class="command-card-meta">
+                    <div class="card-meta command-card-meta">
                         <span class="card-category">${esc(item.category_name || 'Inbox')}</span>
                         ${fragment.language ? `<span class="command-lang">${esc(fragment.language)}</span>` : ''}
                     </div>

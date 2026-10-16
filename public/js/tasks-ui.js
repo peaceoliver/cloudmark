@@ -284,9 +284,10 @@
             const parent = findItem(item.parent_item_id);
             if (parent) parts.push(`<span class="task-meta-item task-parent-hint"><i class="fa-solid fa-turn-up fa-rotate-90"></i> ${esc(parent.title)}</span>`);
         }
-        if (item.category_id && state.view !== 'project') parts.push(`<span class="task-meta-item task-project-name"><i class="fa-solid fa-folder"></i> ${esc(projectName(item.category_id) || '')}</span>`);
-        item.tags.forEach(tag => parts.push(`<span class="task-tag">#${esc(tag)}</span>`));
-        return parts.length ? `<div class="task-meta">${parts.join('')}</div>` : '';
+        const project = item.category_id && state.view !== 'project' ? projectName(item.category_id) : '';
+        if (project) parts.unshift(`<span class="card-category task-project-name">${esc(project)}</span>`);
+        const tags = item.tags.length ? `<div class="card-tags task-tags">${item.tags.map(tag => `#${esc(tag)}`).join(' ')}</div>` : '';
+        return (parts.length ? `<div class="task-meta">${parts.join('')}</div>` : '') + tags;
     }
 
     function rowHtml(item, { sub = false, showParent = false } = {}) {
