@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261016-cards">
+    <link rel="stylesheet" href="/css/styles.css?v=20261016-settings">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -48,7 +48,7 @@
                             <button type="button" class="bell-link" data-bell="read-all">Mind olvasott</button>
                         </div>
                         <div class="bell-list" id="bellList"></div>
-                        <div class="bell-settings" id="bellSettings"></div>
+                        <button type="button" class="bell-link bell-settings-link" data-bell="open-settings"><i class="fa-solid fa-gear"></i> Értesítési beállítások</button>
                     </div>
                 </div>
 
@@ -70,18 +70,12 @@
                             <button class="btn-icon menu-close" id="mainMenuClose" title="Bezárás"><i class="fa-solid fa-xmark"></i></button>
                         </div>
                         <div class="menu-panel-body">
-                            <div class="menu-section">
-                                <div class="menu-section-title"><i class="fa-solid fa-bolt"></i> Gyors Könyvjelzőzés</div>
-                                <div class="bookmarklet-banner">
-                                    <div class="bookmarklet-info">
-                                        <p>Húzd ki a gombot a böngésződ Könyvjelzők sávjára. Bármelyik oldalon jársz, 1 kattintással ide mentheted!</p>
-                                    </div>
-                                    <a href="javascript:(function(){var t=encodeURIComponent(document.title);var u=encodeURIComponent(window.location.href);window.open(`https://cloudmark.onrender.com/bookmark?url=${u}&title=${t}`,%27_blank%27);})();"
-                                       class="bookmarklet-link" onclick="event.preventDefault(); alert('Húzd ezt a gombot a böngésződ könyvjelző sávjára!')">
-                                        <i class="fa-solid fa-plus-circle"></i> + Mentés CloudMarkba
-                                    </a>
+                            <div class="menu-section auth-only">
+                                <div class="menu-section-title"><i class="fa-solid fa-user"></i> Fiók</div>
+                                <div class="enterprise-actions">
+                                    <button class="btn btn-secondary team-feature" id="menuTeamBtn" onclick="openTeamManager()"><i class="fa-solid fa-users"></i> Team</button>
+                                    <button class="btn btn-secondary" id="menuUserSettingsBtn" onclick="openUserSettings('general')"><i class="fa-solid fa-gear"></i> Beállítások</button>
                                 </div>
-                            </div>
 
                             <div class="menu-section" id="installAppSection" hidden>
                                 <div class="menu-section-title"><i class="fa-solid fa-mobile-screen"></i> Alkalmazás</div>
@@ -99,36 +93,8 @@
                                 </div>
                             </div>
 
-                            <div class="menu-section auth-only">
-                                <div class="menu-section-title"><i class="fa-solid fa-user"></i> Fiók</div>
-                                <div class="enterprise-actions">
-                                    <button class="btn btn-secondary team-feature" id="menuTeamBtn" onclick="openTeamManager()"><i class="fa-solid fa-users"></i> Team</button>
-                                    <button class="btn btn-secondary" id="menuUserSettingsBtn" onclick="openUserSettings()"><i class="fa-solid fa-user-gear"></i> Felhasználói beállítások</button>
-                                </div>
                             </div>
 
-                            <div class="menu-section auth-only">
-                                <div class="menu-section-title"><i class="fa-solid fa-sliders"></i> Kezelés és adatkezelés</div>
-                                <div class="enterprise-actions">
-                                    <button class="btn btn-secondary" id="manageCategoriesBtn"><i class="fa-solid fa-folder-gear"></i> Kategóriák kezelése</button>
-                                    <button class="btn btn-secondary" id="manageTagsBtn"><i class="fa-solid fa-tags"></i> Címkék kezelése</button>
-                                </div>
-
-                                <div class="menu-subsection-title"><i class="fa-solid fa-file-import"></i> Import/Export</div>
-                                <div class="enterprise-actions">
-                                    <select id="exportModeSelect" style="max-width: 220px; min-width: 180px;">
-                                        <option value="visible">Csak a látható könyvjelzők</option>
-                                        <option value="filtered">Minden egyező szűrés szerint</option>
-                                        <option value="all">Az összes könyvjelző</option>
-                                    </select>
-                                    <button class="btn btn-secondary" id="exportJsonBtn"><i class="fa-solid fa-download"></i> Export JSON</button>
-                                    <button class="btn btn-secondary" id="exportHtmlBtn"><i class="fa-solid fa-file-export"></i> Export HTML</button>
-                                    <select id="importBookmarkTargetCategory" style="max-width: 180px; min-width: 140px;">
-                                        <option value="">Import célkategória (opcionális)</option>
-                                    </select>
-                                    <label class="btn btn-secondary import-label"><i class="fa-solid fa-upload"></i> Import<input id="importBookmarksInput" type="file" accept=".json,.html,text/html,application/json" style="display:none;"></label>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -254,11 +220,24 @@
             <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('archived')">Archivált</button>
             <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('trash')">Kuka</button>
             </div>
+        <div class="item-toolbar-end">
         <div class="view-switcher">
             <button class="view-btn active" id="btnViewGrid" onclick="setBookmarkView('grid')" title="Normál Kártyák"><i class="fa-solid fa-border-all"></i></button>
             <button class="view-btn" id="btnViewCompact" onclick="setBookmarkView('compact')" title="Kompakt Kártyák"><i class="fa-solid fa-grip"></i></button>
             <button class="view-btn" id="btnViewList" onclick="setBookmarkView('list')" title="Lista Nézet"><i class="fa-solid fa-list"></i></button>
             <button class="view-btn" id="btnToggleImages" onclick="toggleImageVisibility()" title="Képek elrejtése"><i class="fa-solid fa-image"></i></button>
+        </div>
+        <div class="commands-more auth-only">
+            <button type="button" class="btn btn-secondary item-more-btn" id="bookmarkMoreBtn" data-more-menu="bookmarkMoreMenu" aria-haspopup="true" aria-expanded="false" title="További műveletek"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+            <div class="cmd-dropdown" id="bookmarkMoreMenu" role="menu">
+                <button type="button" class="cmd-dropdown-item" id="manageCategoriesBtn"><i class="fa-solid fa-folder-tree"></i> Kategóriák kezelése</button>
+                <button type="button" class="cmd-dropdown-item" id="manageTagsBtn"><i class="fa-solid fa-tags"></i> Címkék kezelése</button>
+                <label class="cmd-dropdown-item"><i class="fa-solid fa-upload"></i> Import (JSON, HTML)<input id="importBookmarksInput" type="file" accept=".json,.html,text/html,application/json" hidden></label>
+                <button type="button" class="cmd-dropdown-item" id="exportJsonBtn"><i class="fa-solid fa-download"></i> Export JSON</button>
+                <button type="button" class="cmd-dropdown-item" id="exportHtmlBtn"><i class="fa-solid fa-file-export"></i> Export HTML</button>
+                <button type="button" class="cmd-dropdown-item" data-open-settings="bookmarks"><i class="fa-solid fa-gear"></i> Beállítások…</button>
+            </div>
+        </div>
         </div>
         </div>
 
@@ -350,6 +329,7 @@
                         <label class="cmd-dropdown-item"><i class="fa-solid fa-upload"></i> Import (JSON)<input type="file" id="commandImportInput" accept=".json,application/json" hidden></label>
                         <button type="button" class="cmd-dropdown-item" data-cmd-menu="export-json"><i class="fa-solid fa-download"></i> Export JSON</button>
                         <button type="button" class="cmd-dropdown-item" data-cmd-menu="export-md"><i class="fa-brands fa-markdown"></i> Export Markdown</button>
+                        <button type="button" class="cmd-dropdown-item" data-open-settings="commands"><i class="fa-solid fa-gear"></i> Beállítások…</button>
                     </div>
                 </div>
                 </div>
@@ -401,6 +381,17 @@
                     <button type="button" class="view-btn" data-view-mode="grid" title="Normál kártyák" aria-label="Normál kártyák" aria-pressed="false"><i class="fa-solid fa-border-all"></i></button>
                     <button type="button" class="view-btn" data-view-mode="compact" title="Kompakt" aria-label="Kompakt" aria-pressed="false"><i class="fa-solid fa-grip"></i></button>
                     <button type="button" class="view-btn" data-view-mode="list" title="Lista nézet" aria-label="Lista nézet" aria-pressed="false"><i class="fa-solid fa-list"></i></button>
+                    <button type="button" class="view-btn" data-view-mode="kanban" title="Kanban (oszlopok kategóriánként)" aria-label="Kanban" aria-pressed="false"><i class="fa-solid fa-table-columns"></i></button>
+                </div>
+                <div class="commands-more">
+                    <button type="button" class="btn btn-secondary item-more-btn" id="noteMoreBtn" data-more-menu="noteMoreMenu" aria-haspopup="true" aria-expanded="false" title="További műveletek"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    <div class="cmd-dropdown" id="noteMoreMenu" role="menu">
+                        <button type="button" class="cmd-dropdown-item" data-note-menu="new-category"><i class="fa-solid fa-folder-plus"></i> Új kategória</button>
+                        <label class="cmd-dropdown-item"><i class="fa-solid fa-upload"></i> Import (JSON)<input type="file" id="noteImportInput" accept=".json,application/json" hidden></label>
+                        <button type="button" class="cmd-dropdown-item" data-note-menu="export-json"><i class="fa-solid fa-download"></i> Export JSON</button>
+                        <button type="button" class="cmd-dropdown-item" data-note-menu="export-md"><i class="fa-brands fa-markdown"></i> Export Markdown</button>
+                        <button type="button" class="cmd-dropdown-item" data-open-settings="notes"><i class="fa-solid fa-gear"></i> Beállítások…</button>
+                    </div>
                 </div>
                 </div>
             </div>
@@ -461,6 +452,7 @@
                         <label class="cmd-dropdown-item"><i class="fa-solid fa-upload"></i> Import (JSON)<input type="file" id="taskImportInput" accept=".json,application/json" hidden></label>
                         <button type="button" class="cmd-dropdown-item" data-task-menu="export-json"><i class="fa-solid fa-download"></i> Export JSON</button>
                         <button type="button" class="cmd-dropdown-item" data-task-menu="export-md"><i class="fa-brands fa-markdown"></i> Export Markdown</button>
+                        <button type="button" class="cmd-dropdown-item" data-open-settings="tasks"><i class="fa-solid fa-gear"></i> Beállítások…</button>
                     </div>
                 </div>
                 </div>
@@ -512,64 +504,168 @@
         </div>
     </div>
 
-    <!-- Modal: User Settings -->
+    <!-- Modal: Beállítások (fülek: általános és nézetenként) -->
     <div class="modal-overlay" id="userSettingsModal">
-        <div class="modal">
+        <div class="modal settings-modal">
             <div class="modal-title">
-                <i class="fa-solid fa-user-gear"></i> Felhasználói beállítások
+                <i class="fa-solid fa-gear"></i> Beállítások
+            </div>
+            <div class="settings-tabs" role="tablist" aria-label="Beállítások">
+                <button type="button" class="settings-tab" role="tab" data-settings-tab="general">Általános</button>
+                <button type="button" class="settings-tab" role="tab" data-settings-tab="notes">Jegyzetek</button>
+                <button type="button" class="settings-tab" role="tab" data-settings-tab="tasks">Feladatok</button>
+                <button type="button" class="settings-tab" role="tab" data-settings-tab="bookmarks">Könyvjelzők</button>
+                <button type="button" class="settings-tab" role="tab" data-settings-tab="commands">Parancsok</button>
             </div>
             <form id="userSettingsForm" class="modal-form">
-                <div class="section-divider"><i class="fa-solid fa-sliders"></i> Megjelenés</div>
-                <div class="form-control">
-                    <label>Téma</label>
-                    <select id="userThemeSetting">
-                        <option value="dark">Sötét</option>
-                        <option value="light">Világos</option>
-                    </select>
+                <div class="settings-pane" data-settings-pane="general" role="tabpanel">
+                    <div class="section-divider"><i class="fa-solid fa-sliders"></i> Megjelenés</div>
+                    <div class="form-control">
+                        <label for="userThemeSetting">Téma</label>
+                        <select id="userThemeSetting">
+                            <option value="dark">Sötét</option>
+                            <option value="light">Világos</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label for="userStartViewSetting">Induláskor megnyíló nézet</label>
+                        <select id="userStartViewSetting">
+                            <option value="last">Ahol legutóbb jártam</option>
+                            <option value="notes">Jegyzetek</option>
+                            <option value="tasks">Feladatok</option>
+                            <option value="bookmarks">Könyvjelzők</option>
+                            <option value="commands">Parancsok</option>
+                        </select>
+                    </div>
+                    <div class="section-divider"><i class="fa-regular fa-bell"></i> Értesítések</div>
+                    <div class="bell-settings settings-notifications" id="bellSettings"></div>
+                    <div class="section-divider"><i class="fa-solid fa-key"></i> Jelszó módosítása</div>
+                    <div class="form-control">
+                        <label for="currentPassword">Jelenlegi jelszó</label>
+                        <input type="password" id="currentPassword" minlength="4" autocomplete="current-password">
+                    </div>
+                    <div class="form-control">
+                        <label for="newPassword">Új jelszó</label>
+                        <input type="password" id="newPassword" minlength="4" autocomplete="new-password">
+                    </div>
+                    <div class="form-control">
+                        <label for="confirmNewPassword">Új jelszó ismét</label>
+                        <input type="password" id="confirmNewPassword" minlength="4" autocomplete="new-password">
+                    </div>
                 </div>
-                <div class="form-control">
-                    <label>Nézet</label>
-                    <select id="userViewSetting">
-                        <option value="grid">Kártyák</option>
-                        <option value="compact">Kompakt</option>
-                        <option value="list">Lista</option>
-                    </select>
+                <div class="settings-pane" data-settings-pane="notes" role="tabpanel" hidden>
+                    <div class="form-control">
+                        <label for="settingNoteSort">Rendezés</label>
+                        <select id="settingNoteSort" data-pref="noteSort">
+                            <option value="updated">Utoljára módosított</option>
+                            <option value="newest">Legújabb elöl</option>
+                            <option value="abc">ABC sorrend</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label for="settingNoteView">Nézet</label>
+                        <select id="settingNoteView" data-pref="noteView">
+                            <option value="grid">Normál kártyák</option>
+                            <option value="compact">Kompakt</option>
+                            <option value="list">Lista</option>
+                            <option value="kanban">Kanban (oszlopok kategóriánként)</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-control">
-                    <label>Rendezés</label>
-                    <select id="userSortSetting">
-                        <option value="newest">Legújabb elöl</option>
-                        <option value="oldest">Legrégebbi elöl</option>
-                        <option value="abc">ABC sorrend</option>
-                        <option value="frequency">Leggyakrabban kattintott</option>
-                    </select>
+                <div class="settings-pane" data-settings-pane="tasks" role="tabpanel" hidden>
+                    <div class="form-control">
+                        <label for="settingTaskSort">Rendezés</label>
+                        <select id="settingTaskSort" data-pref="taskSort">
+                            <option value="due">Határidő szerint</option>
+                            <option value="priority">Prioritás szerint</option>
+                            <option value="newest">Legújabb elöl</option>
+                            <option value="abc">ABC sorrend</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label for="settingTaskView">Nézet</label>
+                        <select id="settingTaskView" data-pref="taskView">
+                            <option value="list">Lista</option>
+                            <option value="compact">Kompakt lista</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-control">
-                    <label>Weboldal címsor olvasása</label>
-                    <select id="userMetadataTitleSetting">
-                        <option value="true">Bekapcsolva (alapértelmezett)</option>
-                        <option value="false">Kikapcsolva</option>
-                    </select>
+                <div class="settings-pane" data-settings-pane="bookmarks" role="tabpanel" hidden>
+                    <div class="form-control">
+                        <label for="userViewSetting">Nézet</label>
+                        <select id="userViewSetting">
+                            <option value="grid">Kártyák</option>
+                            <option value="compact">Kompakt</option>
+                            <option value="list">Lista</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label for="userSortSetting">Rendezés</label>
+                        <select id="userSortSetting">
+                            <option value="newest">Legújabb elöl</option>
+                            <option value="oldest">Legrégebbi elöl</option>
+                            <option value="abc">ABC sorrend</option>
+                            <option value="frequency">Leggyakrabban kattintott</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label for="userMetadataTitleSetting">Weboldal címsor olvasása</label>
+                        <select id="userMetadataTitleSetting">
+                            <option value="true">Bekapcsolva (alapértelmezett)</option>
+                            <option value="false">Kikapcsolva</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label for="userMetadataImageSetting">Weboldal kép olvasása</label>
+                        <select id="userMetadataImageSetting">
+                            <option value="true">Bekapcsolva (alapértelmezett)</option>
+                            <option value="false">Kikapcsolva</option>
+                        </select>
+                    </div>
+                    <div class="section-divider"><i class="fa-solid fa-file-import"></i> Import / Export</div>
+                    <div class="form-control">
+                        <label for="exportModeSelect">Mit tartalmazzon az export</label>
+                        <select id="exportModeSelect">
+                            <option value="visible">Csak a látható könyvjelzők</option>
+                            <option value="filtered">Minden egyező szűrés szerint</option>
+                            <option value="all">Az összes könyvjelző</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label for="importBookmarkTargetCategory">Import célkategóriája</label>
+                        <select id="importBookmarkTargetCategory">
+                            <option value="">Import célkategória (opcionális)</option>
+                        </select>
+                    </div>
+                    <small class="settings-hint">Az importot és az exportot a Könyvjelzők ⋮ menüjében indíthatod.</small>
+                    <div class="section-divider"><i class="fa-solid fa-bolt"></i> Gyors könyvjelzőzés</div>
+                    <div class="bookmarklet-banner">
+                                    <div class="bookmarklet-info">
+                                        <p>Húzd ki a gombot a böngésződ Könyvjelzők sávjára. Bármelyik oldalon jársz, 1 kattintással ide mentheted!</p>
+                                    </div>
+                                    <a href="javascript:(function(){var t=encodeURIComponent(document.title);var u=encodeURIComponent(window.location.href);window.open(`https://cloudmark.onrender.com/bookmark?url=${u}&title=${t}`,%27_blank%27);})();"
+                                       class="bookmarklet-link" onclick="event.preventDefault(); alert('Húzd ezt a gombot a böngésződ könyvjelző sávjára!')">
+                                        <i class="fa-solid fa-plus-circle"></i> + Mentés CloudMarkba
+                                    </a>
+                    </div>
                 </div>
-                <div class="form-control">
-                    <label>Weboldal kép olvasása</label>
-                    <select id="userMetadataImageSetting">
-                        <option value="true">Bekapcsolva (alapértelmezett)</option>
-                        <option value="false">Kikapcsolva</option>
-                    </select>
-                </div>
-                <div class="section-divider"><i class="fa-solid fa-key"></i> Jelszó módosítása</div>
-                <div class="form-control">
-                    <label>Jelenlegi jelszó</label>
-                    <input type="password" id="currentPassword" minlength="4" autocomplete="current-password">
-                </div>
-                <div class="form-control">
-                    <label>Új jelszó</label>
-                    <input type="password" id="newPassword" minlength="4" autocomplete="new-password">
-                </div>
-                <div class="form-control">
-                    <label>Új jelszó ismét</label>
-                    <input type="password" id="confirmNewPassword" minlength="4" autocomplete="new-password">
+                <div class="settings-pane" data-settings-pane="commands" role="tabpanel" hidden>
+                    <div class="form-control">
+                        <label for="settingCommandSort">Rendezés</label>
+                        <select id="settingCommandSort" data-pref="commandSort">
+                            <option value="newest">Legújabb elöl</option>
+                            <option value="abc">ABC sorrend</option>
+                            <option value="used">Leggyakrabban másolt</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label for="settingCommandView">Nézet</label>
+                        <select id="settingCommandView" data-pref="commandView">
+                            <option value="grid">Normál kártyák</option>
+                            <option value="compact">Kompakt</option>
+                            <option value="list">Lista</option>
+                        </select>
+                    </div>
                 </div>
                 <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;">
                     <button type="button" class="btn btn-danger" onclick="closeModal('userSettingsModal')">Mégse</button>
@@ -1036,15 +1132,16 @@
     <script src="/js/categories-ui.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/bookmarks-ui.js?v=20261016-cards"></script>
     <script src="/js/enterprise.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/auth.js?v=20261015-commands"></script>
-    <script src="/js/app.js?v=20261016-toolbar"></script>
-    <script src="/js/view-prefs.js?v=20261016-toolbar"></script>
-    <script src="/js/main-menu.js?v=20260905k-pagesize-setting"></script>
+    <script src="/js/auth.js?v=20261016-settings"></script>
+    <script src="/js/app.js?v=20261016-settings"></script>
+    <script src="/js/view-prefs.js?v=20261016-settings"></script>
+    <script src="/js/main-menu.js?v=20261016-settings"></script>
     <script src="/js/commands-ui.js?v=20261016-cards"></script>
-    <script src="/js/notes-ui.js?v=20261016-cards"></script>
+    <script src="/js/notes-ui.js?v=20261016-settings"></script>
     <script src="/js/tasks-ui.js?v=20261016-cards"></script>
-    <script src="/js/notification-center.js?v=20261016-push"></script>
-    <script src="/js/views.js?v=20261016-taborder"></script>
+    <script src="/js/notification-center.js?v=20261016-settings"></script>
+    <script src="/js/settings-ui.js?v=20261016-settings"></script>
+    <script src="/js/views.js?v=20261016-settings"></script>
     <script src="/js/pwa.js?v=20261016-cdnfix"></script>
 </body>
 </html>

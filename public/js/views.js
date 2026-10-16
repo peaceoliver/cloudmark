@@ -1,6 +1,7 @@
 /* Főoldali nézetváltó: jegyzetek, feladatok, könyvjelzők és parancsok között, oldalbetöltés nélkül. */
 (function () {
     const VIEW_STORAGE_KEY = 'cloudmark_active_view';
+    const START_VIEW_KEY = 'cloudmark_start_view';
     const VIEWS = {
         bookmarks: { hash: '#/konyvjelzok', searchId: 'bookmarkSearch' },
         commands: { hash: '#/parancsok', searchId: 'commandSearch' },
@@ -17,6 +18,7 @@
     let activeView = 'bookmarks';
     let signedIn = false;
     let lastUserId = null;
+    let started = false;
 
     function viewFromHash() {
         return Object.keys(VIEWS).find(name => VIEWS[name].hash === window.location.hash) || null;
@@ -24,6 +26,14 @@
 
     function readSavedView() {
         try { return localStorage.getItem(VIEW_STORAGE_KEY); } catch (err) { return null; }
+    }
+
+    /** The view chosen under Beállítások → „Induláskor megnyíló nézet” (null: where the user last was). */
+    function readStartView() {
+        try {
+            const value = localStorage.getItem(START_VIEW_KEY);
+            return VIEWS[value] ? value : null;
+        } catch (err) { return null; }
     }
 
     function showView(name, { updateHash = true } = {}) {
@@ -62,10 +72,14 @@
         if (signedIn) window.CloudMark.tasks?.refreshBadge();
         if (!signedIn) {
             if (viewFromHash()) history.replaceState(null, '', window.location.pathname + window.location.search);
+            started = false;
             showView('bookmarks', { updateHash: false });
             return;
         }
-        showView(viewFromHash() || readSavedView() || DEFAULT_VIEW);
+        // Oldalbetöltéskor (és belépéskor) a beállított induló nézet nyílik, utána a legutóbbi.
+        const startView = started ? null : readStartView();
+        started = true;
+        showView(viewFromHash() || startView || readSavedView() || DEFAULT_VIEW);
     }
 
     tabs.addEventListener('click', event => {

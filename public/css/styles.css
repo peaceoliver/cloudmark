@@ -2453,3 +2453,38 @@ button.new-item-bar:focus-visible, .new-item-bar:focus-within { border-color: va
 .new-item-bar[aria-expanded="true"] .accordion-icon { transform: rotate(180deg); }
 .command-new-panel { margin: 0 0 1rem; padding: 1.25rem; }
 .command-new-panel[hidden] { display: none; }
+
+/* Közös Beállítások ablak fülekkel */
+.settings-modal { max-width: 620px; }
+.settings-tabs { display: flex; gap: 0.25rem; margin: 0 0 1rem; padding: 0.25rem; overflow-x: auto; border: 1px solid var(--border-color); border-radius: 999px; background: var(--bg-input); scrollbar-width: none; }
+.settings-tabs::-webkit-scrollbar { display: none; }
+.settings-tab { flex: 1 0 auto; padding: 0.45rem 0.85rem; border: 0; border-radius: 999px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.settings-tab:hover { color: var(--text-primary); }
+.settings-tab.active { background: var(--accent); color: #fff; }
+.settings-pane > .section-divider:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+.settings-hint { display: block; margin: -0.25rem 0 0.75rem; color: var(--text-secondary); font-size: 0.78rem; }
+.settings-notifications { padding: 0; border-top: 0; background: transparent; }
+.settings-notifications:empty { display: block; min-height: 1rem; }
+.bell-settings-link { display: flex; align-items: center; gap: 0.4rem; width: 100%; padding: 0.7rem 1rem; border-top: 1px solid var(--border-color); justify-content: center; }
+#bookmarkMoreMenu label.cmd-dropdown-item, #noteMoreMenu label.cmd-dropdown-item { margin: 0; font-weight: 400; }
+
+/* Jegyzetek: kanban nézet (oszlopok = kategóriák) */
+.notes-kanban { display: flex; align-items: flex-start; gap: 0.9rem; overflow-x: auto; padding-bottom: 0.75rem; scroll-snap-type: x proximity; }
+.kanban-column { flex: 0 0 280px; display: flex; flex-direction: column; gap: 0.6rem; max-height: calc(100vh - 140px); padding: 0.7rem; border: 1px solid var(--border-color); border-radius: 12px; background: rgba(148, 163, 184, 0.06); scroll-snap-align: start; transition: border-color 0.15s, background 0.15s; }
+.kanban-column.is-drop-target { border-color: var(--accent); background: var(--accent-glow); }
+.kanban-column-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0 0.15rem; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
+.kanban-column-body { display: flex; flex-direction: column; gap: 0.6rem; min-height: 3rem; overflow-y: auto; }
+.kanban-column .note-card { margin: 0; touch-action: pan-x pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.kanban-column .note-body { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+.notes-view-kanban .note-card-meta { display: none; }
+.kanban-empty { padding: 0.9rem 0.5rem; border: 1px dashed var(--border-color); border-radius: 10px; color: var(--text-secondary); font-size: 0.8rem; text-align: center; }
+.kanban-add, .kanban-new-column { display: flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.5rem; border: 1px dashed var(--border-color); border-radius: 10px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.kanban-add:hover, .kanban-new-column:hover { color: var(--accent); border-color: var(--accent); }
+.kanban-new-column { flex: 0 0 180px; min-height: 4rem; }
+.note-card.is-dragging { opacity: 0.35; }
+.kanban-ghost { position: fixed; top: 0; left: 0; z-index: 1000; margin: 0; pointer-events: none; opacity: 0.92; box-shadow: var(--shadow); transform-origin: top left; rotate: 2deg; }
+@media (max-width: 640px) {
+    .kanban-column { flex-basis: 85vw; max-height: none; }
+    .kanban-column-body { overflow: visible; }
+}
+.notes-kanban.is-dragging { scroll-snap-type: none; }

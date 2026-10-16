@@ -2255,9 +2255,10 @@ const VIEW_PREF_OPTIONS = {
     commandSort: ['newest', 'abc', 'used'],
     commandView: ['grid', 'compact', 'list'],
     noteSort: ['updated', 'newest', 'abc'],
-    noteView: ['grid', 'compact', 'list'],
+    noteView: ['grid', 'compact', 'list', 'kanban'],
     taskSort: ['due', 'priority', 'newest', 'abc'],
-    taskView: ['list', 'compact']
+    taskView: ['list', 'compact'],
+    startView: ['last', 'notes', 'tasks', 'bookmarks', 'commands']
 };
 
 /** Saves one supported UI preference for the authenticated user. */
