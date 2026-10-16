@@ -80,4 +80,5 @@ Az aktuális ötletek feladatként vannak felvéve az appban (Feladatok, „Clou
 5. Clipper (böngésző gomb és telefonos megosztás menü)
 6. Képek és Mermaid ábrák a jegyzetekben
 7. AI asszisztens
-8. Saját domain és e-mail domain-hitelesítés (elhalasztva)
+8. Megosztás más felhasználókkal (e-mail cím, ismerősök vagy a Team funkció alapján), minden elemtípusra
+9. Saját domain és e-mail domain-hitelesítés (elhalasztva)

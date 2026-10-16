@@ -1,5 +1,7 @@
 # CloudMark - az oldal működése
 
+Lépésről lépésre útmutatók funkciónként: [tutorials/](tutorials/README.md).
+
 A CloudMark egy többfelhasználós könyvjelző-kezelő alkalmazás. Bejelentkezés után saját kategóriákba rendezve lehet weboldalakat menteni, keresni és kezelni, valamint parancsokat és jegyzeteket tárolni.
 
 ## Könyvjelző mentése

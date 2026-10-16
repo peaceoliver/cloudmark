@@ -3,7 +3,8 @@
 Read this before changing anything. It explains how the project is built, how to add a feature, and the
 rules that keep the four views looking and behaving the same.
 
-User-facing docs: `HOW-IT-WORKS.md` (Hungarian, describes behaviour). Planning history and screenshots live
+User-facing docs: `HOW-IT-WORKS.md` (Hungarian overview of all behaviour) and `tutorials/` (Hungarian
+step-by-step guide per feature). Planning history and screenshots live
 outside the repo in the project's shared folder (`cloudmark-plan/*.md`).
 
 ## Working rules (from the owner)
@@ -16,6 +17,10 @@ outside the repo in the project's shared folder (`cloudmark-plan/*.md`).
 - The owner writes Hungarian; answer in Hungarian.
 - **No CI.** Run `npm test` and a syntax check (`node --check <file>`) yourself before pushing.
 - Every PR updates `HOW-IT-WORKS.md` when user-visible behaviour changes, and this file when a pattern changes.
+- **Every finished feature updates the TODO list** (see *TODO list* below): mark its task done, and add
+  any follow-up the work uncovered as a new task.
+- **Every feature has a user guide** in `tutorials/` (Hungarian, step by step, see `tutorials/README.md`).
+  A PR that adds or changes a feature creates or updates its tutorial in the same PR.
 - Don't rotate the VAPID keys (every device would have to subscribe again).
 
 ## Stack and hosting
@@ -47,6 +52,7 @@ public/css/styles.css   one stylesheet, themed with CSS variables
 public/js/*.js          one IIFE per feature, exposed on window.CloudMark.<name>
 public/sw.js            service worker (install/offline page/push), never caches /api
 test/*.test.js          node:test unit tests (`npm test`)
+tutorials/*.md          Hungarian user guides, one per feature (index: tutorials/README.md)
 ```
 
 ## Data model
@@ -190,7 +196,24 @@ Pure logic (parsers, date maths) goes in a module that runs in both Node and the
 `DATABASE_URL`) or at least open `index.html` flows mentally against the toolbar and card rules above, and
 attach screenshots when possible.
 
-## Backlog
+## TODO list (backlog)
 
-Ideas the owner wants are tracked as tasks in the app itself (Feladatok, project "CloudMark"): internal `[[` links, Dashboard, Clipper, images + Mermaid in notes, AI assistant, and a
-performance check. `roadmap.md` has the longer history. Each still needs a plan approved before building.
+The owner's TODO list is the app itself: **Feladatok** view, project **"CloudMark"** (a `categories` row with
+`kind = 'task'`, owner = the owner's user). Ideas there: internal `[[` links,
+Dashboard, Clipper, images + Mermaid in notes, AI assistant, performance check, sharing items with other users.
+`roadmap.md` has the longer history. Each idea still needs an approved plan before building.
+
+After a feature is merged, update the list with the Supabase connector (or ask the owner to do it in the app
+if you can't reach the DB):
+
+```sql
+-- mark the task done
+UPDATE items SET status = 'done', completed_at = NOW(), updated_at = NOW()
+WHERE type = 'task' AND owner_user_id = <owner id> AND title = '<task title>';
+-- add a follow-up to the CloudMark project
+INSERT INTO items (owner_user_id, type, title, body, category_id, status)
+SELECT <owner id>, 'task', '<rövid cím>', '<rövid magyar leírás>', id, 'todo'
+FROM categories WHERE owner_user_id = <owner id> AND kind = 'task' AND name = 'CloudMark';
+```
+
+Keep `roadmap.md` §4 in step with the open tasks.
