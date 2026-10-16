@@ -214,6 +214,7 @@
         const fragment = fragments[fragmentIndex];
         const lines = fragment.content.split('\n');
         const isMultiLine = lines.length > 1;
+        // Több fülnél a fülek mutatják a nyelvet, ezért a nyelv címke csak egy fülnél látszik.
         const tabs = fragments.length > 1 ? `
             <div class="command-tabs" role="tablist">
                 ${fragments.map((entry, index) => `<button type="button" class="command-tab ${index === fragmentIndex ? 'active' : ''}" role="tab" aria-selected="${index === fragmentIndex}" data-action="tab" data-index="${index}">${esc(entry.label || entry.language || `${index + 1}. fül`)}</button>`).join('')}
@@ -251,7 +252,7 @@
                     </div>
                     <div class="card-meta command-card-meta">
                         <span class="card-category">${esc(item.category_name || 'Inbox')}</span>
-                        ${fragment.language ? `<span class="command-lang">${esc(fragment.language)}</span>` : ''}
+                        ${fragment.language && fragments.length === 1 ? `<span class="command-lang">${esc(fragment.language)}</span>` : ''}
                     </div>
                     ${item.description ? `<p class="command-desc">${esc(item.description)}</p>` : ''}
                 </div>
