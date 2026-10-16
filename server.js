@@ -2250,11 +2250,22 @@ app.get('/api/user/settings', requireAuth, async (req, res) => {
     }
 });
 
+// A Parancsok, Jegyzetek és Feladatok nézet rendezése és megjelenítése (public/js/view-prefs.js-sel egyezik).
+const VIEW_PREF_OPTIONS = {
+    commandSort: ['newest', 'abc', 'used'],
+    commandView: ['grid', 'compact', 'list'],
+    noteSort: ['updated', 'newest', 'abc'],
+    noteView: ['grid', 'compact', 'list'],
+    taskSort: ['due', 'priority', 'newest', 'abc'],
+    taskView: ['list', 'compact']
+};
+
 /** Saves one supported UI preference for the authenticated user. */
 app.put('/api/user/settings/:key', requireAuth, async (req, res) => {
-    const allowedKeys = ['theme', 'viewMode', 'sortMode', 'fetchMetadata', 'fetchMetadataTitle', 'fetchMetadataImage', 'timezone', 'notifyEmail', 'dailyDigestTime', 'quietHours'];
+    const allowedKeys = ['theme', 'viewMode', 'sortMode', 'fetchMetadata', 'fetchMetadataTitle', 'fetchMetadataImage', 'timezone', 'notifyEmail', 'dailyDigestTime', 'quietHours', ...Object.keys(VIEW_PREF_OPTIONS)];
     const { key } = req.params;
     if (!allowedKeys.includes(key)) return res.status(400).json({ error: 'Ismeretlen felhasználói beállítás.' });
+    if (VIEW_PREF_OPTIONS[key] && !VIEW_PREF_OPTIONS[key].includes(req.body.value)) return res.status(400).json({ error: 'Érvénytelen érték.' });
     if (req.body.value === undefined || req.body.value === null || String(req.body.value).trim() === '') return res.status(400).json({ error: 'Érvénytelen beállítási érték.' });
     if (key === 'timezone' && !taskDates.isValidTimeZone(req.body.value)) return res.status(400).json({ error: 'Érvénytelen időzóna.' });
     if (key === 'notifyEmail' && !['true', 'false'].includes(String(req.body.value))) return res.status(400).json({ error: 'Érvénytelen érték.' });

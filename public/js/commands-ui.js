@@ -21,6 +21,7 @@
         }
     };
 
+    const prefs = window.CloudMark.prefs;
     const state = {
         items: [],
         categories: [],
@@ -29,11 +30,15 @@
         query: '',
         category: 'all',
         filter: 'active',
-        sort: localStorage.getItem('cloudmark_command_sort') || 'newest',
-        activeFragment: new Map()
+        sort: prefs.get('commandSort'),
+        view: prefs.get('commandView'),
+        activeFragment: new Map(),
+        // Lista nézetben kinyitott parancsok (a kód csak ezeknél látszik).
+        openIds: new Set()
     };
 
     const grid = document.getElementById('commandGrid');
+    const viewSwitcher = document.getElementById('commandViewSwitcher');
     const categoriesBar = document.getElementById('commandCategoriesBar');
     const searchInput = document.getElementById('commandSearch');
     const searchClear = document.getElementById('commandSearchClear');
@@ -235,11 +240,14 @@
             <button type="button" class="action-btn" data-action="edit" title="Szerkesztés"><i class="fa-solid fa-pen"></i></button>
             <button type="button" class="action-btn" data-action="trash" title="Kukába"><i class="fa-solid fa-trash"></i></button>`;
         return `
-            <article class="card command-card" data-item-id="${Number(item.id)}">
+            <article class="card command-card ${state.openIds.has(item.id) ? 'is-open' : ''}" data-item-id="${Number(item.id)}">
                 <div>
                     <div class="command-card-head">
                         <h3 class="card-title">${esc(item.title)}</h3>
-                        <div class="command-card-actions">${stateButtons}</div>
+                        <div class="command-card-actions">
+                            ${item.trashed ? '' : '<button type="button" class="action-btn command-quick-copy" data-action="copy-all" title="Másolás" aria-label="Másolás"><i class="fa-regular fa-copy"></i></button>'}
+                            ${stateButtons}
+                        </div>
                     </div>
                     <div class="command-card-meta">
                         <span class="card-category">${esc(item.category_name || 'Inbox')}</span>
@@ -259,6 +267,9 @@
     }
 
     function renderGrid() {
+        grid.classList.remove('view-grid', 'view-compact', 'view-list');
+        grid.classList.add(`view-${state.view}`);
+        prefs.markSwitcher(viewSwitcher, state.view);
         const list = visibleItems();
         if (!state.items.length) {
             grid.innerHTML = '<div class="empty-state">Még nincs parancsod. Hozz létre egyet az „Új parancs” gombbal, vagy importáld a meglévő listádat (⋮ → Import).</div>';
@@ -299,7 +310,7 @@
             if (action === 'copy-md') text = copyRules.markdown(item.title, fragment.content, fragment.language);
             if (action === 'copy-clean') text = copyRules.clean(fragment.content);
             // A mintához hasonlóan a menüből másolásnál is a fő másológomb mutatja a pipát.
-            feedbackButton = card.querySelector('.code-action-btn[data-action="copy-all"]');
+            if (!button.classList.contains('command-quick-copy')) feedbackButton = card.querySelector('.code-action-btn[data-action="copy-all"]');
             closeDropdowns();
         }
         try {
@@ -324,7 +335,15 @@
 
     grid.addEventListener('click', async event => {
         const button = event.target.closest('[data-action]');
-        if (!button) return;
+        if (!button) {
+            // Lista nézetben a sorra kattintva nyílik és csukódik a kód.
+            const row = state.view === 'list' && !event.target.closest('.code-wrapper, .command-tabs') && event.target.closest('[data-item-id]');
+            if (!row) return;
+            const id = Number(row.dataset.itemId);
+            if (state.openIds.has(id)) state.openIds.delete(id); else state.openIds.add(id);
+            row.classList.toggle('is-open', state.openIds.has(id));
+            return;
+        }
         const card = button.closest('[data-item-id]');
         const item = card && findItem(card.dataset.itemId);
         if (!item) return;
@@ -390,8 +409,25 @@
     sortSelect.value = state.sort;
     sortSelect.addEventListener('change', () => {
         state.sort = sortSelect.value;
-        localStorage.setItem('cloudmark_command_sort', state.sort);
+        prefs.set('commandSort', state.sort);
         renderGrid();
+    });
+
+    viewSwitcher.addEventListener('click', event => {
+        const button = event.target.closest('[data-view-mode]');
+        if (!button) return;
+        state.view = button.dataset.viewMode;
+        prefs.set('commandView', state.view);
+        renderGrid();
+    });
+    prefs.markSwitcher(viewSwitcher, state.view);
+
+    // A fiókhoz mentett beállítások bejelentkezés után érkeznek meg.
+    document.addEventListener('cloudmark:prefs', () => {
+        state.sort = prefs.get('commandSort');
+        state.view = prefs.get('commandView');
+        sortSelect.value = state.sort;
+        if (state.loaded) renderGrid(); else prefs.markSwitcher(viewSwitcher, state.view);
     });
 
     document.querySelectorAll('[data-cmd-state]').forEach(button => button.addEventListener('click', () => {

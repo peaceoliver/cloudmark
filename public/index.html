@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261016-categories">
+    <link rel="stylesheet" href="/css/styles.css?v=20261016-toolbar">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -304,86 +304,134 @@
 
         <!-- Parancstár -->
         <div class="app-view" id="commandsView" data-view="commands" hidden>
-            <section class="dashboard-section commands-toolbar" aria-label="Parancsok eszköztár">
-                <div class="commands-search enterprise-search">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input id="commandSearch" type="search" placeholder="Keresés parancs, leírás vagy címke alapján…" autocomplete="off">
-                    <button type="button" class="btn-icon commands-search-clear" id="commandSearchClear" title="Keresés törlése" hidden><i class="fa-solid fa-xmark"></i></button>
+            <section class="dashboard-section add-item-section" aria-label="Új parancs">
+                <button type="button" class="accordion-trigger add-item-toggle" id="commandNewBtn" title="Új parancs (N)">
+                    <span class="toolbar-label"><i class="fa-solid fa-terminal"></i> Új parancs hozzáadása</span>
+                    <i class="accordion-icon fa-solid fa-plus"></i>
+                </button>
+            </section>
+            <section class="dashboard-section category-section" aria-label="Parancs kategóriák">
+                <div class="category-inner-content">
+                    <div class="category-bubbles-label toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</div>
+                    <div class="categories-bar" id="commandCategoriesBar"></div>
                 </div>
-                <div class="commands-toolbar-actions">
-                    <button type="button" class="btn btn-primary" id="commandNewBtn" title="Új parancs (N)"><i class="fa-solid fa-plus"></i> Új parancs</button>
-                    <select id="commandSortSelect" aria-label="Rendezés">
-                        <option value="newest">🕒 Legújabb elöl</option>
-                        <option value="abc">🔤 ABC sorrend</option>
-                        <option value="used">🔥 Leggyakrabban másolt</option>
-                    </select>
-                    <div class="commands-more">
-                        <button type="button" class="btn btn-secondary" id="commandMoreBtn" aria-haspopup="true" aria-expanded="false" title="További műveletek"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-                        <div class="cmd-dropdown" id="commandMoreMenu" role="menu">
-                            <button type="button" class="cmd-dropdown-item" data-cmd-menu="categories"><i class="fa-solid fa-folder-tree"></i> Kategóriák kezelése</button>
-                            <label class="cmd-dropdown-item"><i class="fa-solid fa-upload"></i> Import (JSON)<input type="file" id="commandImportInput" accept=".json,application/json" hidden></label>
-                            <button type="button" class="cmd-dropdown-item" data-cmd-menu="export-json"><i class="fa-solid fa-download"></i> Export JSON</button>
-                            <button type="button" class="cmd-dropdown-item" data-cmd-menu="export-md"><i class="fa-brands fa-markdown"></i> Export Markdown</button>
-                        </div>
+            </section>
+            <section class="enterprise-toolbar" aria-label="Keresés a parancsokban">
+                <div class="toolbar-group">
+                    <div class="commands-search enterprise-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input id="commandSearch" type="search" placeholder="Keresés parancs, leírás vagy címke alapján…" autocomplete="off">
+                        <button type="button" class="btn-icon commands-search-clear" id="commandSearchClear" title="Keresés törlése" hidden><i class="fa-solid fa-xmark"></i></button>
                     </div>
                 </div>
+            </section>
+            <div class="bookmark-list-toolbar item-list-toolbar">
+                <select id="commandSortSelect" aria-label="Rendezés">
+                    <option value="newest">🕒 Legújabb elöl</option>
+                    <option value="abc">🔤 ABC sorrend</option>
+                    <option value="used">🔥 Leggyakrabban másolt</option>
+                </select>
                 <div class="bookmark-state-group commands-state-group" aria-label="Parancs nézetek">
                     <button type="button" class="btn btn-secondary cmd-state active" data-cmd-state="active">Aktív</button>
                     <button type="button" class="btn btn-secondary cmd-state" data-cmd-state="starred">★ Kedvencek</button>
                     <button type="button" class="btn btn-secondary cmd-state" data-cmd-state="trash">Kuka</button>
                 </div>
-                <div class="categories-bar commands-categories" id="commandCategoriesBar" aria-label="Parancs kategóriák"></div>
-            </section>
+                <div class="item-toolbar-end">
+                <div class="view-switcher" id="commandViewSwitcher" aria-label="Megjelenítés">
+                    <button type="button" class="view-btn" data-view-mode="grid" title="Normál kártyák" aria-label="Normál kártyák" aria-pressed="false"><i class="fa-solid fa-border-all"></i></button>
+                    <button type="button" class="view-btn" data-view-mode="compact" title="Kompakt" aria-label="Kompakt" aria-pressed="false"><i class="fa-solid fa-grip"></i></button>
+                    <button type="button" class="view-btn" data-view-mode="list" title="Lista nézet" aria-label="Lista nézet" aria-pressed="false"><i class="fa-solid fa-list"></i></button>
+                </div>
+                <div class="commands-more">
+                    <button type="button" class="btn btn-secondary item-more-btn" id="commandMoreBtn" aria-haspopup="true" aria-expanded="false" title="További műveletek"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    <div class="cmd-dropdown" id="commandMoreMenu" role="menu">
+                        <button type="button" class="cmd-dropdown-item" data-cmd-menu="categories"><i class="fa-solid fa-folder-tree"></i> Kategóriák kezelése</button>
+                        <label class="cmd-dropdown-item"><i class="fa-solid fa-upload"></i> Import (JSON)<input type="file" id="commandImportInput" accept=".json,application/json" hidden></label>
+                        <button type="button" class="cmd-dropdown-item" data-cmd-menu="export-json"><i class="fa-solid fa-download"></i> Export JSON</button>
+                        <button type="button" class="cmd-dropdown-item" data-cmd-menu="export-md"><i class="fa-brands fa-markdown"></i> Export Markdown</button>
+                    </div>
+                </div>
+                </div>
+            </div>
             <div class="commands-grid" id="commandGrid" aria-live="polite"></div>
         </div>
 
         <!-- Jegyzetek (Google Keep-szerű) -->
         <div class="app-view" id="notesView" data-view="notes" hidden>
-            <section class="dashboard-section notes-toolbar" aria-label="Jegyzetek eszköztár">
-                <div class="commands-search enterprise-search">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input id="noteSearch" type="search" placeholder="Keresés a jegyzetekben…" autocomplete="off">
-                    <button type="button" class="btn-icon commands-search-clear" id="noteSearchClear" title="Keresés törlése" hidden><i class="fa-solid fa-xmark"></i></button>
+            <div class="note-composer-wrap" id="noteComposerWrap"></div>
+            <section class="dashboard-section category-section" aria-label="Jegyzet kategóriák">
+                <div class="category-inner-content">
+                    <div class="category-bubbles-label toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</div>
+                    <div class="categories-bar note-categories" id="noteCategoriesBar"></div>
                 </div>
+                <div class="category-inner-content note-labels-row">
+                    <div class="category-bubbles-label toolbar-label"><i class="fa-solid fa-tag"></i> Címkék</div>
+                    <div class="categories-bar" id="noteLabelsBar"></div>
+                </div>
+            </section>
+            <section class="enterprise-toolbar" aria-label="Keresés a jegyzetekben">
+                <div class="toolbar-group">
+                    <div class="commands-search enterprise-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input id="noteSearch" type="search" placeholder="Keresés a jegyzetekben…" autocomplete="off">
+                        <button type="button" class="btn-icon commands-search-clear" id="noteSearchClear" title="Keresés törlése" hidden><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+            </section>
+            <div class="bookmark-list-toolbar item-list-toolbar">
+                <select id="noteSortSelect" aria-label="Rendezés">
+                    <option value="updated">✏️ Utoljára módosított</option>
+                    <option value="newest">🕒 Legújabb elöl</option>
+                    <option value="abc">🔤 ABC sorrend</option>
+                </select>
                 <div class="bookmark-state-group commands-state-group" aria-label="Jegyzet nézetek">
                     <button type="button" class="btn btn-secondary cmd-state active" data-note-state="active"><i class="fa-regular fa-lightbulb"></i> Jegyzetek</button>
                     <button type="button" class="btn btn-secondary cmd-state" data-note-state="archived"><i class="fa-solid fa-box-archive"></i> Archívum</button>
                     <button type="button" class="btn btn-secondary cmd-state" data-note-state="trash"><i class="fa-solid fa-trash"></i> Kuka</button>
                 </div>
-                <div class="categories-bar commands-categories note-categories" id="noteCategoriesBar" aria-label="Jegyzet kategóriák"></div>
-                <div class="categories-bar commands-categories" id="noteLabelsBar" aria-label="Címkék"></div>
-            </section>
-            <div class="note-composer-wrap" id="noteComposerWrap"></div>
+                <div class="item-toolbar-end">
+                <div class="view-switcher" id="noteViewSwitcher" aria-label="Megjelenítés">
+                    <button type="button" class="view-btn" data-view-mode="grid" title="Normál kártyák" aria-label="Normál kártyák" aria-pressed="false"><i class="fa-solid fa-border-all"></i></button>
+                    <button type="button" class="view-btn" data-view-mode="compact" title="Kompakt" aria-label="Kompakt" aria-pressed="false"><i class="fa-solid fa-grip"></i></button>
+                    <button type="button" class="view-btn" data-view-mode="list" title="Lista nézet" aria-label="Lista nézet" aria-pressed="false"><i class="fa-solid fa-list"></i></button>
+                </div>
+                </div>
+            </div>
             <div id="noteSections" aria-live="polite"></div>
         </div>
 
         <!-- Feladatok -->
         <div class="app-view" id="tasksView" data-view="tasks" hidden>
-            <section class="dashboard-section commands-toolbar tasks-toolbar" aria-label="Feladatok eszköztár">
+            <section class="dashboard-section tasks-toolbar" aria-label="Új feladat">
                 <form class="task-quick-add" id="taskQuickAddForm" autocomplete="off">
                     <i class="fa-solid fa-plus" aria-hidden="true"></i>
                     <input id="taskQuickAdd" type="text" maxlength="500" placeholder="Új feladat, pl. „holnap 9-kor számla befizetése !1 #pénzügy”" aria-label="Új feladat (N)">
                     <button type="submit" class="btn btn-primary">Hozzáadás</button>
                 </form>
                 <div class="task-quick-preview" id="taskQuickPreview" aria-live="polite"></div>
-                <div class="tasks-toolbar-row">
+            </section>
+            <section class="dashboard-section category-section" aria-label="Projektek">
+                <div class="category-inner-content">
+                    <div class="category-bubbles-label toolbar-label"><i class="fa-solid fa-folder"></i> Projektek</div>
+                    <div class="categories-bar" id="taskProjectsBar"></div>
+                </div>
+            </section>
+            <section class="enterprise-toolbar" aria-label="Keresés a feladatokban">
+                <div class="toolbar-group">
                     <div class="commands-search enterprise-search">
                         <i class="fa-solid fa-magnifying-glass"></i>
                         <input id="taskSearch" type="search" placeholder="Keresés a feladatokban…" autocomplete="off">
                         <button type="button" class="btn-icon commands-search-clear" id="taskSearchClear" title="Keresés törlése" hidden><i class="fa-solid fa-xmark"></i></button>
                     </div>
-                    <div class="commands-more">
-                        <button type="button" class="btn btn-secondary" id="taskMoreBtn" aria-haspopup="true" aria-expanded="false" title="További műveletek"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-                        <div class="cmd-dropdown" id="taskMoreMenu" role="menu">
-                            <button type="button" class="cmd-dropdown-item" data-task-menu="new-project"><i class="fa-solid fa-folder-plus"></i> Új projekt</button>
-                            <button type="button" class="cmd-dropdown-item" data-task-menu="rename-project" data-needs-project hidden><i class="fa-solid fa-pen"></i> Projekt átnevezése</button>
-                            <button type="button" class="cmd-dropdown-item" data-task-menu="delete-project" data-needs-project hidden><i class="fa-solid fa-folder-minus"></i> Projekt törlése</button>
-                            <label class="cmd-dropdown-item"><i class="fa-solid fa-upload"></i> Import (JSON)<input type="file" id="taskImportInput" accept=".json,application/json" hidden></label>
-                            <button type="button" class="cmd-dropdown-item" data-task-menu="export-json"><i class="fa-solid fa-download"></i> Export JSON</button>
-                            <button type="button" class="cmd-dropdown-item" data-task-menu="export-md"><i class="fa-brands fa-markdown"></i> Export Markdown</button>
-                        </div>
-                    </div>
                 </div>
+            </section>
+            <div class="bookmark-list-toolbar item-list-toolbar">
+                <select id="taskSortSelect" aria-label="Rendezés">
+                    <option value="due">📅 Határidő szerint</option>
+                    <option value="priority">🚩 Prioritás szerint</option>
+                    <option value="newest">🕒 Legújabb elöl</option>
+                    <option value="abc">🔤 ABC sorrend</option>
+                </select>
                 <div class="bookmark-state-group commands-state-group task-views" id="taskViewGroup" aria-label="Feladat nézetek">
                     <button type="button" class="btn btn-secondary cmd-state active" data-task-view="today"><i class="fa-regular fa-sun"></i> Ma <span class="task-count" data-count="today"></span></button>
                     <button type="button" class="btn btn-secondary cmd-state" data-task-view="upcoming"><i class="fa-regular fa-calendar-days"></i> Következő 7 nap <span class="task-count" data-count="upcoming"></span></button>
@@ -392,8 +440,24 @@
                     <button type="button" class="btn btn-secondary cmd-state" data-task-view="done"><i class="fa-solid fa-circle-check"></i> Kész</button>
                     <button type="button" class="btn btn-secondary cmd-state" data-task-view="trash"><i class="fa-solid fa-trash"></i> Kuka</button>
                 </div>
-                <div class="categories-bar commands-categories" id="taskProjectsBar" aria-label="Projektek"></div>
-            </section>
+                <div class="item-toolbar-end">
+                <div class="view-switcher" id="taskViewSwitcher" aria-label="Megjelenítés">
+                    <button type="button" class="view-btn" data-view-mode="list" title="Lista nézet" aria-label="Lista nézet" aria-pressed="false"><i class="fa-solid fa-list"></i></button>
+                    <button type="button" class="view-btn" data-view-mode="compact" title="Kompakt lista" aria-label="Kompakt lista" aria-pressed="false"><i class="fa-solid fa-bars"></i></button>
+                </div>
+                <div class="commands-more">
+                    <button type="button" class="btn btn-secondary item-more-btn" id="taskMoreBtn" aria-haspopup="true" aria-expanded="false" title="További műveletek"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    <div class="cmd-dropdown" id="taskMoreMenu" role="menu">
+                        <button type="button" class="cmd-dropdown-item" data-task-menu="new-project"><i class="fa-solid fa-folder-plus"></i> Új projekt</button>
+                        <button type="button" class="cmd-dropdown-item" data-task-menu="rename-project" data-needs-project hidden><i class="fa-solid fa-pen"></i> Projekt átnevezése</button>
+                        <button type="button" class="cmd-dropdown-item" data-task-menu="delete-project" data-needs-project hidden><i class="fa-solid fa-folder-minus"></i> Projekt törlése</button>
+                        <label class="cmd-dropdown-item"><i class="fa-solid fa-upload"></i> Import (JSON)<input type="file" id="taskImportInput" accept=".json,application/json" hidden></label>
+                        <button type="button" class="cmd-dropdown-item" data-task-menu="export-json"><i class="fa-solid fa-download"></i> Export JSON</button>
+                        <button type="button" class="cmd-dropdown-item" data-task-menu="export-md"><i class="fa-brands fa-markdown"></i> Export Markdown</button>
+                    </div>
+                </div>
+                </div>
+            </div>
             <div class="tasks-layout">
                 <div class="task-list" id="taskList" aria-live="polite"></div>
                 <aside class="task-detail" id="taskDetail" hidden aria-label="Feladat részletei"></aside>
@@ -963,14 +1027,15 @@
     <script src="/js/notifications.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/modal.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/categories-ui.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/bookmarks-ui.js?v=20260905k-pagesize-setting"></script>
+    <script src="/js/bookmarks-ui.js?v=20261016-toolbar"></script>
     <script src="/js/enterprise.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/auth.js?v=20261015-commands"></script>
-    <script src="/js/app.js?v=20260905k-pagesize-setting"></script>
+    <script src="/js/app.js?v=20261016-toolbar"></script>
+    <script src="/js/view-prefs.js?v=20261016-toolbar"></script>
     <script src="/js/main-menu.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/commands-ui.js?v=20261015-tasks"></script>
-    <script src="/js/notes-ui.js?v=20261016-categories"></script>
-    <script src="/js/tasks-ui.js?v=20261016-push"></script>
+    <script src="/js/commands-ui.js?v=20261016-toolbar"></script>
+    <script src="/js/notes-ui.js?v=20261016-toolbar"></script>
+    <script src="/js/tasks-ui.js?v=20261016-toolbar"></script>
     <script src="/js/notification-center.js?v=20261016-push"></script>
     <script src="/js/views.js?v=20261015-notify"></script>
     <script src="/js/pwa.js?v=20261016-cdnfix"></script>

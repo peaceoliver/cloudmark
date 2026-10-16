@@ -18,13 +18,19 @@
     const COLOR_KEYS = new Set(COLORS.map(color => color.key));
 
     // category: 'all', 'none' (kategória nélkül) vagy egy kategória id-ja szövegként.
-    const state = { items: [], categories: [], loaded: false, loading: null, query: '', label: null, category: 'all', filter: 'active' };
+    const prefs = window.CloudMark.prefs;
+    const state = {
+        items: [], categories: [], loaded: false, loading: null, query: '', label: null, category: 'all', filter: 'active',
+        sort: prefs.get('noteSort'), view: prefs.get('noteView')
+    };
     const NEW_CATEGORY = '__new__';
 
     const sections = document.getElementById('noteSections');
     const labelsBar = document.getElementById('noteLabelsBar');
     const categoriesBar = document.getElementById('noteCategoriesBar');
     const searchInput = document.getElementById('noteSearch');
+    const sortSelect = document.getElementById('noteSortSelect');
+    const viewSwitcher = document.getElementById('noteViewSwitcher');
     const searchClear = document.getElementById('noteSearchClear');
     const composerWrap = document.getElementById('noteComposerWrap');
     const editBox = document.getElementById('noteEditBox');
@@ -194,7 +200,16 @@
             const checklist = checklistOf(item) || [];
             return [item.title, item.body, ...item.tags, ...checklist.map(entry => entry.text)]
                 .some(value => String(value || '').toLowerCase().includes(query));
-        }).sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+        }).sort(compareNotes);
+    }
+
+    function compareNotes(a, b) {
+        if (state.sort === 'abc') {
+            const label = note => String(note.title || note.body || checklistOf(note)?.[0]?.text || '').trim();
+            return label(a).localeCompare(label(b), 'hu') || new Date(b.updated_at) - new Date(a.updated_at);
+        }
+        const field = state.sort === 'newest' ? 'created_at' : 'updated_at';
+        return new Date(b[field]) - new Date(a[field]);
     }
 
     function renderCategories() {
@@ -274,6 +289,9 @@
     }
 
     function renderNotes() {
+        sections.classList.remove('notes-view-grid', 'notes-view-compact', 'notes-view-list');
+        sections.classList.add(`notes-view-${state.view}`);
+        prefs.markSwitcher(viewSwitcher, state.view);
         const list = visibleNotes();
         if (!list.length) {
             const message = state.query || state.label ? 'Nincs a keresésnek megfelelő jegyzet.'
@@ -631,6 +649,13 @@
 
     // ---------- eszköztár ----------
 
+    /** Puts an open chip menu under its ⋮ button (the menu is fixed, so the scrolling chip row cannot clip it). */
+    function placeCategoryMenu(menu) {
+        const rect = menu.parentElement.querySelector('[data-note-category-menu]').getBoundingClientRect();
+        menu.style.top = `${Math.round(rect.bottom + 4)}px`;
+        menu.style.left = `${Math.round(Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8)))}px`;
+    }
+
     function closeCategoryMenus(except) {
         categoriesBar.querySelectorAll('.note-category-dropdown.show').forEach(menu => { if (menu !== except) menu.classList.remove('show'); });
     }
@@ -640,10 +665,7 @@
         if (more) {
             const menu = more.parentElement.querySelector('.note-category-dropdown');
             closeCategoryMenus(menu);
-            if (!menu.classList.toggle('show')) return;
-            const rect = more.getBoundingClientRect();
-            menu.style.top = `${Math.round(rect.bottom + 4)}px`;
-            menu.style.left = `${Math.round(Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8)))}px`;
+            if (menu.classList.toggle('show')) placeCategoryMenu(menu);
             return;
         }
         const action = event.target.closest('[data-note-category-action]');
@@ -670,14 +692,39 @@
         if (!event.target.closest('.note-category-chip-wrap')) closeCategoryMenus();
     });
     window.addEventListener('resize', () => closeCategoryMenus());
-    window.addEventListener('scroll', () => closeCategoryMenus(), { passive: true });
-    categoriesBar.addEventListener('scroll', () => closeCategoryMenus());
+    // Görgetéskor a nyitott menü a gombjával együtt mozog.
+    const followCategoryMenu = () => categoriesBar.querySelectorAll('.note-category-dropdown.show').forEach(placeCategoryMenu);
+    window.addEventListener('scroll', followCategoryMenu, { passive: true });
+    categoriesBar.addEventListener('scroll', followCategoryMenu, { passive: true });
 
     labelsBar.addEventListener('click', event => {
         const chip = event.target.closest('[data-label]');
         if (!chip) return;
         state.label = chip.dataset.label || null;
         render();
+    });
+
+    sortSelect.value = state.sort;
+    sortSelect.addEventListener('change', () => {
+        state.sort = sortSelect.value;
+        prefs.set('noteSort', state.sort);
+        renderNotes();
+    });
+
+    viewSwitcher.addEventListener('click', event => {
+        const button = event.target.closest('[data-view-mode]');
+        if (!button) return;
+        state.view = button.dataset.viewMode;
+        prefs.set('noteView', state.view);
+        renderNotes();
+    });
+    prefs.markSwitcher(viewSwitcher, state.view);
+
+    document.addEventListener('cloudmark:prefs', () => {
+        state.sort = prefs.get('noteSort');
+        state.view = prefs.get('noteView');
+        sortSelect.value = state.sort;
+        if (state.loaded) renderNotes(); else prefs.markSwitcher(viewSwitcher, state.view);
     });
 
     searchInput.addEventListener('input', () => {
