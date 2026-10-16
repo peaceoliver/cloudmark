@@ -4,6 +4,7 @@
  */
 (function () {
     const installButton = document.getElementById('installAppBtn');
+    const installActions = document.getElementById('installAppActions');
     const installSection = document.getElementById('installAppSection');
     const installHint = document.getElementById('installAppHint');
     const offlineBar = document.getElementById('offlineBar');
@@ -24,7 +25,7 @@
         const iosManual = isIos() && !isStandalone();
         installSection.hidden = isStandalone() || (!canPrompt && !iosManual);
         if (installHint) installHint.hidden = !iosManual || canPrompt;
-        if (installButton) installButton.hidden = !canPrompt;
+        if (installActions) installActions.hidden = !canPrompt;
     }
 
     window.addEventListener('beforeinstallprompt', event => {

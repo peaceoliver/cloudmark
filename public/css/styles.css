@@ -2241,7 +2241,7 @@ input:focus, select:focus {
 }
 
 /* --- Telepíthető app (PWA) --- */
-#installAppSection[hidden], #installAppBtn[hidden], .install-app-hint[hidden], .offline-bar[hidden] { display: none; }
+#installAppSection[hidden], #installAppActions[hidden], .install-app-hint[hidden], .offline-bar[hidden] { display: none; }
 
 .offline-bar {
     position: sticky;
