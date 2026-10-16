@@ -87,6 +87,7 @@ async function loadUserSettings() {
             localStorage.setItem(config.storageKeys.viewMode, settings.viewMode);
             setBookmarkView(settings.viewMode);
         }
+        window.CloudMark?.prefs?.apply(settings);
         if (settings.sortMode) {
             currentSortMode = settings.sortMode;
             localStorage.setItem(config.storageKeys.sortMode, settings.sortMode);

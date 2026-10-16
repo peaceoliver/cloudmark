@@ -44,8 +44,11 @@
         query: '',
         selectedId: null,
         linkCandidates: null,
-        timeZoneSaved: false
+        timeZoneSaved: false,
+        sort: window.CloudMark.prefs.get('taskSort'),
+        display: window.CloudMark.prefs.get('taskView')
     };
+    const prefs = window.CloudMark.prefs;
 
     const quickForm = document.getElementById('taskQuickAddForm');
     const quickInput = document.getElementById('taskQuickAdd');
@@ -57,6 +60,8 @@
     const detailBox = document.getElementById('taskDetail');
     const toast = document.getElementById('taskToast');
     const moreButton = document.getElementById('taskMoreBtn');
+    const sortSelect = document.getElementById('taskSortSelect');
+    const viewSwitcher = document.getElementById('taskViewSwitcher');
     const moreMenu = document.getElementById('taskMoreMenu');
     const importInput = document.getElementById('taskImportInput');
 
@@ -233,6 +238,14 @@
         return new Date(a.created_at) - new Date(b.created_at);
     }
 
+    /** Order inside each list section, chosen in the sort menu. */
+    function compareBySort(a, b) {
+        if (state.sort === 'priority') return (a.priority || 5) - (b.priority || 5) || compareTasks(a, b);
+        if (state.sort === 'newest') return new Date(b.created_at) - new Date(a.created_at);
+        if (state.sort === 'abc') return String(a.title || '').localeCompare(String(b.title || ''), 'hu') || compareTasks(a, b);
+        return compareTasks(a, b);
+    }
+
     function matchesView(item, view) {
         if (view === 'done') return item.status === 'done';
         if (item.status === 'done') return false;
@@ -318,7 +331,9 @@
         const visible = visibleTasks();
         const visibleIds = new Set(visible.map(item => String(item.id)));
         // A látható szülő alatt megjelenő részfeladatok ne jelenjenek meg külön sorban is.
-        const tops = visible.filter(item => !item.parent_item_id || !visibleIds.has(String(item.parent_item_id)) || state.view === 'trash').sort(compareTasks);
+        listBox.classList.toggle('is-compact', state.display === 'compact');
+        prefs.markSwitcher(viewSwitcher, state.display);
+        const tops = visible.filter(item => !item.parent_item_id || !visibleIds.has(String(item.parent_item_id)) || state.view === 'trash').sort(compareBySort);
         if (!tops.length) {
             const message = state.query ? 'Nincs a keresésnek megfelelő feladat.' : VIEW_EMPTY[state.view];
             listBox.innerHTML = `<div class="empty-state notes-empty task-empty">${message}</div>`;
@@ -1146,6 +1161,29 @@
         link.remove();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
+
+    sortSelect.value = state.sort;
+    sortSelect.addEventListener('change', () => {
+        state.sort = sortSelect.value;
+        prefs.set('taskSort', state.sort);
+        renderList();
+    });
+
+    viewSwitcher.addEventListener('click', event => {
+        const button = event.target.closest('[data-view-mode]');
+        if (!button) return;
+        state.display = button.dataset.viewMode;
+        prefs.set('taskView', state.display);
+        renderList();
+    });
+    prefs.markSwitcher(viewSwitcher, state.display);
+
+    document.addEventListener('cloudmark:prefs', () => {
+        state.sort = prefs.get('taskSort');
+        state.display = prefs.get('taskView');
+        sortSelect.value = state.sort;
+        if (state.loaded) renderList(); else prefs.markSwitcher(viewSwitcher, state.display);
+    });
 
     moreButton.addEventListener('click', event => {
         event.stopPropagation();

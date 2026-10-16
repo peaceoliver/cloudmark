@@ -122,7 +122,7 @@ function setBookmarkView(viewMode) {
     currentBookmarkView = normalizedMode;
     localStorage.setItem(bookmarksConfig.storageKeys.viewMode, normalizedMode);
     if (currentUser && typeof api !== 'undefined') api.saveUserSetting('viewMode', normalizedMode).catch(err => console.warn('Failed to save view mode:', err));
-    document.querySelectorAll('.view-btn').forEach(button => button.classList.remove('active'));
+    document.querySelectorAll('#btnViewGrid, #btnViewCompact, #btnViewList').forEach(button => button.classList.remove('active'));
 
     const buttonMap = {
         grid: 'btnViewGrid',
