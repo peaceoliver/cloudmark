@@ -528,10 +528,32 @@
     function readFragments() {
         return Array.from(fragmentsBox.querySelectorAll('.fragment-row')).map(row => ({
             label: row.querySelector('.fragment-label').value.trim() || null,
-            language: row.querySelector('.fragment-language').value.trim() || null,
+            language: languageValue(row.querySelector('.fragment-language')) || null,
             content: row.querySelector('.fragment-content').value
         }));
     }
+
+    /** The language field's value; while it is focused and emptied to show the whole list, the previous value. */
+    function languageValue(input) {
+        return (input.value.trim() || input.dataset.previous || '').trim();
+    }
+
+    // A nyelv mező javaslatlistája csak a beírt szövegre illőket mutatja, ezért fókuszkor kiürítjük,
+    // így a teljes lista látszik; ha nem választanak újat, elhagyáskor visszakerül az előző érték.
+    fragmentsBox.addEventListener('focusin', event => {
+        const input = event.target.closest('.fragment-language');
+        if (!input || !input.value) return;
+        input.dataset.previous = input.value;
+        input.placeholder = input.value;
+        input.value = '';
+    });
+    fragmentsBox.addEventListener('focusout', event => {
+        const input = event.target.closest('.fragment-language');
+        if (!input || input.dataset.previous === undefined) return;
+        if (!input.value.trim()) input.value = input.dataset.previous;
+        delete input.dataset.previous;
+        input.placeholder = 'Nyelv (pl. bash)';
+    });
 
     function renderFragmentRows(fragments) {
         fragmentsBox.innerHTML = fragments.map((fragment, index) => fragmentRowHtml(fragment, index, fragments.length)).join('');
@@ -696,6 +718,12 @@
         aiExtras.innerHTML = cards.join('');
     }
 
+    const LANGUAGE_LABELS = { bash: 'Bash', powershell: 'PowerShell', cmd: 'CMD', sh: 'sh', zsh: 'zsh', python: 'Python', sql: 'SQL', javascript: 'JavaScript', json: 'JSON', yaml: 'YAML', docker: 'Docker', git: 'Git' };
+
+    function languageLabel(language) {
+        return LANGUAGE_LABELS[language] || language.charAt(0).toUpperCase() + language.slice(1);
+    }
+
     function applySuggestion(suggestion, providerLabel) {
         // Ha még nyitott egy korábbi javaslat, a Visszavonom az AI előtti állapotra álljon vissza.
         const snapshot = aiReview.active && aiSnapshot ? aiSnapshot : snapshotForm();
@@ -800,6 +828,8 @@
         if (!tab) return;
         if (!aiReview.active) aiSnapshot = snapshotForm();
         const fragments = readFragments();
+        // Két fülnél az első is kapjon nevet (a nyelvéből), különben a kártyán csak a nyelv látszik.
+        if (fragments[0] && !fragments[0].label && fragments[0].language) fragments[0].label = languageLabel(fragments[0].language);
         fragments.push({ content: tab.code, language: tab.language || null, label: tab.label || null });
         renderFragmentRows(fragments);
         const rows = fragmentsBox.querySelectorAll('.fragment-row');
