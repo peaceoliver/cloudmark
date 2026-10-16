@@ -57,6 +57,7 @@ Google Keep-szerű jegyzetek.
 - A „Jegyzet írása…” mezőbe kattintva gyorsan új jegyzet írható. Kívülre kattintva automatikusan mentődik.
 - Szöveges jegyzet vagy jelölőnégyzetes lista. A kettő között egy gombbal lehet váltani.
 - Háttérszín, rögzítés (a rögzített jegyzetek felül), címkék, archiválás, kuka.
+- Kategóriák: a jegyzetek fölötti sorban „Összes”, „Kategória nélkül” és a saját kategóriák szűrnek, darabszámmal. Új kategória a „+” gombbal vagy a szerkesztő kategória-választójában („+ Új kategória…”) hozható létre. A kategória melletti ⋮ menüben átnevezhető vagy törölhető; törléskor a jegyzetei megmaradnak, és a „Kategória nélkül” szűrőbe kerülnek. A jegyzetkategóriák külön vannak a parancsok kategóriáitól (`categories.kind = 'note'`).
 - Egy jegyzetre kattintva megnyílik a szerkesztő, ami gépelés közben automatikusan ment.
 
 ### Feladatok

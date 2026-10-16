@@ -2302,3 +2302,58 @@ input:focus, select:focus {
 .bell-device span { flex: 1; }
 .bell-device em { color: #e11d48; font-style: normal; }
 .task-snooze { align-self: flex-start; padding: 0.35rem 0.75rem; font-size: 0.82rem; }
+
+/* Jegyzet kategóriák */
+.note-categories:empty, #noteLabelsBar:empty { display: none; }
+.note-category-chip-wrap { display: flex; align-items: center; flex-shrink: 0; }
+.note-category-more {
+    width: 1.6rem;
+    height: 1.9rem;
+    margin-left: -0.15rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+.note-category-more:hover, .note-category-more:focus-visible { color: var(--text-primary); background: var(--bg-card-hover); }
+/* A sáv vízszintesen görgethető, ezért a menü fix pozícióval lóg ki belőle (a helyét a JS állítja). */
+.note-category-dropdown {
+    position: fixed;
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+    min-width: 170px;
+    padding: 0.3rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-card);
+    box-shadow: var(--shadow);
+}
+.note-category-dropdown.show { display: flex; }
+.note-category-add { flex-shrink: 0; }
+.note-category-label i { margin-right: 0.15rem; }
+.note-editor-meta { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.note-editor-meta .note-editor-tags { flex: 1 1 180px; width: auto; }
+.note-editor-category-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 100%;
+    padding: 0.15rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+.note-editor-category {
+    max-width: 14rem;
+    padding: 0.2rem 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    cursor: pointer;
+    outline: none;
+}
+.note-editor-category option { background: var(--bg-card); color: var(--text-primary); }
