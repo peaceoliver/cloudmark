@@ -436,7 +436,11 @@
         renderGrid();
     }));
 
-    document.getElementById('commandNewBtn').addEventListener('click', () => openEditor(null));
+    document.getElementById('commandNewBtn').addEventListener('click', () => {
+        // Lenyitó sávként működik, mint a könyvjelzőknél: másodszorra becsukja az űrlapot.
+        if (!newPanel.hidden) closeEditor();
+        else openEditor(null);
+    });
 
     moreButton.addEventListener('click', event => {
         event.stopPropagation();
@@ -532,6 +536,19 @@
         fragmentsBox.innerHTML = fragments.map((fragment, index) => fragmentRowHtml(fragment, index, fragments.length)).join('');
     }
 
+    const newButton = document.getElementById('commandNewBtn');
+    const newPanel = document.getElementById('commandNewPanel');
+    const modalBox = document.querySelector('#commandEditModal .command-edit-modal');
+
+    /** Hides the editor wherever it is open (under the bar for a new command, in the window when editing). */
+    function closeEditor() {
+        newPanel.hidden = true;
+        newButton.setAttribute('aria-expanded', 'false');
+        if (editForm.parentElement !== modalBox) modalBox.appendChild(editForm);
+        closeModal('commandEditModal');
+        editing = null;
+    }
+
     async function openEditor(item) {
         if (!state.loaded) await load();
         editing = item;
@@ -543,8 +560,21 @@
         fillCategorySelect(categorySelect, categoryId ?? '', 'Inbox (nincs kategória)');
         if (typeof setTagInputValues === 'function') setTagInputValues('cmdTags', item?.tags || []);
         renderFragmentRows(item && item.fragments.length ? item.fragments : [{ content: '', language: defaultLanguageFor(categoryId) }]);
-        openModal('commandEditModal');
-        setTimeout(() => document.getElementById('cmdTitle').focus(), 50);
+        if (item) {
+            // Meglévő parancs: a szerkesztő ablakban nyílik.
+            newPanel.hidden = true;
+            newButton.setAttribute('aria-expanded', 'false');
+            modalBox.appendChild(editForm);
+            openModal('commandEditModal');
+            setTimeout(() => document.getElementById('cmdTitle').focus(), 50);
+            return;
+        }
+        // Új parancs: az űrlap a sáv alatt nyílik le, mint a könyvjelzőknél.
+        newPanel.appendChild(editForm);
+        newPanel.hidden = false;
+        newButton.setAttribute('aria-expanded', 'true');
+        newPanel.scrollIntoView({ block: 'nearest' });
+        document.getElementById('cmdTitle').focus({ preventScroll: true });
     }
 
     categorySelect.addEventListener('change', () => {
@@ -569,6 +599,8 @@
         renderFragmentRows(readFragments().filter((_, position) => position !== index));
     });
 
+    document.getElementById('cmdCancelBtn').addEventListener('click', closeEditor);
+
     editForm.addEventListener('submit', async event => {
         event.preventDefault();
         const fragments = readFragments().filter(fragment => fragment.content.trim());
@@ -591,10 +623,10 @@
             const saved = editing ? await commandApi.updateItem(editing.id, payload) : await commandApi.createItem(payload);
             upsertItem(saved);
             state.activeFragment.delete(saved.id);
-            closeModal('commandEditModal');
+            const wasEditing = Boolean(editing);
+            closeEditor();
             render();
-            notify(editing ? 'Parancs mentve.' : 'Parancs létrehozva.', 'success');
-            editing = null;
+            notify(wasEditing ? 'Parancs mentve.' : 'Parancs létrehozva.', 'success');
         } catch (err) {
             notify(err.message || 'A mentés nem sikerült.', 'error');
         }

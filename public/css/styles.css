@@ -2369,10 +2369,7 @@ input:focus, select:focus {
 .item-list-toolbar .cmd-state i { margin-right: 0.3rem; }
 .item-toolbar-end { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
 .item-more-btn { height: 2.5rem; min-width: 2.5rem; border-radius: 999px; padding: 0 0.8rem; }
-#notesView .note-composer-wrap { max-width: none; margin: 0 0 0.75rem; }
-#notesView .note-composer-wrap.is-open { max-width: 760px; margin: 0 auto 0.75rem; }
-#notesView .note-composer-collapsed { border-radius: 12px; box-shadow: none; background: rgba(148, 163, 184, 0.04); padding: 0.7rem 0.9rem; }
-#notesView .note-composer-collapsed:hover { background: var(--bg-card-hover); }
+#notesView .note-composer-wrap { max-width: 760px; margin: 0.25rem auto 1rem; }
 #tasksView .tasks-toolbar { display: flex; flex-direction: column; gap: 0.5rem; }
 #commandsView .commands-grid, #noteSections, #tasksView .tasks-layout { margin-top: 0.25rem; }
 @media (max-width: 900px) {
@@ -2423,3 +2420,40 @@ input:focus, select:focus {
 .task-list.is-compact .task-row { padding-top: 0.4rem; padding-bottom: 0.4rem; align-items: center; }
 .task-list.is-compact .task-meta { display: none; }
 .task-list.is-compact .task-section { margin-bottom: 0.25rem; }
+
+/* Egységes „új elem” sáv mind a négy nézet tetején (a Feladatok gyors-hozzáadás mintájára) */
+.new-item-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.6rem;
+    width: 100%;
+    box-sizing: border-box;
+    height: 3.125rem;
+    margin: 0 0 0.5rem;
+    padding: 0.35rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.98rem;
+    font-weight: 400;
+    text-align: left;
+    box-shadow: none;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+button.new-item-bar:hover { border-color: var(--accent); background: var(--bg-input); }
+button.new-item-bar:focus-visible, .new-item-bar:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); outline: none; }
+.new-item-bar .new-item-icon { color: var(--accent); flex-shrink: 0; }
+.new-item-bar .new-item-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.new-item-bar .accordion-icon, .new-item-bar .new-item-hint { color: var(--text-secondary); font-size: 0.8rem; flex-shrink: 0; }
+.task-quick-add.new-item-bar { padding-right: 0.4rem; cursor: text; }
+.task-quick-add.new-item-bar .btn { height: 2.35rem; min-height: 2.35rem; padding-top: 0; padding-bottom: 0; }
+.add-item-section[hidden] { display: none; }
+.add-item-section .new-item-bar, .add-bookmark-section .new-item-bar { margin-bottom: 0.5rem; }
+.new-item-bar .accordion-icon { transition: transform 0.2s ease; }
+.new-item-bar[aria-expanded="true"] .accordion-icon { transform: rotate(180deg); }
+.command-new-panel { margin: 0 0 1rem; padding: 1.25rem; }
+.command-new-panel[hidden] { display: none; }

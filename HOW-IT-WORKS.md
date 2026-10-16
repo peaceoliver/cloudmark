@@ -40,7 +40,7 @@ Egy könyvjelző lehet aktív, kedvenc, későbbi olvasásra jelölt, ellenőrz�
 
 Bejelentkezés után a főoldal tetején lehet váltani a négy nézet között (gyorsbillentyű: Alt+1, Alt+2, Alt+3, Alt+4). A választott nézet frissítés után is megmarad. Mindegyik nézetben a `/` billentyű a keresőbe ugrik.
 
-Mind a négy nézet teteje ugyanúgy épül fel: legfelül az új elem felvétele, alatta a kategóriák (Feladatoknál a projektek), alatta a keresés, végül egy sorban a rendezés, az állapotok (pl. Aktív / Kedvencek / Kuka) és a nézetváltó, a sor végén a ⋮ menüvel.
+Mind a négy nézet teteje ugyanúgy épül fel: legfelül az egyforma „+ Új …” sáv (Könyvjelzők és Parancsok: a sáv alatt lenyíló űrlap; egy meglévő parancs szerkesztése ablakban nyílik, Jegyzetek: a szerkesztő a rendezősor alatt nyílik meg, Feladatok: gyors beírás), alatta a kategóriák (Feladatoknál a projektek), alatta a keresés, végül egy sorban a rendezés, az állapotok (pl. Aktív / Kedvencek / Kuka) és a nézetváltó, a sor végén a ⋮ menüvel.
 
 - **Nézetváltó:** Parancsoknál és Jegyzeteknél Normál / Kompakt / Lista, Feladatoknál Lista / Kompakt. Kompakt parancsnál csak a kód első sora látszik; lista nézetben a sorra kattintva nyílik ki a kód. Kompakt feladatnál a dátum/projekt sor rejtve van.
 - **Rendezés:** Parancsok: legújabb, ABC, leggyakrabban másolt. Jegyzetek: utoljára módosított, legújabb, ABC. Feladatok: határidő, prioritás, legújabb, ABC (a csoportokon, pl. Ma / Holnap, belül).
