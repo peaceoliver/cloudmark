@@ -285,8 +285,9 @@
             <article class="note-card ${colorClass(item.color)}" data-item-id="${Number(item.id)}" tabindex="0">
                 ${item.trashed ? '' : `<button type="button" class="note-pin ${item.pinned ? 'is-pinned' : ''}" data-action="pin" title="${item.pinned ? 'Rögzítés feloldása' : 'Rögzítés'}"><i class="fa-solid fa-thumbtack"></i></button>`}
                 ${item.title ? `<h3 class="note-title">${esc(item.title)}</h3>` : ''}
+                ${item.category_name ? `<div class="card-meta note-card-meta"><span class="card-category">${esc(item.category_name)}</span></div>` : ''}
                 ${noteBodyHtml(item)}
-                ${item.tags.length || (item.category_name && state.category === 'all') ? `<div class="note-labels">${item.category_name && state.category === 'all' ? `<span class="note-label note-category-label"><i class="fa-regular fa-folder"></i> ${esc(item.category_name)}</span>` : ''}${item.tags.map(tag => `<span class="note-label">${esc(tag)}</span>`).join('')}</div>` : ''}
+                ${item.tags.length ? `<div class="card-tags">${item.tags.map(tag => `#${esc(tag)}`).join(' ')}</div>` : ''}
                 <div class="note-actions">${actions}</div>
             </article>`;
     }
