@@ -45,6 +45,7 @@ routes/items.js         commands + notes + tasks CRUD (shared `items` table), im
 routes/tasks.js         task-only endpoints (complete, snooze, reminders)
 routes/notifications.js bell, e-mail reminders, daily digest, internal cron endpoint
 routes/push.js          Web Push subscriptions and action tokens
+routes/search.js        GET /api/search: one search across notes, tasks, bookmarks and commands
 migrations/NNN_*.sql    schema changes, run on every server start
 public/index.html       the whole single-page UI (all four views are in this file)
 public/css/styles.css   one stylesheet, themed with CSS variables
@@ -111,6 +112,18 @@ The Bookmarks view is the reference layout; copy its markup and classes rather t
 - Tags at the bottom of the card as `#tag` in blue text: `<div class="card-tags">`. Compact notes and compact
   tasks hide tags.
 - Views: commands have grid / compact / list, notes grid / compact / list / kanban, tasks list / compact.
+
+### Command Palette and search
+
+- `public/js/palette.js` (`window.CloudMark.palette`) is the Ctrl+K window (`#paletteModal`, header button
+  `#paletteToggle`). It calls `api.search()` → `GET /api/search?q=&types=&limit=` (`routes/search.js`), which
+  matches title, body, description, category, tags, command fragments and checklists, accent-insensitively
+  (`translate(lower(…))` in SQL, `foldText` in JS), and returns the top N per type in tab order.
+- The task "Kapcsolt elemek" picker uses the same endpoint. A new searchable type or field must be added to
+  `routes/search.js`, and the palette's open/create actions to `palette.js`.
+- Palette actions call the view modules' public functions (`notes.openComposer`, `tasks.addFromText`,
+  `commands.openById` …); expose a function on the module instead of reaching into its DOM.
+- The Info modal (`#infoModal`) is the short user guide: update it when a view gets a visible new feature.
 
 ### View preferences
 
@@ -186,7 +199,7 @@ attach screenshots when possible.
 ## TODO list (backlog)
 
 The owner's TODO list is the app itself: **Feladatok** view, project **"CloudMark"** (a `categories` row with
-`kind = 'task'`, owner = the owner's user). Ideas there: Command Palette (Ctrl+K), internal `[[` links,
+`kind = 'task'`, owner = the owner's user). Ideas there: internal `[[` links,
 Dashboard, Clipper, images + Mermaid in notes, AI assistant, performance check, sharing items with other users.
 `roadmap.md` has the longer history. Each idea still needs an approved plan before building.
 

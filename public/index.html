@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261016-settings">
+    <link rel="stylesheet" href="/css/styles.css?v=20261016-palette">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -33,6 +33,9 @@
             </a>
             
             <div class="nav-actions">
+                <button type="button" class="btn-icon auth-only" id="paletteToggle" title="Keresés mindenhol (Ctrl+K)" aria-label="Keresés mindenhol" style="display:none">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
                 <button class="btn-icon" id="themeToggle" title="Téma váltása">
                     <i class="fa-solid fa-moon"></i>
                 </button>
@@ -501,6 +504,19 @@
                 <span id="authToggleText">Még nincs fiókod?</span>
                 <a href="#" id="authToggleLink" style="color: var(--accent); font-weight:600; text-decoration:none;" onclick="toggleAuthMode(event)">Regisztráció</a>
             </div>
+        </div>
+    </div>
+
+    <!-- Command Palette (Ctrl+K): keresés és létrehozás mind a négy nézetben -->
+    <div class="modal-overlay palette-overlay" id="paletteModal">
+        <div class="palette" role="dialog" aria-label="Keresés mindenhol">
+            <div class="palette-search">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <input type="text" id="paletteInput" placeholder="Keresés mindenhol… („>” műveletek)" autocomplete="off" spellcheck="false" aria-label="Keresés mindenhol" aria-controls="paletteResults">
+                <kbd>Esc</kbd>
+            </div>
+            <div class="palette-results" id="paletteResults" role="listbox"></div>
+            <div class="palette-footer"><span><kbd>↑</kbd><kbd>↓</kbd> lépkedés</span><span><kbd>Enter</kbd> megnyitás / másolás</span><span><kbd>Shift</kbd>+<kbd>Enter</kbd> szerkesztés</span></div>
         </div>
     </div>
 
@@ -1102,22 +1118,33 @@
     </div>
     <div class="modal-overlay" id="infoModal">
         <div class="modal">
-            <div class="modal-title"><i class="fa-solid fa-circle-info"></i> CloudMark - az oldal működése</div>
-            <div class="modal-form" style="max-height: 60vh; overflow-y: auto;">
-                <p>A CloudMark egy többfelhasználós könyvjelző-kezelő alkalmazás. Bejelentkezés után saját kategóriákba rendezve lehet weboldalakat menteni, keresni és kezelni.</p>
-                <h3>Könyvjelző mentése</h3>
-                <p>Új könyvjelzőhöz meg kell adni a címet, az URL-t és egy kategóriát. Leírás és címkék opcionálisan adhatók meg. A kézzel megadott cím lesz a könyvjelző fő címe, a kézzel megadott leírás pedig változatlanul mentődik és megjelenik a kártyán.</p>
-                <p>Azonos URL ugyanahhoz a felhasználóhoz egyszer menthető el. A gyorsmentő (bookmarklet) az aktuális oldal URL-jével és címével is elő tudja készíteni a mentést.</p>
-                <h3>Automatikus weboldal-adatok</h3>
-                <p>A felhasználói beállításokban külön kapcsolható a weboldal címsorának és képének olvasása. Mentéskor vagy szerkesztéskor az oldal <code>og:title</code>, <code>twitter:title</code> vagy HTML-címe beolvasható. Ha nincs kézzel megadott cím, ez lesz a fő cím.</p>
-                <p>Az oldal <code>og:image</code> vagy <code>twitter:image</code> képe kártyaképként jelenhet meg. Ha a leírás mező üres, az oldal meta-leírása elmenthető. A kézzel beírt leírás mindig elsőbbséget élvez.</p>
-                <p>Az automatikus beolvasás nem garantált: az oldal blokkolhatja a lekérést, vagy nem adhat meg megfelelő metaadatot.</p>
-                <h3>Megjelenítés és rendezés</h3>
-                <p>A könyvjelzők kártya-, kompakt- vagy listanézetben jelennek meg. A képek külön elrejthetők vagy megjeleníthetők. Keresés működik címre, URL-re, kategóriára, leírásra és címkére.</p>
-                <p>Rendezés: legújabb vagy legrégebbi elöl, ABC-sorrend cím szerint, illetve leggyakrabban megnyitott szerint.</p>
-                <h3>Állapotok és egyéb lehetőségek</h3>
-                <p>Egy könyvjelző lehet aktív, kedvenc, későbbi olvasásra jelölt, ellenőrzésre váró, archivált vagy kukába helyezett. A kijelölt könyvjelzők csoportosan is módosíthatók vagy más kategóriába mozgathatók.</p>
-                <p>Saját kategóriák és címkék kezelése, JSON- vagy HTML-import/export, valamint megosztható hivatkozás készítése is elérhető. A Team funkció és az adminisztrációs lehetőségek jogosultságtól függnek.</p>
+            <div class="modal-title"><i class="fa-solid fa-circle-info"></i> CloudMark – rövid ismertető</div>
+            <div class="modal-form info-content" style="max-height: 60vh; overflow-y: auto;">
+                <p>A CloudMark egy helyen tartja a jegyzeteidet, feladataidat, könyvjelzőidet és parancsaidat. Bejelentkezés után a fenti fülekkel válthatsz közöttük (<kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>4</kbd>).</p>
+
+                <h3><i class="fa-solid fa-magnifying-glass"></i> Keresés mindenhol (Ctrl+K)</h3>
+                <p>A <kbd>Ctrl</kbd>+<kbd>K</kbd> (Macen <kbd>⌘</kbd>+<kbd>K</kbd>) vagy a fejléc nagyító gombja egy keresőablakot nyit, amely egyszerre keres mind a négy helyen. <kbd>Enter</kbd>: megnyitja a jegyzetet vagy feladatot, könyvjelzőnél a weboldalt, parancsnál a kódot a vágólapra másolja. <kbd>Shift</kbd>+<kbd>Enter</kbd>: szerkesztés. A lista alján új elemet is létrehozhatsz a beírt szövegből, a <kbd>&gt;</kbd> jellel kezdve pedig gyors műveletek jönnek (nézetváltás, Beállítások, téma).</p>
+
+                <h3><i class="fa-solid fa-note-sticky"></i> Jegyzetek</h3>
+                <p>Keep-szerű jegyzetek: szöveg vagy jelölőnégyzetes lista, háttérszín, rögzítés, kategóriák és címkék. Gépelés közben automatikusan ment. Nézetek: normál, kompakt, lista és kanban, ahol a jegyzetet másik kategória oszlopába húzhatod.</p>
+
+                <h3><i class="fa-solid fa-list-check"></i> Feladatok</h3>
+                <p>Egy sorban felvehető, pl. <code>holnap 9-kor számla befizetése !1 #pénzügy @Otthon</code>: dátum, idő, ismétlés, prioritás (<code>!1</code>–<code>!4</code>), címke és projekt. Részfeladatok, emlékeztetők, és kapcsolat jegyzethez, parancshoz vagy könyvjelzőhöz. Az esedékes feladatokról a csengő, telefonos értesítés és e-mail szól.</p>
+
+                <h3><i class="fa-solid fa-bookmark"></i> Könyvjelzők</h3>
+                <p>Weboldalak kategóriákba és címkékkel. Az oldal címe és képe automatikusan beolvasható. Állapotok: kedvenc, később elolvasandó, ellenőrzésre, archivált, kuka. A „Mentés CloudMarkba” gyorsmentő gombot a Beállítások → Könyvjelzők fülön találod.</p>
+
+                <h3><i class="fa-solid fa-terminal"></i> Parancsok</h3>
+                <p>Gyakran használt parancssorok kategóriákba rendezve, több kódfüllel. Egy kattintással másolható az egész, egy sor, Markdownként vagy kommentek nélkül.</p>
+
+                <h3><i class="fa-solid fa-gear"></i> Menük és beállítások</h3>
+                <p>Minden nézet sorának végén ugyanaz a <strong>⋮</strong> menü: kategóriák, import/export és <strong>Beállítások…</strong>. A Beállítások ablak fülei: Általános (téma, induló nézet, értesítések, jelszó), Jegyzetek, Feladatok, Könyvjelzők, Parancsok. A rendezés és a nézet a fiókhoz mentődik, így minden eszközön ugyanaz.</p>
+
+                <h3><i class="fa-solid fa-keyboard"></i> Billentyűk</h3>
+                <p><kbd>Ctrl</kbd>+<kbd>K</kbd> keresés mindenhol · <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>4</kbd> nézetváltás · <kbd>/</kbd> keresés az aktuális nézetben · <kbd>N</kbd> új jegyzet, feladat vagy parancs · <kbd>Esc</kbd> bezárás.</p>
+
+                <h3><i class="fa-solid fa-mobile-screen"></i> Telefonon</h3>
+                <p>A CloudMark alkalmazásként telepíthető (fejléc ⋮ menü → Telepítés; iPhone-on Safari → Megosztás → Hozzáadás a Főképernyőhöz), így értesítést is kaphatsz.</p>
             </div>
             <div style="display:flex; justify-content:flex-end; margin-top:1rem;">
                 <button type="button" class="btn btn-danger" onclick="closeModal('infoModal')">Bezárás</button>
@@ -1125,7 +1152,7 @@
         </div>
     </div>
     <script src="/js/config.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/api.js?v=20261016-push"></script>
+    <script src="/js/api.js?v=20261016-palette"></script>
     <script src="/js/task-parser.js?v=20261015-tasks"></script>
     <script src="/js/notifications.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/modal.js?v=20260905k-pagesize-setting"></script>
@@ -1137,10 +1164,11 @@
     <script src="/js/view-prefs.js?v=20261016-settings"></script>
     <script src="/js/main-menu.js?v=20261016-settings"></script>
     <script src="/js/commands-ui.js?v=20261016-cards"></script>
-    <script src="/js/notes-ui.js?v=20261016-settings"></script>
-    <script src="/js/tasks-ui.js?v=20261016-cards"></script>
+    <script src="/js/notes-ui.js?v=20261016-palette"></script>
+    <script src="/js/tasks-ui.js?v=20261016-palette"></script>
     <script src="/js/notification-center.js?v=20261016-settings"></script>
     <script src="/js/settings-ui.js?v=20261016-settings"></script>
+    <script src="/js/palette.js?v=20261016-palette"></script>
     <script src="/js/views.js?v=20261016-settings"></script>
     <script src="/js/pwa.js?v=20261016-cdnfix"></script>
 </body>

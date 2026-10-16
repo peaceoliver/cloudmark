@@ -5,6 +5,7 @@ itt az áll, hogyan kell használni az egyes részeket.
 
 | Útmutató | Miről szól |
 | --- | --- |
+| [command-palette.md](command-palette.md) | Keresés mindenhol (Ctrl+K), gyors létrehozás |
 | [notes.md](notes.md) | Jegyzetek írása, listák, kategóriák, kanban |
 | [tasks.md](tasks.md) | Feladatok gyors felvétele, projektek, emlékeztetők |
 | [bookmarks.md](bookmarks.md) | Könyvjelzők mentése, gyorsmentő, import/export |
