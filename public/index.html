@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261016-newform">
+    <link rel="stylesheet" href="/css/styles.css?v=20261016-taborder">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -138,19 +138,19 @@
 
     <main>
 
-        <!-- Nézetváltó: könyvjelzők / parancsok / jegyzetek / feladatok (Alt+1 … Alt+4) -->
+        <!-- Nézetváltó: jegyzetek / feladatok / könyvjelzők / parancsok (Alt+1 … Alt+4) -->
         <nav class="app-tabs" id="appTabs" aria-label="Tartalomtípus" role="tablist" hidden>
-            <button type="button" class="app-tab active" role="tab" data-view-tab="bookmarks" aria-selected="true" title="Könyvjelzők (Alt+1)">
-                <i class="fa-solid fa-bookmark"></i><span>Könyvjelzők</span>
-            </button>
-            <button type="button" class="app-tab" role="tab" data-view-tab="commands" aria-selected="false" title="Parancsok (Alt+2)">
-                <i class="fa-solid fa-terminal"></i><span>Parancsok</span>
-            </button>
-            <button type="button" class="app-tab" role="tab" data-view-tab="notes" aria-selected="false" title="Jegyzetek (Alt+3)">
+            <button type="button" class="app-tab" role="tab" data-view-tab="notes" aria-selected="false" title="Jegyzetek (Alt+1)">
                 <i class="fa-solid fa-note-sticky"></i><span>Jegyzetek</span>
             </button>
-            <button type="button" class="app-tab" role="tab" data-view-tab="tasks" aria-selected="false" title="Feladatok (Alt+4)">
+            <button type="button" class="app-tab" role="tab" data-view-tab="tasks" aria-selected="false" title="Feladatok (Alt+2)">
                 <i class="fa-solid fa-list-check"></i><span>Feladatok</span><span class="app-tab-badge" id="taskTabBadge" hidden></span>
+            </button>
+            <button type="button" class="app-tab active" role="tab" data-view-tab="bookmarks" aria-selected="true" title="Könyvjelzők (Alt+3)">
+                <i class="fa-solid fa-bookmark"></i><span>Könyvjelzők</span>
+            </button>
+            <button type="button" class="app-tab" role="tab" data-view-tab="commands" aria-selected="false" title="Parancsok (Alt+4)">
+                <i class="fa-solid fa-terminal"></i><span>Parancsok</span>
             </button>
         </nav>
 
@@ -367,6 +367,7 @@
                     <i class="fa-solid fa-plus new-item-icon" aria-hidden="true"></i>
                     <span class="new-item-text">Jegyzet írása…</span>
                 </button>
+                <div class="note-composer-wrap" id="noteComposerWrap" hidden></div>
             </section>
             <section class="dashboard-section category-section" aria-label="Jegyzet kategóriák">
                 <div class="category-inner-content">
@@ -406,7 +407,6 @@
                 </div>
                 </div>
             </div>
-            <div class="note-composer-wrap" id="noteComposerWrap" hidden></div>
             <div id="noteSections" aria-live="polite"></div>
         </div>
 
@@ -1044,10 +1044,10 @@
     <script src="/js/view-prefs.js?v=20261016-toolbar"></script>
     <script src="/js/main-menu.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/commands-ui.js?v=20261016-newform"></script>
-    <script src="/js/notes-ui.js?v=20261016-newbar"></script>
+    <script src="/js/notes-ui.js?v=20261016-taborder"></script>
     <script src="/js/tasks-ui.js?v=20261016-toolbar"></script>
     <script src="/js/notification-center.js?v=20261016-push"></script>
-    <script src="/js/views.js?v=20261015-notify"></script>
+    <script src="/js/views.js?v=20261016-taborder"></script>
     <script src="/js/pwa.js?v=20261016-cdnfix"></script>
 </body>
 </html>

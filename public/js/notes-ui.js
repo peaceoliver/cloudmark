@@ -486,7 +486,7 @@
     let composerNote = null;
     let composerSaving = false;
 
-    // A felső „Jegyzet írása…” sáv nyitja; a szerkesztő a rendezősor alatt, a jegyzetek fölött jelenik meg.
+    // A felső „Jegyzet írása…” sáv nyitja; a szerkesztő közvetlenül a sáv alatt jelenik meg.
     function renderComposer() {
         composerNote = null;
         composerWrap.classList.remove('is-open');
@@ -759,6 +759,8 @@
         /** Opens a note's editor by id (used by links from tasks). */
         async openById(id) {
             await load();
+            // A jegyzet közben máshol is létrejöhetett (pl. másik eszközön): ha nincs meg, újratöltjük a listát.
+            if (!findItem(id)) await load(true);
             const item = findItem(id);
             if (item && !item.trashed) openEditor(item);
         }
