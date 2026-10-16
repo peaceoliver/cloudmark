@@ -1,4 +1,4 @@
-/* Főoldali nézetváltó: könyvjelzők, parancsok, jegyzetek és feladatok között, oldalbetöltés nélkül. */
+/* Főoldali nézetváltó: jegyzetek, feladatok, könyvjelzők és parancsok között, oldalbetöltés nélkül. */
 (function () {
     const VIEW_STORAGE_KEY = 'cloudmark_active_view';
     const VIEWS = {
@@ -7,7 +7,10 @@
         notes: { hash: '#/jegyzetek', searchId: 'noteSearch' },
         tasks: { hash: '#/feladatok', searchId: 'taskSearch' }
     };
-    const SHORTCUTS = { 1: 'bookmarks', 2: 'commands', 3: 'notes', 4: 'tasks' };
+    // A gyorsbillentyűk a fülek sorrendjét követik.
+    const SHORTCUTS = { 1: 'notes', 2: 'tasks', 3: 'bookmarks', 4: 'commands' };
+    // Bejelentkezve ez nyílik meg, ha még nincs elmentett nézet (az első fül).
+    const DEFAULT_VIEW = 'notes';
     const tabs = document.getElementById('appTabs');
     if (!tabs) return;
 
@@ -62,7 +65,7 @@
             showView('bookmarks', { updateHash: false });
             return;
         }
-        showView(viewFromHash() || readSavedView() || 'bookmarks');
+        showView(viewFromHash() || readSavedView() || DEFAULT_VIEW);
     }
 
     tabs.addEventListener('click', event => {
