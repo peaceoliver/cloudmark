@@ -17,10 +17,13 @@
     ];
     const COLOR_KEYS = new Set(COLORS.map(color => color.key));
 
-    const state = { items: [], loaded: false, loading: null, query: '', label: null, filter: 'active' };
+    // category: 'all', 'none' (kategória nélkül) vagy egy kategória id-ja szövegként.
+    const state = { items: [], categories: [], loaded: false, loading: null, query: '', label: null, category: 'all', filter: 'active' };
+    const NEW_CATEGORY = '__new__';
 
     const sections = document.getElementById('noteSections');
     const labelsBar = document.getElementById('noteLabelsBar');
+    const categoriesBar = document.getElementById('noteCategoriesBar');
     const searchInput = document.getElementById('noteSearch');
     const searchClear = document.getElementById('noteSearchClear');
     const composerWrap = document.getElementById('noteComposerWrap');
@@ -76,8 +79,9 @@
         if (state.loaded && !force) return;
         if (state.loading && !force) return state.loading;
         sections.innerHTML = '<div class="empty-state">Jegyzetek betöltése…</div>';
-        state.loading = noteApi.getItems('note', { all: 'true' }).then(items => {
+        state.loading = Promise.all([noteApi.getItems('note', { all: 'true' }), noteApi.getCategoriesOfKind('note')]).then(([items, categories]) => {
             state.items = items;
+            setCategories(categories);
             state.loaded = true;
             render();
         }).catch(err => {
@@ -92,10 +96,13 @@
         state.loaded = false;
         state.query = '';
         state.label = null;
+        state.categories = [];
+        state.category = 'all';
         if (searchInput) searchInput.value = '';
         if (searchClear) searchClear.hidden = true;
         sections.innerHTML = '';
         labelsBar.innerHTML = '';
+        categoriesBar.innerHTML = '';
         composerWrap.innerHTML = '';
     }
 
@@ -109,6 +116,58 @@
         return state.items.find(item => String(item.id) === String(id));
     }
 
+    function setCategories(categories) {
+        state.categories = [...categories].sort((a, b) => a.name.localeCompare(b.name, 'hu'));
+    }
+
+    function findCategory(id) {
+        return state.categories.find(category => String(category.id) === String(id));
+    }
+
+    /** Asks for a name and creates a note category; returns the new category or null. */
+    async function createCategory() {
+        const name = (prompt('Új kategória neve:') || '').trim();
+        if (!name) return null;
+        try {
+            setCategories(await noteApi.createCategoryOfKind('note', name));
+            return state.categories.find(category => category.name.toLowerCase() === name.toLowerCase()) || null;
+        } catch (err) {
+            notify(err.message || 'A kategória létrehozása nem sikerült.', 'error');
+            return null;
+        }
+    }
+
+    async function renameCategory(category) {
+        const name = (prompt('A kategória új neve:', category.name) || '').trim();
+        if (!name || name === category.name) return;
+        try {
+            await noteApi.renameCategoryOfKind('note', category.name, name);
+            category.name = name;
+            setCategories(state.categories);
+            state.items.forEach(item => { if (String(item.category_id) === String(category.id)) item.category_name = name; });
+            render();
+            notify('Kategória átnevezve.', 'success');
+        } catch (err) {
+            notify(err.message || 'Az átnevezés nem sikerült.', 'error');
+        }
+    }
+
+    async function deleteCategory(category) {
+        if (!confirm(`Törlöd a(z) „${category.name}” kategóriát? A benne lévő jegyzetek megmaradnak, és a Kategória nélkül szűrőbe kerülnek.`)) return;
+        try {
+            await noteApi.deleteCategoryOfKind('note', category.name);
+            setCategories(state.categories.filter(entry => entry.id !== category.id));
+            state.items.forEach(item => {
+                if (String(item.category_id) === String(category.id)) { item.category_id = null; item.category_name = null; }
+            });
+            if (state.category === String(category.id)) state.category = 'all';
+            render();
+            notify('Kategória törölve.', 'success');
+        } catch (err) {
+            notify(err.message || 'A törlés nem sikerült.', 'error');
+        }
+    }
+
     async function saveNote(item, overrides) {
         const saved = await noteApi.updateItem(item.id, notePayload(item, overrides));
         upsert(saved);
@@ -117,18 +176,54 @@
 
     // ---------- megjelenítés ----------
 
+    /** Whether the note belongs to the current Jegyzetek / Archívum / Kuka tab. */
+    function inCurrentTab(item) {
+        if (state.filter === 'trash') return Boolean(item.trashed);
+        if (item.trashed) return false;
+        return state.filter === 'archived' ? Boolean(item.archived) : !item.archived;
+    }
+
     function visibleNotes() {
         const query = state.query.trim().toLowerCase();
         return state.items.filter(item => {
-            if (state.filter === 'trash') { if (!item.trashed) return false; }
-            else if (item.trashed) return false;
-            else if (state.filter === 'archived' ? !item.archived : item.archived) return false;
+            if (!inCurrentTab(item)) return false;
+            if (state.category === 'none' && item.category_id !== null && item.category_id !== undefined) return false;
+            if (/^\d+$/.test(state.category) && String(item.category_id) !== state.category) return false;
             if (state.label && !item.tags.includes(state.label)) return false;
             if (!query) return true;
             const checklist = checklistOf(item) || [];
             return [item.title, item.body, ...item.tags, ...checklist.map(entry => entry.text)]
                 .some(value => String(value || '').toLowerCase().includes(query));
         }).sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    }
+
+    function renderCategories() {
+        const addChip = `<button type="button" class="category-chip note-category-add" data-note-category-add title="Új kategória"><i class="fa-solid fa-plus"></i> ${state.categories.length ? '' : 'Új kategória'}</button>`;
+        if (!state.categories.length) {
+            state.category = 'all';
+            categoriesBar.innerHTML = addChip;
+            return;
+        }
+        const pool = state.items.filter(inCurrentTab);
+        const chips = [{ key: 'all', label: 'Összes', count: pool.length }];
+        chips.push({ key: 'none', label: 'Kategória nélkül', count: pool.filter(item => item.category_id === null || item.category_id === undefined).length });
+        state.categories.forEach(category => chips.push({
+            key: String(category.id), label: category.name, icon: true, menu: true,
+            count: pool.filter(item => String(item.category_id) === String(category.id)).length
+        }));
+        if (!chips.some(chip => chip.key === state.category)) state.category = 'all';
+        categoriesBar.innerHTML = chips.map(chip => `
+            <div class="note-category-chip-wrap">
+                <button type="button" class="category-chip ${chip.key === state.category ? 'active' : ''}" data-note-category="${esc(chip.key)}">
+                    ${chip.icon ? '<i class="fa-regular fa-folder"></i>' : ''}${esc(chip.label)} <span class="command-chip-count">${chip.count}</span>
+                </button>
+                ${chip.menu ? `
+                <button type="button" class="btn-icon note-category-more" data-note-category-menu="${esc(chip.key)}" title="Kategória műveletek" aria-label="${esc(chip.label)} műveletek"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                <div class="note-category-dropdown" role="menu">
+                    <button type="button" class="cmd-dropdown-item" data-note-category-action="rename" data-category-id="${esc(chip.key)}"><i class="fa-solid fa-pen"></i> Átnevezés</button>
+                    <button type="button" class="cmd-dropdown-item" data-note-category-action="delete" data-category-id="${esc(chip.key)}"><i class="fa-solid fa-trash"></i> Törlés</button>
+                </div>` : ''}
+            </div>`).join('') + addChip;
     }
 
     function renderLabels() {
@@ -173,7 +268,7 @@
                 ${item.trashed ? '' : `<button type="button" class="note-pin ${item.pinned ? 'is-pinned' : ''}" data-action="pin" title="${item.pinned ? 'Rögzítés feloldása' : 'Rögzítés'}"><i class="fa-solid fa-thumbtack"></i></button>`}
                 ${item.title ? `<h3 class="note-title">${esc(item.title)}</h3>` : ''}
                 ${noteBodyHtml(item)}
-                ${item.tags.length ? `<div class="note-labels">${item.tags.map(tag => `<span class="note-label">${esc(tag)}</span>`).join('')}</div>` : ''}
+                ${item.tags.length || (item.category_name && state.category === 'all') ? `<div class="note-labels">${item.category_name && state.category === 'all' ? `<span class="note-label note-category-label"><i class="fa-regular fa-folder"></i> ${esc(item.category_name)}</span>` : ''}${item.tags.map(tag => `<span class="note-label">${esc(tag)}</span>`).join('')}</div>` : ''}
                 <div class="note-actions">${actions}</div>
             </article>`;
     }
@@ -182,6 +277,8 @@
         const list = visibleNotes();
         if (!list.length) {
             const message = state.query || state.label ? 'Nincs a keresésnek megfelelő jegyzet.'
+                : state.category === 'none' ? 'Nincs kategória nélküli jegyzet.'
+                : state.category !== 'all' ? 'Ebben a kategóriában még nincs jegyzet.'
                 : state.filter === 'trash' ? 'A kuka üres.'
                 : state.filter === 'archived' ? 'Nincs archivált jegyzet.'
                 : 'Még nincs jegyzeted. Írd be az elsőt fent!';
@@ -199,6 +296,7 @@
     }
 
     function render() {
+        renderCategories();
         renderLabels();
         renderNotes();
         composerWrap.hidden = state.filter !== 'active';
@@ -215,7 +313,13 @@
                 ${checklist
                     ? `<div class="note-editor-checklist">${items}</div>`
                     : `<textarea class="note-editor-body" rows="${composer ? 3 : 8}" placeholder="Jegyzet írása…" aria-label="Jegyzet">${esc(note.body || '')}</textarea>`}
-                <input type="text" class="note-editor-tags" placeholder="Címkék vesszővel (pl. ötlet, munka)" value="${esc((note.tags || []).join(', '))}" aria-label="Címkék">
+                <div class="note-editor-meta">
+                    <label class="note-editor-category-wrap" title="Kategória">
+                        <i class="fa-regular fa-folder"></i>
+                        <select class="note-editor-category" aria-label="Kategória">${categoryOptionsHtml(note.category_id)}</select>
+                    </label>
+                    <input type="text" class="note-editor-tags" placeholder="Címkék vesszővel (pl. ötlet, munka)" value="${esc((note.tags || []).join(', '))}" aria-label="Címkék">
+                </div>
                 <div class="note-editor-bar">
                     <div class="note-color-menu">
                         <button type="button" class="note-action" data-editor="palette" title="Háttérszín"><i class="fa-solid fa-palette"></i></button>
@@ -229,6 +333,13 @@
             </div>`;
     }
 
+    function categoryOptionsHtml(selectedId) {
+        const selected = selectedId === null || selectedId === undefined ? '' : String(selectedId);
+        return `<option value="">Kategória nélkül</option>`
+            + state.categories.map(category => `<option value="${Number(category.id)}" ${String(category.id) === selected ? 'selected' : ''}>${esc(category.name)}</option>`).join('')
+            + `<option value="${NEW_CATEGORY}">+ Új kategória…</option>`;
+    }
+
     function checkRowHtml(entry) {
         return `
             <div class="note-editor-check">
@@ -236,6 +347,10 @@
                 <input type="text" class="note-editor-check-text" maxlength="1000" placeholder="Listaelem" value="${esc(entry.text)}" aria-label="Listaelem">
                 <button type="button" class="note-action" data-editor="remove-check" title="Elem törlése" aria-label="Elem törlése"><i class="fa-solid fa-xmark"></i></button>
             </div>`;
+    }
+
+    function categoryValue(select) {
+        return select && /^\d+$/.test(select.value) ? Number(select.value) : null;
     }
 
     /** Reads the editor fields back into note fields. */
@@ -259,6 +374,7 @@
             color: editor.dataset.color || null,
             pinned: editor.querySelector('[data-editor="pin"]').classList.contains('is-pinned'),
             tags: parseTags(editor.querySelector('.note-editor-tags').value),
+            category_id: categoryValue(editor.querySelector('.note-editor-category')),
             extra
         };
     }
@@ -273,7 +389,23 @@
             }
             onChange();
         });
-        root.addEventListener('change', event => { if (event.target.matches('.note-editor-check-done')) onChange(); });
+        root.addEventListener('change', async event => {
+            if (event.target.matches('.note-editor-check-done')) onChange();
+            const select = event.target.closest('.note-editor-category');
+            if (!select) return;
+            if (select.value === NEW_CATEGORY) {
+                const previous = getBase()?.category_id ?? null;
+                const created = await createCategory();
+                const keep = created ? created.id : previous;
+                document.querySelectorAll('.note-editor-category').forEach(other => {
+                    const value = other === select ? keep : categoryValue(other);
+                    other.innerHTML = categoryOptionsHtml(value);
+                });
+                if (!created) return;
+                renderCategories();
+            }
+            onChange();
+        });
         root.addEventListener('keydown', event => {
             if (event.key === 'Enter' && event.target.matches('.note-editor-check-text')) {
                 event.preventDefault();
@@ -341,7 +473,10 @@
 
     function openComposer() {
         if (state.filter !== 'active') return;
-        composerNote = { title: '', body: '', color: null, pinned: false, tags: state.label ? [state.label] : [], extra: {} };
+        composerNote = {
+            title: '', body: '', color: null, pinned: false, tags: state.label ? [state.label] : [], extra: {},
+            category_id: /^\d+$/.test(state.category) ? Number(state.category) : null
+        };
         composerWrap.classList.add('is-open');
         composerWrap.innerHTML = editorHtml(composerNote, { composer: true });
         composerWrap.querySelector('.note-editor-body').focus();
@@ -495,6 +630,48 @@
     });
 
     // ---------- eszköztár ----------
+
+    function closeCategoryMenus(except) {
+        categoriesBar.querySelectorAll('.note-category-dropdown.show').forEach(menu => { if (menu !== except) menu.classList.remove('show'); });
+    }
+
+    categoriesBar.addEventListener('click', async event => {
+        const more = event.target.closest('[data-note-category-menu]');
+        if (more) {
+            const menu = more.parentElement.querySelector('.note-category-dropdown');
+            closeCategoryMenus(menu);
+            if (!menu.classList.toggle('show')) return;
+            const rect = more.getBoundingClientRect();
+            menu.style.top = `${Math.round(rect.bottom + 4)}px`;
+            menu.style.left = `${Math.round(Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8)))}px`;
+            return;
+        }
+        const action = event.target.closest('[data-note-category-action]');
+        if (action) {
+            closeCategoryMenus();
+            const category = findCategory(action.dataset.categoryId);
+            if (!category) return;
+            if (action.dataset.noteCategoryAction === 'rename') await renameCategory(category);
+            else await deleteCategory(category);
+            return;
+        }
+        if (event.target.closest('[data-note-category-add]')) {
+            const created = await createCategory();
+            if (created) { state.category = String(created.id); render(); }
+            return;
+        }
+        const chip = event.target.closest('[data-note-category]');
+        if (!chip) return;
+        state.category = chip.dataset.noteCategory || 'all';
+        render();
+    });
+
+    document.addEventListener('click', event => {
+        if (!event.target.closest('.note-category-chip-wrap')) closeCategoryMenus();
+    });
+    window.addEventListener('resize', () => closeCategoryMenus());
+    window.addEventListener('scroll', () => closeCategoryMenus(), { passive: true });
+    categoriesBar.addEventListener('scroll', () => closeCategoryMenus());
 
     labelsBar.addEventListener('click', event => {
         const chip = event.target.closest('[data-label]');
