@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261016-toolbar">
+    <link rel="stylesheet" href="/css/styles.css?v=20261016-newbar">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -158,8 +158,9 @@
 
         <!-- Manual Add Bookmark Panel -->
         <section class="dashboard-section add-bookmark-section auth-only" aria-label="Új könyvjelző hozzáadása">
-            <button type="button" class="accordion-trigger add-bookmark-toggle" data-target="addBookmarkPanelContent" data-storage-key="add-bookmark" aria-expanded="false">
-                <span class="toolbar-label"><i class="fa-solid fa-link"></i> Új könyvjelző hozzáadása</span>
+            <button type="button" class="accordion-trigger add-bookmark-toggle new-item-bar" data-target="addBookmarkPanelContent" data-storage-key="add-bookmark" aria-expanded="false">
+                <i class="fa-solid fa-plus new-item-icon" aria-hidden="true"></i>
+                <span class="new-item-text">Új könyvjelző hozzáadása</span>
                 <i class="accordion-icon fa-solid fa-chevron-down"></i>
             </button>
             <div id="addBookmarkPanelContent" class="accordion-panel">
@@ -305,9 +306,10 @@
         <!-- Parancstár -->
         <div class="app-view" id="commandsView" data-view="commands" hidden>
             <section class="dashboard-section add-item-section" aria-label="Új parancs">
-                <button type="button" class="accordion-trigger add-item-toggle" id="commandNewBtn" title="Új parancs (N)">
-                    <span class="toolbar-label"><i class="fa-solid fa-terminal"></i> Új parancs hozzáadása</span>
-                    <i class="accordion-icon fa-solid fa-plus"></i>
+                <button type="button" class="new-item-bar" id="commandNewBtn" title="Új parancs (N)">
+                    <i class="fa-solid fa-plus new-item-icon" aria-hidden="true"></i>
+                    <span class="new-item-text">Új parancs hozzáadása</span>
+                    <i class="fa-solid fa-up-right-from-square new-item-hint" aria-hidden="true"></i>
                 </button>
             </section>
             <section class="dashboard-section category-section" aria-label="Parancs kategóriák">
@@ -358,7 +360,12 @@
 
         <!-- Jegyzetek (Google Keep-szerű) -->
         <div class="app-view" id="notesView" data-view="notes" hidden>
-            <div class="note-composer-wrap" id="noteComposerWrap"></div>
+            <section class="dashboard-section add-item-section" aria-label="Új jegyzet" id="noteNewSection">
+                <button type="button" class="new-item-bar note-composer-collapsed" id="noteNewBtn" data-composer="open" title="Új jegyzet (N)">
+                    <i class="fa-solid fa-plus new-item-icon" aria-hidden="true"></i>
+                    <span class="new-item-text">Jegyzet írása…</span>
+                </button>
+            </section>
             <section class="dashboard-section category-section" aria-label="Jegyzet kategóriák">
                 <div class="category-inner-content">
                     <div class="category-bubbles-label toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</div>
@@ -397,14 +404,15 @@
                 </div>
                 </div>
             </div>
+            <div class="note-composer-wrap" id="noteComposerWrap" hidden></div>
             <div id="noteSections" aria-live="polite"></div>
         </div>
 
         <!-- Feladatok -->
         <div class="app-view" id="tasksView" data-view="tasks" hidden>
             <section class="dashboard-section tasks-toolbar" aria-label="Új feladat">
-                <form class="task-quick-add" id="taskQuickAddForm" autocomplete="off">
-                    <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                <form class="task-quick-add new-item-bar" id="taskQuickAddForm" autocomplete="off">
+                    <i class="fa-solid fa-plus new-item-icon" aria-hidden="true"></i>
                     <input id="taskQuickAdd" type="text" maxlength="500" placeholder="Új feladat, pl. „holnap 9-kor számla befizetése !1 #pénzügy”" aria-label="Új feladat (N)">
                     <button type="submit" class="btn btn-primary">Hozzáadás</button>
                 </form>
@@ -1034,7 +1042,7 @@
     <script src="/js/view-prefs.js?v=20261016-toolbar"></script>
     <script src="/js/main-menu.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/commands-ui.js?v=20261016-toolbar"></script>
-    <script src="/js/notes-ui.js?v=20261016-toolbar"></script>
+    <script src="/js/notes-ui.js?v=20261016-newbar"></script>
     <script src="/js/tasks-ui.js?v=20261016-toolbar"></script>
     <script src="/js/notification-center.js?v=20261016-push"></script>
     <script src="/js/views.js?v=20261015-notify"></script>

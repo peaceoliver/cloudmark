@@ -33,6 +33,8 @@
     const viewSwitcher = document.getElementById('noteViewSwitcher');
     const searchClear = document.getElementById('noteSearchClear');
     const composerWrap = document.getElementById('noteComposerWrap');
+    const newSection = document.getElementById('noteNewSection');
+    const newButton = document.getElementById('noteNewBtn');
     const editBox = document.getElementById('noteEditBox');
     if (!sections) return;
 
@@ -110,6 +112,7 @@
         labelsBar.innerHTML = '';
         categoriesBar.innerHTML = '';
         composerWrap.innerHTML = '';
+        composerWrap.hidden = true;
     }
 
     function upsert(item) {
@@ -317,7 +320,7 @@
         renderCategories();
         renderLabels();
         renderNotes();
-        composerWrap.hidden = state.filter !== 'active';
+        newSection.hidden = state.filter !== 'active';
     }
 
     // ---------- szerkesztő (közös a gyors-hozzáadáshoz és a modálhoz) ----------
@@ -483,10 +486,12 @@
     let composerNote = null;
     let composerSaving = false;
 
+    // A felső „Jegyzet írása…” sáv nyitja; a szerkesztő a rendezősor alatt, a jegyzetek fölött jelenik meg.
     function renderComposer() {
         composerNote = null;
         composerWrap.classList.remove('is-open');
-        composerWrap.innerHTML = '<button type="button" class="note-composer-collapsed" data-composer="open">Jegyzet írása…</button>';
+        composerWrap.innerHTML = '';
+        composerWrap.hidden = true;
     }
 
     function openComposer() {
@@ -495,9 +500,11 @@
             title: '', body: '', color: null, pinned: false, tags: state.label ? [state.label] : [], extra: {},
             category_id: /^\d+$/.test(state.category) ? Number(state.category) : null
         };
+        composerWrap.hidden = false;
         composerWrap.classList.add('is-open');
         composerWrap.innerHTML = editorHtml(composerNote, { composer: true });
-        composerWrap.querySelector('.note-editor-body').focus();
+        composerWrap.querySelector('.note-editor-body').focus({ preventScroll: true });
+        composerWrap.scrollIntoView({ block: 'nearest' });
     }
 
     async function closeComposer() {
@@ -516,12 +523,10 @@
         }
     }
 
-    composerWrap.addEventListener('click', event => {
-        if (event.target.closest('[data-composer="open"]')) openComposer();
-    });
+    newButton.addEventListener('click', () => { if (!composerNote) openComposer(); });
     bindEditor(composerWrap, () => composerNote, next => { composerNote = next; }, { onChange: () => {}, onClose: closeComposer });
     document.addEventListener('mousedown', event => {
-        if (composerNote && !composerWrap.contains(event.target)) closeComposer();
+        if (composerNote && !composerWrap.contains(event.target) && !newButton.contains(event.target)) closeComposer();
     });
 
     // ---------- szerkesztő modál automatikus mentéssel ----------
