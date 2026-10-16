@@ -10,6 +10,8 @@ Gyakran használt parancssorok könyvtára, kategóriákba rendezve, egy kattint
 4. Több változathoz (pl. CMD / PowerShell / bash) adj hozzá új fület, mindegyiknek saját nyelvvel.
 5. Mentsd.
 
+Ha megadtál AI kulcsot, az **✨ AI kitöltés** gomb kitölti a mezőket a bemásolt parancsból vagy a címbe írt célból (lásd [ai-assist.md](ai-assist.md)).
+
 ## Másolás
 
 - Minden sor mellett van egy másológomb: a sort a `#` utáni komment nélkül másolja.

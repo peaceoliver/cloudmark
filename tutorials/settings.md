@@ -1,6 +1,6 @@
 # Beállítások
 
-Egy közös ablak öt füllel: Általános, Jegyzetek, Feladatok, Könyvjelzők, Parancsok.
+Egy közös ablak hat füllel: Általános, Jegyzetek, Feladatok, Könyvjelzők, Parancsok, AI.
 
 ## Így nyisd meg
 
@@ -11,6 +11,7 @@ Egy közös ablak öt füllel: Általános, Jegyzetek, Feladatok, Könyvjelzők,
 
 - **Általános:** téma, induláskor megnyíló nézet, értesítések (lásd [notifications.md](notifications.md)), jelszócsere.
 - **Jegyzetek, Feladatok, Parancsok:** alapértelmezett rendezés és nézet.
+- **AI:** saját AI kulcsok az AI kitöltéshez (lásd [ai-assist.md](ai-assist.md)). Itt a gombok azonnal mentenek, nem kell a Mentés.
 - **Könyvjelzők:** nézet, rendezés, weboldal címsor és kép olvasása, export tartalma, import célkategóriája,
   „Mentés CloudMarkba” gyorsmentő gomb.
 

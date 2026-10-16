@@ -33,7 +33,8 @@ outside the repo in the project's shared folder (`cloudmark-plan/*.md`).
 - Auth is a session cookie (`requireAuth`, `requireAdmin` middleware). Service-worker and e-mail actions
   use signed action tokens instead (`routes/push.js`).
 - Environment variables: `DATABASE_URL`, `APP_URL`, `CRON_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
-  `VAPID_SUBJECT`, `EMAIL_PROVIDER`, `EMAIL_API_KEY`, `SMTP_*`, `NOTIFICATIONS_INTERVAL_MS`, `PORT`.
+  `VAPID_SUBJECT`, `EMAIL_PROVIDER`, `EMAIL_API_KEY`, `SMTP_*`, `NOTIFICATIONS_INTERVAL_MS`, `PORT`,
+  `AI_KEY_ENCRYPTION_SECRET` (≥32 characters; encrypts users' AI keys, don't rotate it or every saved key must be re-entered).
   E-mail only reaches the Resend owner address until a domain is verified.
 - Reminders are triggered by Supabase `pg_cron` calling the server (`docs/notification-scheduler.md`).
 
@@ -46,6 +47,9 @@ routes/tasks.js         task-only endpoints (complete, snooze, reminders)
 routes/notifications.js bell, e-mail reminders, daily digest, internal cron endpoint
 routes/push.js          Web Push subscriptions and action tokens
 routes/search.js        GET /api/search: one search across notes, tasks, bookmarks and commands
+routes/ai.js            AI kitöltés: users' own keys (encrypted) + POST /api/ai/fill (suggestions only)
+routes/ai-actions.js    per-action prompt, JSON schema and server-side validation of the answer
+routes/ai-providers.js  Gemini (@google/genai), Anthropic (@anthropic-ai/sdk), OpenAI-compatible (fetch)
 migrations/NNN_*.sql    schema changes, run on every server start
 public/index.html       the whole single-page UI (all four views are in this file)
 public/css/styles.css   one stylesheet, themed with CSS variables
@@ -75,7 +79,8 @@ tutorials/*.md          Hungarian user guides, one per feature (index: tutorials
 - **Every statement must be idempotent** (`IF NOT EXISTS`, `DO $$ … IF NOT EXISTS (SELECT … pg_constraint) …`),
   because the files run on every start. Never drop user data.
 - When you add a table that holds user content, add it to the admin backup export/import in `server.js`
-  (`/api/admin/backup/export` and `/import`).
+  (`/api/admin/backup/export` and `/import`). Exception: `user_ai_keys` (secrets) stays out of the backup.
+- New tables get `ENABLE ROW LEVEL SECURITY` with no policies when they hold secrets, so Supabase's REST API can't read them.
 
 ## Front end: the views pattern
 
@@ -142,12 +147,25 @@ redraw after sign-in.
   Bookmark and note menus are toggled by `public/js/settings-ui.js` (`data-more-menu`); commands and tasks
   toggle their own.
 - **Settings** is one modal, `#userSettingsModal`, with tabs Általános, Jegyzetek, Feladatok, Könyvjelzők,
-  Parancsok (`[data-settings-tab]` / `[data-settings-pane]`). Open it with `openUserSettings(tab)` (auth.js);
+  Parancsok, AI (`[data-settings-tab]` / `[data-settings-pane]`). Open it with `openUserSettings(tab)` (auth.js);
   without a tab it opens the current view's tab. New settings go into this modal, never a new dialog:
   per-view sort/view selects only need `data-pref="<key>"`, other keys are saved in the form's submit handler.
 - The header ⋮ menu only holds general things (Beállítások, Team, Telepítés, Info). Notification settings
   (`#bellSettings`, rendered by `notification-center.js`, saved on change) live on the Általános tab; the
   bell panel links there.
+
+### AI kitöltés
+
+- AI runs only on a button press and only suggests: `POST /api/ai/fill { action, input }` returns `{ suggestion }`, nothing
+  is saved. The browser never gets a user's key back (`publicKey()` in `routes/ai.js` shows `last4` only).
+- An action is an entry in `ACTIONS` (`routes/ai-actions.js`): `build()` (prompt + JSON schema, every field required,
+  `additionalProperties: false`), `validate()` (re-checks the answer: lengths, existing category ids, ≤5 tags) and
+  `needsInput()`. The form's data goes inside `<form>` in the prompt and is treated as data.
+- The form side uses `CloudMark.ai` (`public/js/ai-ui.js`): `status()`, `fill()`, and `createReview(bar, { onUndo })`,
+  which highlights changed fields (`.ai-suggested`) until Elfogadom / Visszavonom. Fill only empty fields unless
+  "Mindent újraír" is ticked. The command form (`commands-ui.js`) is the reference integration.
+- To add AI to another form: a new action in `ACTIONS` + tests in `test/ai.test.js`, the ✨ row and review bar markup
+  like `#cmdAiRow` / `#cmdAiReview`, and the apply logic in that view's module.
 
 ### Notes kanban
 

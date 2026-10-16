@@ -2522,3 +2522,39 @@ button.new-item-bar:focus-visible, .new-item-bar:focus-within { border-color: va
 .info-content h3 i { width: 1.1rem; text-align: center; }
 .info-content p { font-size: 0.88rem; line-height: 1.55; color: var(--text-primary); }
 .info-content kbd { padding: 0.02rem 0.35rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-input); font: inherit; font-size: 0.75rem; }
+
+/* AI kitöltés: ✨ gomb sora, kiemelt javaslatok, Elfogadom / Visszavonom sáv, Beállítások → AI fül */
+#userSettingsModal { z-index: 2300; }
+.ai-fill-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; }
+.ai-fill-row[hidden], .ai-fill-row [hidden] { display: none; }
+.ai-fill-btn { border-color: var(--accent); color: var(--accent); }
+.ai-fill-btn:disabled { opacity: 0.7; cursor: progress; }
+.ai-overwrite { display: inline-flex; white-space: nowrap; align-items: center; gap: 0.35rem; margin: 0; font-size: 0.82rem; font-weight: 400; color: var(--text-secondary); cursor: pointer; }
+.ai-fill-hint { flex: 1 1 220px; min-width: 0; color: var(--text-secondary); font-size: 0.78rem; }
+.ai-fill-provider { margin-left: 0.25rem; padding: 0.05rem 0.45rem; border-radius: 999px; background: var(--accent-glow); color: var(--accent); white-space: nowrap; }
+.ai-link { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
+.ai-suggested,
+.fragment-row.ai-suggested .fragment-content,
+.fragment-row.ai-suggested .fragment-language,
+.fragment-row.ai-suggested .fragment-label { border-color: var(--accent) !important; background-color: var(--accent-glow) !important; }
+.ai-review-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.6rem 0.75rem; border: 1px solid var(--accent); border-radius: 10px; background: var(--accent-glow); color: var(--text-primary); font-size: 0.85rem; }
+.ai-review-bar[hidden] { display: none; }
+.ai-review-text { flex: 1 1 240px; min-width: 0; }
+.ai-review-text > i { color: var(--accent); }
+.ai-review-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.ai-extras { display: flex; flex-direction: column; gap: 0.5rem; }
+.ai-extras:empty { display: none; }
+.ai-extra-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.5rem 0.75rem; border: 1px dashed var(--accent); border-radius: 10px; font-size: 0.85rem; color: var(--text-primary); }
+.ai-extra-card > span { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
+.ai-extra-card code { color: var(--text-secondary); font-size: 0.78rem; }
+.ai-settings { display: flex; flex-direction: column; gap: 0.6rem; }
+.ai-settings [hidden] { display: none; }
+.ai-settings .settings-hint a { color: var(--accent); }
+.ai-key-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.ai-key-row { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.7rem 0.8rem; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-main); }
+.ai-key-row.is-active { border-color: var(--accent); }
+.ai-key-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; color: var(--text-primary); }
+.ai-key-last4, .ai-key-url { color: var(--text-secondary); font-size: 0.8rem; overflow-wrap: anywhere; }
+.ai-key-badge { padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--accent); color: #fff; font-size: 0.72rem; font-weight: 700; }
+.ai-key-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.ai-key-controls .ai-key-model { flex: 1 1 200px; min-width: 0; }

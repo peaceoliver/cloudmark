@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261016-palette">
+    <link rel="stylesheet" href="/css/styles.css?v=20261016-ai">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -532,6 +532,7 @@
                 <button type="button" class="settings-tab" role="tab" data-settings-tab="tasks">Feladatok</button>
                 <button type="button" class="settings-tab" role="tab" data-settings-tab="bookmarks">Könyvjelzők</button>
                 <button type="button" class="settings-tab" role="tab" data-settings-tab="commands">Parancsok</button>
+                <button type="button" class="settings-tab" role="tab" data-settings-tab="ai"><i class="fa-solid fa-wand-magic-sparkles"></i> AI</button>
             </div>
             <form id="userSettingsForm" class="modal-form">
                 <div class="settings-pane" data-settings-pane="general" role="tabpanel">
@@ -682,6 +683,10 @@
                             <option value="list">Lista</option>
                         </select>
                     </div>
+                </div>
+                <div class="settings-pane" data-settings-pane="ai" role="tabpanel" hidden>
+                    <div class="section-divider"><i class="fa-solid fa-wand-magic-sparkles"></i> AI kitöltés saját kulccsal</div>
+                    <div class="ai-settings" id="aiSettings"></div>
                 </div>
                 <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;">
                     <button type="button" class="btn btn-danger" onclick="closeModal('userSettingsModal')">Mégse</button>
@@ -986,6 +991,19 @@
             <div class="modal-title"><i class="fa-solid fa-terminal"></i> <span id="commandEditTitle">Új parancs</span></div>
             <form id="commandEditForm" class="modal-form" style="display:flex; flex-direction:column; gap:1rem;">
                 <input type="hidden" id="cmdId">
+                <div class="ai-fill-row" id="cmdAiRow" hidden>
+                    <button type="button" class="btn btn-secondary ai-fill-btn" id="cmdAiFillBtn" title="AI kitöltés (Ctrl+Enter)"><i class="fa-solid fa-wand-magic-sparkles"></i> <span>AI kitöltés</span></button>
+                    <label class="ai-overwrite" title="A már kitöltött mezőket is újraírja (a bemásolt kódot nem)"><input type="checkbox" id="cmdAiOverwrite"> Mindent újraír</label>
+                    <small class="ai-fill-hint" id="cmdAiHint">Másold be a parancsot, vagy írd a címbe, mit szeretnél.</small>
+                </div>
+                <div class="ai-review-bar" id="cmdAiReview" hidden>
+                    <span class="ai-review-text"><i class="fa-solid fa-wand-magic-sparkles"></i> <span data-ai-review-text></span></span>
+                    <span class="ai-review-actions">
+                        <button type="button" class="btn btn-secondary" data-ai-review="undo"><i class="fa-solid fa-rotate-left"></i> Visszavonom</button>
+                        <button type="button" class="btn btn-primary" data-ai-review="accept"><i class="fa-solid fa-check"></i> Elfogadom</button>
+                    </span>
+                </div>
+                <div class="ai-extras" id="cmdAiExtras"></div>
                 <div class="form-control">
                     <label for="cmdTitle">Cím</label>
                     <input type="text" id="cmdTitle" required maxlength="300" placeholder="Pl. Virtuális környezet aktiválása">
@@ -1137,8 +1155,11 @@
                 <h3><i class="fa-solid fa-terminal"></i> Parancsok</h3>
                 <p>Gyakran használt parancssorok kategóriákba rendezve, több kódfüllel. Egy kattintással másolható az egész, egy sor, Markdownként vagy kommentek nélkül.</p>
 
+                <h3><i class="fa-solid fa-wand-magic-sparkles"></i> AI kitöltés</h3>
+                <p>A Beállítások → AI fülön megadhatod a saját AI kulcsodat (Gemini ingyenes, Claude vagy OpenAI-kompatibilis). Ezután az új parancs űrlapon az <strong>AI kitöltés</strong> gomb (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>) a bemásolt parancsból kitölti a többi mezőt, vagy a címbe írt célból megírja a parancsot. A javaslatot elfogadod vagy visszavonod; az AI semmit nem ment magától.</p>
+
                 <h3><i class="fa-solid fa-gear"></i> Menük és beállítások</h3>
-                <p>Minden nézet sorának végén ugyanaz a <strong>⋮</strong> menü: kategóriák, import/export és <strong>Beállítások…</strong>. A Beállítások ablak fülei: Általános (téma, induló nézet, értesítések, jelszó), Jegyzetek, Feladatok, Könyvjelzők, Parancsok. A rendezés és a nézet a fiókhoz mentődik, így minden eszközön ugyanaz.</p>
+                <p>Minden nézet sorának végén ugyanaz a <strong>⋮</strong> menü: kategóriák, import/export és <strong>Beállítások…</strong>. A Beállítások ablak fülei: Általános (téma, induló nézet, értesítések, jelszó), Jegyzetek, Feladatok, Könyvjelzők, Parancsok, AI. A rendezés és a nézet a fiókhoz mentődik, így minden eszközön ugyanaz.</p>
 
                 <h3><i class="fa-solid fa-keyboard"></i> Billentyűk</h3>
                 <p><kbd>Ctrl</kbd>+<kbd>K</kbd> keresés mindenhol · <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>4</kbd> nézetváltás · <kbd>/</kbd> keresés az aktuális nézetben · <kbd>N</kbd> új jegyzet, feladat vagy parancs · <kbd>Esc</kbd> bezárás.</p>
@@ -1152,24 +1173,25 @@
         </div>
     </div>
     <script src="/js/config.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/api.js?v=20261016-palette"></script>
+    <script src="/js/api.js?v=20261016-ai"></script>
     <script src="/js/task-parser.js?v=20261015-tasks"></script>
     <script src="/js/notifications.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/modal.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/categories-ui.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/bookmarks-ui.js?v=20261016-cards"></script>
     <script src="/js/enterprise.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/auth.js?v=20261016-settings"></script>
+    <script src="/js/auth.js?v=20261016-ai"></script>
     <script src="/js/app.js?v=20261016-settings"></script>
     <script src="/js/view-prefs.js?v=20261016-settings"></script>
     <script src="/js/main-menu.js?v=20261016-settings"></script>
-    <script src="/js/commands-ui.js?v=20261016-cards"></script>
+    <script src="/js/ai-ui.js?v=20261016-ai"></script>
+    <script src="/js/commands-ui.js?v=20261016-ai"></script>
     <script src="/js/notes-ui.js?v=20261016-palette"></script>
     <script src="/js/tasks-ui.js?v=20261016-palette"></script>
     <script src="/js/notification-center.js?v=20261016-settings"></script>
-    <script src="/js/settings-ui.js?v=20261016-settings"></script>
+    <script src="/js/settings-ui.js?v=20261016-ai"></script>
     <script src="/js/palette.js?v=20261016-palette"></script>
-    <script src="/js/views.js?v=20261016-settings"></script>
+    <script src="/js/views.js?v=20261016-ai"></script>
     <script src="/js/pwa.js?v=20261016-cdnfix"></script>
 </body>
 </html>

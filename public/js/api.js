@@ -455,6 +455,29 @@ apiNamespace.api = {
     },
     deleteCategoryOfKind(kind, name) {
         return requestJson(`/api/categories/${encodeURIComponent(name)}?kind=${encodeURIComponent(kind)}`, { method: 'DELETE' });
+    },
+
+    /** AI kitöltés: the user's own keys (the server never returns the key itself) and the fill call. */
+    getAiStatus() {
+        return requestJson('/api/ai/status');
+    },
+    getAiKeys() {
+        return requestJson('/api/ai/keys');
+    },
+    saveAiKey(key) {
+        return requestJson('/api/ai/keys', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(key) });
+    },
+    updateAiKey(id, changes) {
+        return requestJson(`/api/ai/keys/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) });
+    },
+    deleteAiKey(id) {
+        return requestJson(`/api/ai/keys/${id}`, { method: 'DELETE' });
+    },
+    getAiModels(id) {
+        return requestJson(`/api/ai/keys/${id}/models`);
+    },
+    aiFill(action, input) {
+        return requestJson('/api/ai/fill', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, input }) });
     }
 };
 
