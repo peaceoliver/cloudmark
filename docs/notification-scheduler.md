@@ -47,6 +47,21 @@ Ellenőrzés: `select * from cron.job_run_details order by start_time desc limit
 
 Kikapcsolás: `select cron.unschedule('cloudmark-notifications');`
 
+## Telefonos (push) értesítések
+
+A push értesítéshez egy kulcspár kell (VAPID). Egyszer kell legenerálni:
+
+```sh
+npx web-push generate-vapid-keys
+```
+
+Render → Environment:
+- `VAPID_PUBLIC_KEY` – a nyilvános kulcs
+- `VAPID_PRIVATE_KEY` – a privát kulcs (titok)
+- `VAPID_SUBJECT` – opcionális, egy elérhetőség a push szolgáltatók felé (`mailto:…` vagy `https://…`). Ha nincs megadva, az `APP_URL`.
+
+Ha a kulcsok hiányoznak, a push csatorna kikapcsolt, minden más működik. A kulcsot később ne cseréld le, mert akkor minden eszközön újra be kell kapcsolni az értesítést.
+
 ## E-mail korlát
 
 Saját, hitelesített domain nélkül a Resend csak a fiók tulajdonosának e-mail címére kézbesít.

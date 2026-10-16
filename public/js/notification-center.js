@@ -10,7 +10,7 @@
     const settingsBox = document.getElementById('bellSettings');
     const POLL_MS = 60000;
 
-    const state = { signedIn: false, items: [], unread: 0, settings: null, timer: null };
+    const state = { signedIn: false, items: [], unread: 0, settings: null, timer: null, push: null };
     const relative = new Intl.RelativeTimeFormat('hu', { numeric: 'auto' });
 
     function esc(value) {
@@ -51,9 +51,92 @@
             </button>`).join('') : '<div class="bell-empty">Nincs értesítésed. Az emlékeztetők és a napi összefoglaló itt jelennek meg.</div>';
     }
 
+    /** What this browser can do with push: 'ok', 'unsupported', 'ios-install' (iPhone outside the installed app) or 'denied'. */
+    function pushSupport() {
+        const pwa = window.CloudMark.pwa;
+        if (pwa?.isIos() && !pwa.isStandalone()) return 'ios-install';
+        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return 'unsupported';
+        if (Notification.permission === 'denied') return 'denied';
+        return 'ok';
+    }
+
+    async function currentSubscription() {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+        const registration = await navigator.serviceWorker.getRegistration();
+        return registration ? registration.pushManager.getSubscription() : null;
+    }
+
+    /** Loads the server's push key, this user's devices and this browser's subscription. */
+    async function loadPushState() {
+        try {
+            const [config, devices, subscription] = await Promise.all([
+                notifyApi.getPushConfig(), notifyApi.getPushSubscriptions(), currentSubscription().catch(() => null)
+            ]);
+            const endpoint = subscription?.endpoint || null;
+            state.push = { config, devices, endpoint, here: Boolean(endpoint && devices.some(device => device.endpoint === endpoint)) };
+        } catch (err) {
+            state.push = null;
+        }
+    }
+
+    function base64UrlToBytes(value) {
+        const padded = (value + '='.repeat((4 - (value.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+        return Uint8Array.from(atob(padded), char => char.charCodeAt(0));
+    }
+
+    /** Turns notifications on for this device. Must start inside the click, so the permission prompt is allowed. */
+    async function enablePushHere() {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') throw new Error(permission === 'denied'
+            ? 'Az értesítések le vannak tiltva ebben a böngészőben. A böngésző vagy a telefon beállításaiban engedélyezheted.'
+            : 'Az értesítések engedélyezése elmaradt.');
+        const registration = await navigator.serviceWorker.ready;
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: base64UrlToBytes(state.push.config.publicKey)
+            });
+        }
+        await notifyApi.savePushSubscription(subscription.toJSON());
+    }
+
+    async function disablePushHere() {
+        const subscription = await currentSubscription();
+        const device = state.push?.devices.find(entry => entry.endpoint === subscription?.endpoint);
+        if (device) await notifyApi.deletePushSubscription(device.id);
+        if (subscription) await subscription.unsubscribe().catch(() => {});
+    }
+
+    function renderPushSettings() {
+        const push = state.push;
+        if (!push) return '';
+        if (!push.config.configured) {
+            return '<div class="bell-settings-title">Telefonos értesítések</div><div class="bell-setting-note">A push értesítés még nincs beállítva a szerveren.</div>';
+        }
+        const support = pushSupport();
+        const note = {
+            'ios-install': 'iPhone-on előbb telepítsd a CloudMarkot (Safari → Megosztás → Hozzáadás a Főképernyőhöz), és onnan megnyitva kapcsold be.',
+            unsupported: 'Ez a böngésző nem tud push értesítést fogadni.',
+            denied: 'Az értesítések le vannak tiltva ebben a böngészőben. A böngésző vagy a telefon beállításaiban engedélyezheted.'
+        }[support];
+        const others = push.devices.filter(device => device.endpoint !== push.endpoint);
+        return `
+            <div class="bell-settings-title">Telefonos értesítések</div>
+            <label class="bell-setting"><input type="checkbox" data-setting="pushHere" ${push.here ? 'checked' : ''} ${support === 'ok' ? '' : 'disabled'}> Értesítések ezen az eszközön</label>
+            ${note ? `<div class="bell-setting-note">${esc(note)}</div>` : ''}
+            ${others.length ? `<div class="bell-devices">${others.map(device => `
+                <div class="bell-device">
+                    <i class="fa-solid ${/iPhone|iPad|Android/.test(device.device_label || '') ? 'fa-mobile-screen' : 'fa-desktop'}" aria-hidden="true"></i>
+                    <span>${esc(device.device_label || 'Eszköz')}${device.last_error ? ' <em>· hiba</em>' : ''}</span>
+                    <button type="button" class="note-action" data-bell="remove-device" data-device="${Number(device.id)}" title="Eszköz eltávolítása" aria-label="Eszköz eltávolítása"><i class="fa-solid fa-xmark"></i></button>
+                </div>`).join('')}</div>` : ''}`;
+    }
+
     function renderSettings() {
         const settings = state.settings;
         if (!settings) { settingsBox.innerHTML = ''; return; }
+        const [quietStart, quietEnd] = (settings.quietHours || '22:00-07:00').split('-');
         const emailNote = !settings.emailConfigured ? 'Az e-mail küldés még nincs beállítva (admin beállítások).'
             : !settings.email ? 'Nincs e-mail címed megadva, ezért csak itt kapsz értesítést.'
             : !settings.emailVerified ? `A(z) ${settings.email} cím nincs megerősítve, ezért oda nem küldünk.`
@@ -65,6 +148,13 @@
                 <input type="time" data-setting="dailyDigestTime" value="${esc(settings.dailyDigestTime || '07:30')}" ${settings.dailyDigestTime ? '' : 'disabled'} aria-label="Napi összefoglaló időpontja">
             </label>
             <div class="bell-setting-note">${esc(emailNote)}</div>
+            ${renderPushSettings()}
+            <label class="bell-setting"><input type="checkbox" data-setting="quietOn" ${settings.quietHours ? 'checked' : ''}> Csendes időszak
+                <span class="bell-quiet-times">
+                    <input type="time" data-setting="quietStart" value="${esc(quietStart)}" ${settings.quietHours ? '' : 'disabled'} aria-label="Csendes időszak kezdete">–<input type="time" data-setting="quietEnd" value="${esc(quietEnd)}" ${settings.quietHours ? '' : 'disabled'} aria-label="Csendes időszak vége">
+                </span>
+            </label>
+            <div class="bell-setting-note">A csendes időszakban a telefon nem kap értesítést, csak a csengő és az e-mail.</div>
             <button type="button" class="btn btn-secondary bell-test" data-bell="test"><i class="fa-solid fa-paper-plane"></i> Teszt értesítés</button>`;
     }
 
@@ -91,7 +181,8 @@
         await refresh();
         renderList();
         try {
-            state.settings = await notifyApi.getNotificationSettings();
+            const [settings] = await Promise.all([notifyApi.getNotificationSettings(), loadPushState()]);
+            state.settings = settings;
             renderSettings();
         } catch (err) { settingsBox.innerHTML = ''; }
     }
@@ -138,6 +229,19 @@
         }
         const button = event.target.closest('[data-bell]');
         if (!button) return;
+        if (button.dataset.bell === 'remove-device') {
+            button.disabled = true;
+            try {
+                await notifyApi.deletePushSubscription(button.dataset.device);
+                await loadPushState();
+                renderSettings();
+                notify('Az eszköz többé nem kap értesítést.', 'success');
+            } catch (err) {
+                button.disabled = false;
+                notify(err.message || 'Az eltávolítás nem sikerült.', 'error');
+            }
+            return;
+        }
         if (button.dataset.bell === 'read-all') {
             state.items.forEach(item => { item.read_at = item.read_at || new Date().toISOString(); });
             state.unread = 0;
@@ -157,7 +261,9 @@
                     disabled: 'e-mail nélkül (az e-mail emlékeztetők ki vannak kapcsolva).',
                     error: `de az e-mail küldése nem sikerült: ${result.error || ''}`
                 }[result.email] || '';
-                notify(`Teszt értesítés elküldve, ${emailText}`, result.email === 'error' ? 'error' : 'success');
+                const pushText = result.push === 'sent' ? ` A telefonos értesítés ${result.pushDevices} eszközre ment ki.`
+                    : result.push === 'error' ? ' A telefonos értesítés küldése nem sikerült.' : '';
+                notify(`Teszt értesítés elküldve, ${emailText}${pushText}`, result.email === 'error' || result.push === 'error' ? 'error' : 'success');
                 await refresh();
                 renderList();
             } catch (err) {
@@ -172,8 +278,28 @@
         const input = event.target.closest('[data-setting]');
         if (!input) return;
         const timeInput = settingsBox.querySelector('[data-setting="dailyDigestTime"]');
+        if (input.dataset.setting === 'pushHere') {
+            input.disabled = true;
+            try {
+                if (input.checked) await enablePushHere(); else await disablePushHere();
+                await loadPushState();
+                renderSettings();
+                notify(input.checked ? 'Ez az eszköz mostantól értesítést kap.' : 'Ez az eszköz nem kap több értesítést.', 'success');
+            } catch (err) {
+                input.checked = !input.checked;
+                input.disabled = false;
+                notify(err.message || 'Nem sikerült.', 'error');
+            }
+            return;
+        }
+        const quietInputs = ['quietOn', 'quietStart', 'quietEnd'].map(name => settingsBox.querySelector(`[data-setting="${name}"]`));
         try {
-            if (input.dataset.setting === 'notifyEmail') {
+            if (['quietOn', 'quietStart', 'quietEnd'].includes(input.dataset.setting)) {
+                const [toggleInput, startInput, endInput] = quietInputs;
+                startInput.disabled = endInput.disabled = !toggleInput.checked;
+                if (toggleInput.checked && (!startInput.value || !endInput.value)) return;
+                await notifyApi.saveUserSetting('quietHours', toggleInput.checked ? `${startInput.value}-${endInput.value}` : 'off');
+            } else if (input.dataset.setting === 'notifyEmail') {
                 await notifyApi.saveUserSetting('notifyEmail', input.checked ? 'true' : 'false');
             } else if (input.dataset.setting === 'digestOn') {
                 timeInput.disabled = !input.checked;

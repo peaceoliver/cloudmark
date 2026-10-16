@@ -1,6 +1,6 @@
 /**
- * Értesítések: feladat-emlékeztetők és napi összefoglaló kiküldése (felületen belül + e-mail),
- * a csengő API-ja, és a belső futtató végpont, amit a Supabase pg_cron hív percenként.
+ * Értesítések: feladat-emlékeztetők és napi összefoglaló kiküldése (felületen belül, push és e-mail),
+ * a csengő API-ja, a „Kész”/„Szundi” gombok végpontja, és a belső futtató végpont, amit a Supabase pg_cron hív percenként.
  *
  * A Render free példány tétlenül elalszik, ezért az időzítés az adatbázisban fut (pg_cron + pg_net):
  * csak akkor hívja a /api/internal/notifications/run végpontot, ha notification_work_pending() igaz.
@@ -14,6 +14,22 @@ const NOTIFICATION_KINDS = ['task_reminder', 'daily_digest', 'test'];
 const STALE_REMINDER_MS = 12 * 3600 * 1000;
 const TEST_COOLDOWN_MS = 30 * 1000;
 const DIGEST_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+const QUIET_HOURS_PATTERN = /^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/;
+const ACTION_TOKEN_TTL_MS = 7 * 24 * 3600 * 1000;
+const ACTION_LABELS = { done: 'Kész', snooze: 'Szundi 10 perc' };
+
+/** Whether `date` falls into the „HH:MM-HH:MM” quiet period in the given time zone (it may wrap past midnight). */
+function inQuietHours(quietHours, timeZone, date = new Date()) {
+    if (!QUIET_HOURS_PATTERN.test(String(quietHours || ''))) return false;
+    const [start, end] = quietHours.split('-');
+    if (start === end) return false;
+    const now = taskDates.localTime(date, timeZone);
+    return start < end ? now >= start && now < end : now >= start || now < end;
+}
+
+function hashToken(token) {
+    return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
 
 function esc(value) {
     return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -31,19 +47,31 @@ function formatDue(dueAt, allDay, timeZone) {
     return new Intl.DateTimeFormat('hu-HU', options).format(new Date(dueAt));
 }
 
+/** Small HTML page for the e-mail action links (confirm and result). */
+function actionPage(title, inner) {
+    return `<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(title)} – CloudMark</title><link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0f19;color:#e2e8f0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;padding:24px;box-sizing:border-box;text-align:center}
+main{max-width:380px}h1{font-size:1.25rem;margin:12px 0 8px}p{opacity:.8;line-height:1.5;margin:0 0 20px}
+button,a.btn{display:inline-block;margin:4px;padding:11px 20px;border-radius:10px;border:0;background:#0284c7;color:#fff;font:600 1rem system-ui,sans-serif;text-decoration:none;cursor:pointer}
+button.secondary{background:#334155}img{width:64px;height:64px}</style></head>
+<body><main><img src="/icons/icon-192.png" alt="">${inner}</main></body></html>`;
+}
+
 /** Shared HTML frame for notification e-mails. */
-function emailLayout(title, inner, appUrl) {
+function emailLayout(title, inner, appUrl, actionsHtml = '') {
     return `<!doctype html><html lang="hu"><body style="margin:0;padding:24px;background:#f1f5f9;font-family:Segoe UI,Arial,sans-serif;color:#0f172a;">
 <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;">
 <div style="font-weight:700;color:#0284c7;font-size:18px;margin-bottom:16px;">CloudMark</div>
 <h1 style="font-size:18px;margin:0 0 12px;">${esc(title)}</h1>
 ${inner}
+${actionsHtml}
 <p style="margin:24px 0 0;"><a href="${esc(appUrl)}/#/feladatok" style="display:inline-block;background:#0284c7;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600;">Feladatok megnyitása</a></p>
 <p style="margin:20px 0 0;font-size:12px;color:#64748b;">Az értesítéseket a CloudMark csengő ikonjánál kapcsolhatod ki.</p>
 </div></body></html>`;
 }
 
-function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer, getPublicBaseUrl }) {
+function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer, getPublicBaseUrl, push, taskActions }) {
     let running = null;
     let lastBaseUrl = null;
     const lastTestByUser = new Map();
@@ -56,6 +84,31 @@ function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, 
         return result.rows[0].id;
     }
 
+    /** A single-use token for the „Kész” and „Szundi” buttons of one reminder (push and e-mail share it). */
+    async function createActionToken(userId, itemId) {
+        const token = crypto.randomBytes(24).toString('base64url');
+        await pool.query(
+            'INSERT INTO notification_action_tokens (token_hash, user_id, item_id, expires_at) VALUES ($1, $2, $3, $4)',
+            [hashToken(token), userId, itemId, new Date(Date.now() + ACTION_TOKEN_TTL_MS)]
+        );
+        return token;
+    }
+
+    /** Sends a push to the user's devices unless they are in their quiet hours. */
+    async function pushToUser(user, payload, summary, options) {
+        if (!push?.configured || inQuietHours(user.quiet_hours, user.timezone)) return null;
+        try {
+            const result = await push.sendToUser(user.id, payload, options);
+            summary.pushes += result.sent;
+            summary.errors += result.failed;
+            return result;
+        } catch (err) {
+            summary.errors += 1;
+            console.error('[NOTIFY] Push küldése sikertelen:', err.message || err);
+            return null;
+        }
+    }
+
     /** Whether the user can get e-mail: a verified address and e-mails not switched off. */
     function emailAllowed(user) {
         return Boolean(user.email) && user.is_verified === true && String(user.notify_email ?? 'true') !== 'false';
@@ -65,7 +118,8 @@ function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, 
         const result = await db.query(
             `SELECT u.id, u.username, u.email, u.is_verified,
                     (SELECT value #>> '{}' FROM settings_user WHERE user_id = u.id AND setting_key = 'notifyEmail') AS notify_email,
-                    (SELECT value #>> '{}' FROM settings_user WHERE user_id = u.id AND setting_key = 'timezone') AS timezone
+                    (SELECT value #>> '{}' FROM settings_user WHERE user_id = u.id AND setting_key = 'timezone') AS timezone,
+                    (SELECT value #>> '{}' FROM settings_user WHERE user_id = u.id AND setting_key = 'quietHours') AS quiet_hours
              FROM users u WHERE u.id = ANY($1)`,
             [userIds]
         );
@@ -109,20 +163,36 @@ function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, 
             }
             const due = formatDue(item.due_at, item.due_all_day, user.timezone);
             const body = due ? `Határidő: ${due}` : null;
-            await insertNotification(pool, { userId: user.id, kind: 'task_reminder', title: item.title, body, itemId: item.id });
+            const notificationId = await insertNotification(pool, { userId: user.id, kind: 'task_reminder', title: item.title, body, itemId: item.id });
             summary.reminders += 1;
+            const wantsPush = reminder.channels.includes('push') && push?.configured;
+            const wantsEmail = reminder.channels.includes('email') && emailAllowed(user);
+            const actionToken = wantsPush || (wantsEmail && taskActions) ? await createActionToken(user.id, item.id) : null;
 
-            if (!reminder.channels.includes('email') || !emailAllowed(user)) continue;
+            if (wantsPush) {
+                await pushToUser(user, {
+                    type: 'task_reminder', title: item.title, body: body || 'Emlékeztető', itemId: Number(item.id),
+                    notificationId: Number(notificationId), actionToken, tag: `task-${item.id}`
+                }, summary);
+            }
+
+            if (!wantsEmail) continue;
             if (!mailer) { await pool.query("UPDATE item_reminders SET last_error = 'email_not_configured' WHERE id = $1", [reminder.id]); continue; }
             try {
                 const recurrence = item.recurrence_rule ? taskDates.describeRecurrence(item.recurrence_rule) : '';
+                const actionUrl = action => `${appUrl}/api/notifications/action?token=${encodeURIComponent(actionToken)}&action=${action}`;
+                const actionsHtml = actionToken ? `<p style="margin:20px 0 0;">
+                    <a href="${esc(actionUrl('done'))}" style="display:inline-block;background:#059669;color:#ffffff;text-decoration:none;padding:9px 16px;border-radius:8px;font-weight:600;margin-right:8px;">✓ Kész</a>
+                    <a href="${esc(actionUrl('snooze'))}" style="display:inline-block;background:#e2e8f0;color:#0f172a;text-decoration:none;padding:9px 16px;border-radius:8px;font-weight:600;">Szundi 10 perc</a></p>` : '';
                 await mailer({
                     to: user.email,
                     subject: `Emlékeztető: ${item.title}`,
-                    text: `${item.title}\n${body || ''}${recurrence ? `\nIsmétlődik: ${recurrence}` : ''}\n\n${appUrl}/#/feladatok`,
+                    text: `${item.title}\n${body || ''}${recurrence ? `\nIsmétlődik: ${recurrence}` : ''}\n\n`
+                        + (actionToken ? `Kész: ${actionUrl('done')}\nSzundi 10 perc: ${actionUrl('snooze')}\n\n` : '')
+                        + `${appUrl}/#/feladatok`,
                     html: emailLayout(`Emlékeztető: ${item.title}`, `
                         ${due ? `<p style="margin:0 0 6px;"><strong>Határidő:</strong> ${esc(due)}</p>` : ''}
-                        ${recurrence ? `<p style="margin:0;color:#64748b;">Ismétlődik: ${esc(recurrence)}</p>` : ''}`, appUrl)
+                        ${recurrence ? `<p style="margin:0;color:#64748b;">Ismétlődik: ${esc(recurrence)}</p>` : ''}`, appUrl, actionsHtml)
                 });
                 summary.emails += 1;
             } catch (err) {
@@ -183,6 +253,7 @@ function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, 
             ].filter(Boolean).join(', ');
             await insertNotification(pool, { userId: user.id, kind: 'daily_digest', title: 'Napi összefoglaló', body: `${counts} feladat` });
             summary.digests += 1;
+            await pushToUser(user, { type: 'daily_digest', title: 'Napi összefoglaló', body: `${counts} feladat`, tag: 'daily-digest' }, summary, { urgency: 'normal' });
             if (!mailer || !emailAllowed(user)) continue;
             const section = (label, list, color) => list.length ? `
                 <h2 style="font-size:14px;margin:18px 0 6px;color:${color};">${label} (${list.length})</h2>
@@ -207,10 +278,11 @@ function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, 
     function runNotifications(appUrl) {
         if (running) return running;
         running = (async () => {
-            const summary = { reminders: 0, digests: 0, emails: 0, errors: 0 };
+            const summary = { reminders: 0, digests: 0, pushes: 0, emails: 0, errors: 0 };
             const mailer = await getMailer().catch(() => null);
             await sendDueReminders(mailer, appUrl, summary);
             await sendDailyDigests(mailer, appUrl, summary);
+            await pool.query("DELETE FROM notification_action_tokens WHERE expires_at < NOW() - INTERVAL '1 day'");
             if (summary.reminders || summary.digests) console.log('[NOTIFY]', JSON.stringify(summary));
             return summary;
         })().finally(() => { running = null; });
@@ -279,6 +351,8 @@ function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, 
             res.json({
                 notifyEmail: String(user?.notify_email ?? 'true') !== 'false',
                 dailyDigestTime: DIGEST_TIME_PATTERN.test(digest.rows[0]?.value || '') ? digest.rows[0].value : null,
+                quietHours: QUIET_HOURS_PATTERN.test(user?.quiet_hours || '') ? user.quiet_hours : null,
+                pushConfigured: Boolean(push?.configured),
                 email: user?.email || null,
                 emailVerified: user?.is_verified === true,
                 emailConfigured: Boolean(mailer),
@@ -297,6 +371,13 @@ function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, 
         try {
             await insertNotification(pool, { userId: req.user.id, kind: 'test', title: 'Teszt értesítés', body: 'Így fognak megjelenni az emlékeztetők.' });
             const user = (await loadUsers(pool, [req.user.id])).get(String(req.user.id));
+            let pushResult = { sent: 0, failed: 0, removed: 0 };
+            if (push?.configured) {
+                // A teszt a csendes időszakot figyelmen kívül hagyja, hogy azonnal kipróbálható legyen.
+                pushResult = await push.sendToUser(req.user.id, { type: 'test', title: 'Teszt értesítés', body: 'Így fognak megjelenni az emlékeztetők.', tag: 'test' })
+                    .catch(() => ({ sent: 0, failed: 1, removed: 0 }));
+            }
+            const pushStatus = !push?.configured ? 'not_configured' : pushResult.sent ? 'sent' : pushResult.failed ? 'error' : 'no_devices';
             const mailer = await getMailer().catch(() => null);
             let email = 'sent';
             if (!mailer) email = 'not_configured';
@@ -315,13 +396,74 @@ function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, 
                 } catch (err) {
                     email = 'error';
                     await recordAuditEvent({ userId: req.user.id, action: 'notification_test_failed', entityType: 'notification', details: { error: String(err.message || err).slice(0, 300) }, req });
-                    return res.json({ inApp: true, email, error: String(err.message || err) });
+                    return res.json({ inApp: true, email, push: pushStatus, pushDevices: pushResult.sent, error: String(err.message || err) });
                 }
             }
-            res.json({ inApp: true, email });
+            res.json({ inApp: true, email, push: pushStatus, pushDevices: pushResult.sent });
         } catch (err) {
             res.status(500).json({ error: err.message });
         }
+    });
+
+    /** Uses a „Kész”/„Szundi” token once. Returns { status, title } where status is done/snoozed/invalid/gone. */
+    async function performAction(token, action) {
+        if (!taskActions || typeof token !== 'string' || !ACTION_LABELS[action]) return { status: 'invalid' };
+        const claimed = await pool.query(
+            `UPDATE notification_action_tokens SET used_at = NOW()
+             WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()
+             RETURNING user_id, item_id`,
+            [hashToken(token)]
+        );
+        const row = claimed.rows[0];
+        if (!row) return { status: 'invalid' };
+        if (action === 'done') {
+            const outcome = await taskActions.completeTask(row.user_id, Number(row.item_id));
+            return outcome ? { status: 'done', title: outcome.title, recurring: outcome.recurring } : { status: 'gone' };
+        }
+        const snoozed = await taskActions.snoozeTask(row.user_id, Number(row.item_id));
+        const item = await pool.query('SELECT title FROM items WHERE id = $1', [row.item_id]);
+        return snoozed ? { status: 'snoozed', title: item.rows[0]?.title } : { status: 'gone' };
+    }
+
+    function actionResultPage(result, appUrl) {
+        const open = `<a class="btn" href="${esc(appUrl)}/#/feladatok">CloudMark megnyitása</a>`;
+        if (result.status === 'done') return actionPage('Kész', `<h1>Kész ✓</h1><p>${esc(result.title)}${result.recurring ? ' – a következő alkalomra ugrott.' : ''}</p>${open}`);
+        if (result.status === 'snoozed') return actionPage('Szundi', `<h1>10 perc múlva újra szólok</h1><p>${esc(result.title)}</p>${open}`);
+        if (result.status === 'gone') return actionPage('Nem található', `<h1>A feladat már nem aktív</h1><p>Lehet, hogy közben kész lett vagy törölted.</p>${open}`);
+        return actionPage('Lejárt link', `<h1>Ez a link már nem érvényes</h1><p>A gombok egyszer használhatók, és 7 napig érvényesek.</p>${open}`);
+    }
+
+    /**
+     * „Kész” / „Szundi” from a push notification (JSON, from the service worker) or from an e-mail (form post).
+     * The token is the authorization, so it works without being signed in.
+     */
+    app.post('/api/notifications/action', async (req, res) => {
+        const wantsHtml = req.is('application/x-www-form-urlencoded');
+        try {
+            const result = await performAction(req.body?.token, req.body?.action);
+            if (wantsHtml) return res.status(result.status === 'invalid' ? 410 : 200).type('html').send(actionResultPage(result, getPublicBaseUrl(req)));
+            if (result.status === 'invalid') return res.status(410).json({ error: 'A gomb már nem érvényes.', status: result.status });
+            res.json(result);
+        } catch (err) {
+            console.error('[NOTIFY] Művelet sikertelen:', err.message || err);
+            if (wantsHtml) return res.status(500).type('html').send(actionPage('Hiba', '<h1>Valami hiba történt</h1><p>Próbáld újra később, vagy nyisd meg a CloudMarkot.</p>'));
+            res.status(500).json({ error: 'Action failed' });
+        }
+    });
+
+    /**
+     * The e-mail links land here. It only shows a confirm button that posts the form, because mail
+     * scanners open links automatically and must not complete a task by doing so.
+     */
+    app.get('/api/notifications/action', (req, res) => {
+        const action = ACTION_LABELS[req.query.action] ? req.query.action : 'done';
+        const token = typeof req.query.token === 'string' ? req.query.token.slice(0, 200) : '';
+        res.set('Cache-Control', 'no-store').set('Referrer-Policy', 'no-referrer');
+        res.type('html').send(actionPage(ACTION_LABELS[action], `<h1>${action === 'done' ? 'Megjelölöd késznek?' : 'Szóljak 10 perc múlva újra?'}</h1>
+            <form method="post" action="/api/notifications/action">
+              <input type="hidden" name="token" value="${esc(token)}"><input type="hidden" name="action" value="${action}">
+              <button type="submit">${action === 'done' ? '✓ Kész' : 'Szundi 10 perc'}</button>
+            </form>`));
     });
 
     // Amíg a szerver ébren van, percenként magától is körbenéz (a pg_cron az alvó példányt ébreszti).
@@ -336,4 +478,4 @@ function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, 
     return { runNotifications };
 }
 
-module.exports = { registerNotificationRoutes, DIGEST_TIME_PATTERN, NOTIFICATION_KINDS };
+module.exports = { registerNotificationRoutes, DIGEST_TIME_PATTERN, QUIET_HOURS_PATTERN, NOTIFICATION_KINDS, inQuietHours };

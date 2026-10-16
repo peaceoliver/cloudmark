@@ -664,8 +664,9 @@
                         <option value="custom">Egyedi időpont…</option>
                     </select>
                     <input type="datetime-local" data-detail-input="reminder-at" hidden aria-label="Emlékeztető időpontja">
+                    ${item.status === 'done' ? '' : '<button type="button" class="btn btn-secondary task-snooze" data-detail="snooze" title="Egyszeri emlékeztető 10 perc múlva"><i class="fa-regular fa-clock"></i> Szundi 10 perc</button>'}
                 </div>
-                <p class="task-detail-note">Az emlékeztető a csengő ikonnál és e-mailben érkezik (a csengő panelen kapcsolható).</p>`}
+                <p class="task-detail-note">Az emlékeztető a csengő ikonnál, a telefonodon (ha bekapcsoltad) és e-mailben érkezik. A csengő panelen kapcsolható.</p>`}
             </section>
 
             ${isSub ? '' : `<section class="task-detail-section">
@@ -968,6 +969,18 @@
             return;
         }
         if (action === 'due-clear') { setDueDate(''); return; }
+        if (action === 'snooze') {
+            button.disabled = true;
+            try {
+                await taskApi.snoozeTask(item.id);
+                notify('Rendben, 10 perc múlva újra szólok.', 'success');
+            } catch (err) {
+                notify(err.message || 'A szundi nem sikerült.', 'error');
+            } finally {
+                button.disabled = false;
+            }
+            return;
+        }
         if (action === 'remove-reminder') {
             draft.reminders.splice(Number(button.dataset.index), 1);
             flushSave({ rerender: true });
