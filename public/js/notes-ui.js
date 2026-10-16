@@ -522,12 +522,15 @@
         composerWrap.hidden = true;
     }
 
-    /** Opens the new-note editor under the bar; `categoryKey` ('none' or an id) preselects a category (kanban „+ Jegyzet”). */
-    function openComposer(categoryKey) {
+    /**
+     * Opens the new-note editor under the bar; `categoryKey` ('none' or an id) preselects a category (kanban „+ Jegyzet”),
+     * `title` prefills the title (Ctrl+K palette).
+     */
+    function openComposer(categoryKey, { title = '' } = {}) {
         if (state.filter !== 'active') return;
         const key = typeof categoryKey === 'string' ? categoryKey : state.category;
         composerNote = {
-            title: '', body: '', color: null, pinned: false, tags: state.label ? [state.label] : [], extra: {},
+            title, body: '', color: null, pinned: false, tags: state.label ? [state.label] : [], extra: {},
             category_id: /^\d+$/.test(key) ? Number(key) : null
         };
         composerWrap.hidden = false;

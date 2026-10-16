@@ -74,7 +74,7 @@ A fejlesztési szabályok és a felület egységességének szabályai a `CLAUDE
 Az aktuális ötletek feladatként vannak felvéve az appban (Feladatok, „CloudMark” projekt). Mindegyikhez előbb terv készül, és csak jóváhagyás után indul a fejlesztés.
 
 1. Teljesítmény ellenőrzés (az oldal megjelenítése lagosnak tűnik)
-2. Command Palette (Ctrl+K): közös keresés és gyors létrehozás mind a négy nézetben
+2. ~~Command Palette (Ctrl+K)~~ elkészült: közös keresés és gyors létrehozás mind a négy nézetben
 3. Belső hivatkozások (`[[`) jegyzetek, feladatok és parancsok között
 4. Dashboard kezdőlap (mai/lejárt feladatok, kitűzött jegyzetek, legutóbbi parancsok)
 5. Clipper (böngésző gomb és telefonos megosztás menü)

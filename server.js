@@ -11,6 +11,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { registerItemRoutes, normalizeItemLanguage, ITEM_TYPES } = require('./routes/items');
 const { registerTaskRoutes } = require('./routes/tasks');
+const { registerSearchRoutes } = require('./routes/search');
 const { createPushService, registerPushRoutes } = require('./routes/push');
 const { registerNotificationRoutes, DIGEST_TIME_PATTERN, QUIET_HOURS_PATTERN } = require('./routes/notifications');
 const taskDates = require('./public/js/task-parser');
@@ -2327,6 +2328,7 @@ app.put('/api/admin/app-config', requireAdmin, async (req, res) => {
 
 // Parancsok / jegyzetek API (a catch-all előtt kell regisztrálni)
 const itemHelpers = registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normalizeTags });
+registerSearchRoutes(app, { pool, requireAuth });
 const taskActions = registerTaskRoutes(app, { pool, requireAuth, recordAuditEvent, ...itemHelpers });
 // A push szolgáltatók egy elérhetőséget kérnek a küldőtől; alapból az app címe.
 const push = createPushService({ pool, getSubject: () => (getPublicBaseUrl().startsWith('https://') ? getPublicBaseUrl() : null) });

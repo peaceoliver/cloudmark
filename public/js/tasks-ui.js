@@ -43,7 +43,6 @@
         project: null,
         query: '',
         selectedId: null,
-        linkCandidates: null,
         timeZoneSaved: false,
         sort: window.CloudMark.prefs.get('taskSort'),
         display: window.CloudMark.prefs.get('taskView')
@@ -193,7 +192,6 @@
         state.query = '';
         state.project = null;
         state.selectedId = null;
-        state.linkCandidates = null;
         state.timeZoneSaved = false;
         if (searchInput) searchInput.value = '';
         if (searchClear) searchClear.hidden = true;
@@ -682,7 +680,7 @@
                     <input type="datetime-local" data-detail-input="reminder-at" hidden aria-label="Emlékeztető időpontja">
                     ${item.status === 'done' ? '' : '<button type="button" class="btn btn-secondary task-snooze" data-detail="snooze" title="Egyszeri emlékeztető 10 perc múlva"><i class="fa-regular fa-clock"></i> Szundi 10 perc</button>'}
                 </div>
-                <p class="task-detail-note">Az emlékeztető a csengő ikonnál, a telefonodon (ha bekapcsoltad) és e-mailben érkezik. A csengő panelen kapcsolható.</p>`}
+                <p class="task-detail-note">Az emlékeztető a csengő ikonnál, a telefonodon (ha bekapcsoltad) és e-mailben érkezik. Bekapcsolni a Beállítások / Általános fülön lehet.</p>`}
             </section>
 
             ${isSub ? '' : `<section class="task-detail-section">
@@ -843,38 +841,22 @@
         }
     }
 
-    async function loadLinkCandidates() {
-        if (state.linkCandidates) return state.linkCandidates;
-        const [notes, commands] = await Promise.all([taskApi.getItems('note'), taskApi.getItems('command')]);
-        state.linkCandidates = [...notes, ...commands].map(item => ({
-            targetType: 'item',
-            targetId: item.id,
-            itemType: item.type,
-            title: item.title || String(item.body || '').split('\n')[0].slice(0, 80) || 'Névtelen jegyzet',
-            search: [item.title, item.body, item.description].join(' ').toLowerCase()
-        }));
-        return state.linkCandidates;
-    }
-
     let linkSearchTimer = null;
     async function searchLinks(input) {
         const results = input.parentElement.querySelector('.task-link-results');
         const query = input.value.trim().toLowerCase();
         if (query.length < 2) { results.hidden = true; results.innerHTML = ''; return; }
         try {
-            const [candidates, bookmarks, tasks] = await Promise.all([
-                loadLinkCandidates(),
-                taskApi.getBookmarks({ q: query }).catch(() => []),
-                Promise.resolve(state.items)
-            ]);
+            // Ugyanaz a közös kereső, mint a Ctrl+K ablaké.
+            const found = await taskApi.search(query, { limit: 8 });
             if (input.value.trim().toLowerCase() !== query) return;
             const linked = new Set(draft.links.map(link => `${link.targetType}:${link.targetId}`));
-            const matches = [
-                ...candidates.filter(candidate => candidate.search.includes(query)),
-                ...tasks.filter(task => String(task.id) !== String(draft.id) && String(task.title).toLowerCase().includes(query))
-                    .map(task => ({ targetType: 'item', targetId: task.id, itemType: 'task', title: task.title })),
-                ...(Array.isArray(bookmarks) ? bookmarks : []).map(bookmark => ({ targetType: 'bookmark', targetId: bookmark.id, title: bookmark.title, url: bookmark.url }))
-            ].filter(match => !linked.has(`${match.targetType}:${match.targetId}`)).slice(0, 12);
+            const matches = found
+                .filter(result => !(result.kind === 'task' && String(result.id) === String(draft.id)))
+                .map(result => result.kind === 'bookmark'
+                    ? { targetType: 'bookmark', targetId: result.id, title: result.title, url: result.url }
+                    : { targetType: 'item', targetId: result.id, itemType: result.kind, title: result.title })
+                .filter(match => !linked.has(`${match.targetType}:${match.targetId}`)).slice(0, 12);
             results.innerHTML = matches.length ? matches.map((match, index) => `
                 <button type="button" class="task-link-result" data-result="${index}">
                     <i class="fa-solid ${linkIcon(match)}"></i> <span>${esc(match.title)}</span>
@@ -1262,6 +1244,13 @@
         reset,
         refreshBadge,
         focusQuickAdd: () => quickInput.focus(),
+        /** Adds a task from free text the same way as the quick-add bar (used by the Ctrl+K palette). */
+        async addFromText(text) {
+            await load();
+            quickInput.value = text;
+            renderQuickPreview();
+            await quickAdd();
+        },
         /** Opens a task's detail panel by id (used by the bell and by links). */
         async openById(id) {
             await load();

@@ -48,6 +48,16 @@ Mind a négy nézet teteje ugyanúgy épül fel: legfelül az egyforma „+ Új 
 - **Kártyák:** mind a négy nézetben a kategória (Feladatoknál a projekt) kék címkeként a cím alatt, bal oldalt látszik, a címkék pedig `#címke` formában, kék szöveggel a kártya alján (a Parancsok mintájára). Kompakt jegyzetnél és kompakt feladatnál a címkék rejtve vannak.
 - A választott rendezés és nézet nézetenként a fiókhoz mentődik (`commandSort`, `commandView`, `noteSort`, `noteView`, `taskSort`, `taskView`), így minden eszközön ugyanaz.
 
+### Keresés mindenhol (Ctrl+K)
+
+A **Ctrl+K** (Macen ⌘K) bármelyik nézetből, vagy a fejléc nagyító gombja (telefonon is) megnyit egy keresőablakot, amely egyszerre keres a jegyzetekben, feladatokban, könyvjelzőkben és parancsokban: címben, szövegben, leírásban, kategóriában, címkében és parancskódban, ékezet nélkül is (a „kazan” megtalálja a „Kazán”-t). A találatok típusonként (legfeljebb 5) csoportosítva jelennek meg, a fülek sorrendjében.
+
+- **↑/↓** lépked, **Esc** bezár, **Enter**: jegyzetnél megnyitja a szerkesztőt, feladatnál a részletes panelt, könyvjelzőnél új lapon a weboldalt, parancsnál a kódot a vágólapra másolja (és növeli a használatszámot). **Shift+Enter**: könyvjelző vagy parancs szerkesztése.
+- **Létrehozás:** a lista alján mindig ott van „Új jegyzet / feladat / könyvjelző / parancs” a beírt szöveggel. Az új feladatot a gyors beírás értelmezője dolgozza fel (pl. „holnap 9 számla !1 #pénzügy”); ha a szöveg webcím, az új könyvjelző azzal töltődik ki.
+- **Üres mezőnél** a legutóbb megnyitott elemek látszanak (a böngészőben tárolva).
+- **`>` előtaggal** gyors műveletek jönnek: nézetváltás, Beállítások, téma váltása, új elem.
+- A feladat „Kapcsolt elemek” keresője ugyanezt a közös keresőt használja.
+
 ### Beállítások
 
 Egy közös ablak öt füllel; a fejléc ⋮ menüjéből (Általános fül) vagy bármelyik nézet ⋮ menüjéből (az adott nézet füle) nyílik.
@@ -55,7 +65,7 @@ Egy közös ablak öt füllel; a fejléc ⋮ menüjéből (Általános fül) vag
 - **Általános:** téma, induláskor megnyíló nézet, értesítések (e-mail, napi összefoglaló, telefonos értesítés eszközönként, csendes időszak, teszt értesítés), jelszócsere. Az értesítési kapcsolók azonnal mentődnek; a csengő panel alján egy link vezet ide.
 - **Jegyzetek, Feladatok, Parancsok:** alapértelmezett rendezés és nézet.
 - **Könyvjelzők:** nézet, rendezés, weboldal címsor és kép olvasása, az export tartalma és az import célkategóriája, valamint a „Mentés CloudMarkba” gyorsmentő gomb.
-- A fejléc ⋮ menüjében csak az általános dolgok maradtak: Beállítások, Team, alkalmazás telepítése, Info.
+- A fejléc ⋮ menüjében csak az általános dolgok maradtak: Beállítások, Team, alkalmazás telepítése, Info. Az **Info** egy rövid ismertető mind a négy nézetről, a keresőről, a menükről és a gyorsbillentyűkről.
 
 ### Parancsok
 

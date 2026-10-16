@@ -357,6 +357,9 @@ apiNamespace.api = {
     },
 
     /** Lists the current user's items of one type (command, note, task). */
+    getItem(id) {
+        return requestJson(`/api/items/${id}`);
+    },
     getItems(type, params = {}) {
         const query = new URLSearchParams({ type, ...params });
         return requestJson(`/api/items?${query.toString()}`);
@@ -376,6 +379,13 @@ apiNamespace.api = {
     },
     deleteItemPermanently(id) {
         return requestJson(`/api/items/${id}/permanent`, { method: 'DELETE' });
+    },
+    /** Searches notes, tasks, commands and bookmarks at once (Command Palette, task links). */
+    search(q, { types, limit } = {}) {
+        const query = new URLSearchParams({ q });
+        if (types) query.set('types', types.join(','));
+        if (limit) query.set('limit', String(limit));
+        return requestJson(`/api/search?${query.toString()}`).then(result => result.results);
     },
     markItemUsed(id) {
         return requestJson(`/api/items/${id}/used`, { method: 'POST' });
