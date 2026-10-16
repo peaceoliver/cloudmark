@@ -76,10 +76,10 @@ Gyakran használt parancssorok tárolása, kategóriákba rendezve.
 
 - **Soronkénti másolás:** minden sor mellett van egy másológomb, amely a `#` utáni kommentet levágja.
 - **Többsoros parancsnál:** „Összes másolása”, valamint a ⋮ menüben „Másolás Markdownként” és „Kommentek nélkül”.
-- **Fülek:** egy parancsnak több változata lehet (pl. CMD / PowerShell / bash), mindegyik saját nyelvvel.
+- **Fülek:** egy parancsnak több változata lehet (pl. CMD / PowerShell / bash), mindegyik saját nyelvvel. A kártyán egy fülnél a nyelv címke a kategória mellett látszik, több fülnél a fülek nevén. A szerkesztőben a Nyelv mezőre kattintva a teljes javaslatlista megjelenik.
 - Kedvencek, kuka, rendezés (legújabb, ABC, leggyakrabban másolt), keresés, kategóriák alapnyelvvel.
 - Import / export JSON-ban, export Markdownban (⋮ menü). Új parancs: `N`.
-- **AI kitöltés** (ha van aktív AI kulcs): bemásolt parancsból kitölti a címet, leírást, címkéket, kategóriát és nyelvet; vagy a címbe / leírásba írt célból megírja a parancsot is, és a címet, leírást rendes szövegre javítja. Javasolhat egy további fület (pl. PowerShell változat) és új kategóriát. A javaslat kiemelve kerül a mezőkbe (Elfogadom / Visszavonom), alapból csak az üres mezőkbe; menteni a Mentés gomb ment.
+- **AI kitöltés** (ha van aktív AI kulcs): bemásolt parancsból kitölti a címet, leírást, címkéket, kategóriát és nyelvet; vagy a címbe / leírásba írt célból megírja a parancsot is, és a címet, leírást rendes szövegre javítja. Javasolhat egy további fület (pl. PowerShell változat; ilyenkor a névtelen első fül a nyelvéről kap nevet, pl. „Bash”) és új kategóriát. A javaslat kiemelve kerül a mezőkbe (Elfogadom / Visszavonom), alapból csak az üres mezőkbe; menteni a Mentés gomb ment.
 
 ### AI kitöltés saját kulccsal
 

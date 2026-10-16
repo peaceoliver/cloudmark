@@ -21,5 +21,6 @@ Ha megadtál AI kulcsot, az **✨ AI kitöltés** gomb kitölti a mezőket a bem
 
 - Egy meglévő parancs szerkesztése ablakban nyílik.
 - Kategóriánként alapnyelv állítható be.
+- A Nyelv mezőbe kattintva a teljes javaslatlista látszik (bash, powershell, cmd …); ha nem választasz újat, megmarad az előző érték. Más nyelv is beírható.
 - Rendezés: legújabb, ABC, leggyakrabban másolt. Nézet: Normál, Kompakt (csak az első sor), Lista.
 - Import / export JSON-ban, export Markdownban a ⋮ menüben.
