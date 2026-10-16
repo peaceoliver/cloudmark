@@ -30,13 +30,9 @@
         if (event.key === 'Escape') closeMainMenu();
     });
 
-    // Category/tag management and export/import buttons stay open (multi-step flows);
-    // only close automatically when their own modals are triggered elsewhere.
-    ['manageCategoriesBtn', 'manageTagsBtn', 'menuInfoBtn'].forEach(id => {
+    // A menüből nyíló ablakok előtt a menü bezárul.
+    ['menuInfoBtn', 'menuUserSettingsBtn', 'menuTeamBtn'].forEach(id => {
         document.getElementById(id)?.addEventListener('click', closeMainMenu);
-    });
-    ['exportJsonBtn', 'exportHtmlBtn'].forEach(id => {
-        document.getElementById(id)?.addEventListener('click', () => setTimeout(closeMainMenu, 150));
     });
 
     window.openMainMenu = openMainMenu;

@@ -104,25 +104,37 @@ The Bookmarks view is the reference layout; copy its markup and classes rather t
 - Category under the title, left aligned, as a blue pill: `<div class="card-meta"><span class="card-category">`.
 - Tags at the bottom of the card as `#tag` in blue text: `<div class="card-tags">`. Compact notes and compact
   tasks hide tags.
-- Views: commands and notes have grid / compact / list, tasks have list / compact.
+- Views: commands have grid / compact / list, notes grid / compact / list / kanban, tasks list / compact.
 
 ### View preferences
 
 `public/js/view-prefs.js` (`window.CloudMark.prefs`) stores sort and view per view: keys `commandSort`,
-`commandView`, `noteSort`, `noteView`, `taskSort`, `taskView`. Values are saved in localStorage immediately
+`commandView`, `noteSort`, `noteView`, `taskSort`, `taskView`. `startView` (the view opened on load, `last`
+= where the user was) is server-side only: `VIEW_PREF_OPTIONS` + localStorage `cloudmark_start_view`, read by `views.js`. Values are saved in localStorage immediately
 and to the account. A new pref key or value must be added in **both** `OPTIONS` in `view-prefs.js` and
 `VIEW_PREF_OPTIONS` in `server.js`, otherwise the server rejects it. Listen for the `cloudmark:prefs` event to
 redraw after sign-in.
 
-### Current and upcoming patterns (approved plans, being built in another thread)
+### ⋮ menu and Settings
 
-- **Settings**: every view's ⋮ menu gets the same entries in the same order (Kategóriák kezelése, Címkék
-  kezelése, Import / Export, ⚙ Beállítások…), opening one shared tabbed Settings modal (Általános, Jegyzetek,
-  Feladatok, Könyvjelzők, Parancsok). New settings belong in that modal, not in a new dialog.
-- **Notes kanban**: a fourth view mode `kanban` in the notes view switcher; columns = note categories,
-  drag to change category.
+- Every view's toolbar ends with the same ⋮ menu (`.commands-more` → `.item-more-btn` + `.cmd-dropdown`):
+  categories (tasks: projects), the view's import / export, and last **Beállítások…**
+  (`<button class="cmd-dropdown-item" data-open-settings="<view>">`). Bookmarks also have Címkék kezelése.
+  Bookmark and note menus are toggled by `public/js/settings-ui.js` (`data-more-menu`); commands and tasks
+  toggle their own.
+- **Settings** is one modal, `#userSettingsModal`, with tabs Általános, Jegyzetek, Feladatok, Könyvjelzők,
+  Parancsok (`[data-settings-tab]` / `[data-settings-pane]`). Open it with `openUserSettings(tab)` (auth.js);
+  without a tab it opens the current view's tab. New settings go into this modal, never a new dialog:
+  per-view sort/view selects only need `data-pref="<key>"`, other keys are saved in the form's submit handler.
+- The header ⋮ menu only holds general things (Beállítások, Team, Telepítés, Info). Notification settings
+  (`#bellSettings`, rendered by `notification-center.js`, saved on change) live on the Általános tab; the
+  bell panel links there.
 
-Check the code before relying on these: once merged, the code is the source of truth.
+### Notes kanban
+
+- `noteView = 'kanban'` renders `.notes-kanban` with one `.kanban-column[data-kanban-column]` per note
+  category ('none' first). Dragging a card to another column changes its category (pointer events: mouse
+  after 5px, touch after a 350ms long press; edge auto-scroll; optimistic save with rollback).
 
 ## Styling rules
 

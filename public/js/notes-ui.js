@@ -292,11 +292,38 @@
             </article>`;
     }
 
+    /** Kanban: one column per note category (plus „Kategória nélkül”); cards move between columns by dragging. */
+    function kanbanColumns() {
+        const none = { key: 'none', id: null, name: 'Kategória nélkül' };
+        const own = state.categories.map(category => ({ key: String(category.id), id: category.id, name: category.name }));
+        if (state.category === 'none') return [none];
+        if (/^\d+$/.test(state.category)) return own.filter(column => column.key === state.category);
+        return [none, ...own];
+    }
+
+    function renderKanban(list) {
+        const columns = kanbanColumns();
+        const canAdd = state.filter === 'active';
+        const ordered = notes => state.filter === 'active' ? [...notes.filter(item => item.pinned), ...notes.filter(item => !item.pinned)] : notes;
+        sections.innerHTML = `<div class="notes-kanban">${columns.map(column => {
+            const notes = ordered(list.filter(item => column.id === null
+                ? item.category_id === null || item.category_id === undefined
+                : String(item.category_id) === column.key));
+            return `
+                <section class="kanban-column" data-kanban-column="${esc(column.key)}" aria-label="${esc(column.name)}">
+                    <div class="kanban-column-head"><span>${esc(column.name)}</span><span class="command-chip-count">${notes.length}</span></div>
+                    <div class="kanban-column-body">${notes.map(cardHtml).join('') || '<div class="kanban-empty">Húzz ide egy jegyzetet</div>'}</div>
+                    ${canAdd ? `<button type="button" class="kanban-add" data-kanban-add="${esc(column.key)}"><i class="fa-solid fa-plus"></i> Jegyzet</button>` : ''}
+                </section>`;
+        }).join('')}${canAdd && state.category === 'all' ? '<button type="button" class="kanban-new-column" data-kanban-new-category><i class="fa-solid fa-folder-plus"></i> Új kategória</button>' : ''}</div>`;
+    }
+
     function renderNotes() {
-        sections.classList.remove('notes-view-grid', 'notes-view-compact', 'notes-view-list');
+        sections.classList.remove('notes-view-grid', 'notes-view-compact', 'notes-view-list', 'notes-view-kanban');
         sections.classList.add(`notes-view-${state.view}`);
         prefs.markSwitcher(viewSwitcher, state.view);
         const list = visibleNotes();
+        if (state.view === 'kanban') return renderKanban(list);
         if (!list.length) {
             const message = state.query || state.label ? 'Nincs a keresésnek megfelelő jegyzet.'
                 : state.category === 'none' ? 'Nincs kategória nélküli jegyzet.'
@@ -495,11 +522,13 @@
         composerWrap.hidden = true;
     }
 
-    function openComposer() {
+    /** Opens the new-note editor under the bar; `categoryKey` ('none' or an id) preselects a category (kanban „+ Jegyzet”). */
+    function openComposer(categoryKey) {
         if (state.filter !== 'active') return;
+        const key = typeof categoryKey === 'string' ? categoryKey : state.category;
         composerNote = {
             title: '', body: '', color: null, pinned: false, tags: state.label ? [state.label] : [], extra: {},
-            category_id: /^\d+$/.test(state.category) ? Number(state.category) : null
+            category_id: /^\d+$/.test(key) ? Number(key) : null
         };
         composerWrap.hidden = false;
         composerWrap.classList.add('is-open');
@@ -599,6 +628,12 @@
     }
 
     sections.addEventListener('click', async event => {
+        const add = event.target.closest('[data-kanban-add]');
+        if (add) return openComposer(add.dataset.kanbanAdd);
+        if (event.target.closest('[data-kanban-new-category]')) {
+            if (await createCategory()) render();
+            return;
+        }
         const card = event.target.closest('[data-item-id]');
         if (!card) return;
         const item = findItem(card.dataset.itemId);
@@ -651,6 +686,159 @@
 
     document.addEventListener('click', event => {
         if (!event.target.closest('.note-color-menu')) document.querySelectorAll('.note-palette.show').forEach(palette => palette.classList.remove('show'));
+    });
+
+    // ---------- kanban: áthúzás oszlopok között (egér: azonnal, érintés: hosszú nyomás után) ----------
+
+    const LONG_PRESS_MS = 350;
+    let drag = null;
+
+    function columnAt(x, y) {
+        return document.elementFromPoint(x, y)?.closest('.kanban-column') || null;
+    }
+
+    function startDrag() {
+        const rect = drag.card.getBoundingClientRect();
+        drag.active = true;
+        drag.offsetX = drag.startX - rect.left;
+        drag.offsetY = drag.startY - rect.top;
+        drag.ghost = drag.card.cloneNode(true);
+        drag.ghost.classList.add('kanban-ghost');
+        drag.ghost.style.width = `${rect.width}px`;
+        document.body.appendChild(drag.ghost);
+        drag.card.classList.add('is-dragging');
+        sections.querySelector('.notes-kanban').classList.add('is-dragging');
+        drag.frame = requestAnimationFrame(autoScroll);
+        try { drag.card.setPointerCapture(drag.pointerId); } catch (err) { /* már elengedték */ }
+        moveDrag(drag.startX, drag.startY);
+    }
+
+    function moveDrag(x, y) {
+        drag.x = x; drag.y = y;
+        drag.ghost.style.transform = `translate(${x - drag.offsetX}px, ${y - drag.offsetY}px)`;
+        const column = columnAt(x, y);
+        sections.querySelectorAll('.kanban-column.is-drop-target').forEach(other => { if (other !== column) other.classList.remove('is-drop-target'); });
+        column?.classList.add('is-drop-target');
+    }
+
+    // A tábla széléhez érve (amíg ott marad az ujj vagy az egér) vízszintesen görget; telefonon egyszerre egy oszlop látszik.
+    function autoScroll() {
+        if (!drag?.active) return;
+        const board = sections.querySelector('.notes-kanban');
+        const bounds = board.getBoundingClientRect();
+        const edge = Math.min(48, bounds.width / 6);
+        const step = drag.x < bounds.left + edge ? -12 : drag.x > bounds.right - edge ? 12 : 0;
+        if (step) {
+            board.scrollLeft += step;
+            moveDrag(drag.x, drag.y);
+        }
+        drag.frame = requestAnimationFrame(autoScroll);
+    }
+
+    function endDrag(drop) {
+        const current = drag;
+        drag = null;
+        clearTimeout(current.timer);
+        if (!current.active) return;
+        cancelAnimationFrame(current.frame);
+        current.ghost.remove();
+        sections.querySelector('.notes-kanban')?.classList.remove('is-dragging');
+        current.card.classList.remove('is-dragging');
+        sections.querySelectorAll('.kanban-column.is-drop-target').forEach(column => column.classList.remove('is-drop-target'));
+        // A húzás végén érkező kattintás ne nyissa meg a szerkesztőt.
+        const swallow = event => { event.stopPropagation(); event.preventDefault(); };
+        sections.addEventListener('click', swallow, true);
+        setTimeout(() => sections.removeEventListener('click', swallow, true), 0);
+        if (!drop) return;
+        const column = columnAt(current.x, current.y);
+        if (column) moveToCategory(current.item, column.dataset.kanbanColumn);
+    }
+
+    async function moveToCategory(item, key) {
+        const categoryId = /^\d+$/.test(key) ? Number(key) : null;
+        if (String(item.category_id ?? '') === String(categoryId ?? '')) return;
+        const previous = { category_id: item.category_id, category_name: item.category_name };
+        item.category_id = categoryId;
+        item.category_name = categoryId === null ? null : findCategory(categoryId)?.name || null;
+        render();
+        try {
+            await saveNote(item, { category_id: categoryId });
+            render();
+        } catch (err) {
+            Object.assign(item, previous);
+            render();
+            notify(err.message || 'Az áthelyezés nem sikerült.', 'error');
+        }
+    }
+
+    sections.addEventListener('pointerdown', event => {
+        if (state.view !== 'kanban' || drag || event.button > 0) return;
+        const card = event.target.closest('.kanban-column .note-card');
+        if (!card || event.target.closest('button, input, a, .note-palette')) return;
+        const item = findItem(card.dataset.itemId);
+        if (!item || item.trashed) return;
+        drag = { card, item, pointerId: event.pointerId, touch: event.pointerType !== 'mouse', startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, active: false };
+        if (drag.touch) drag.timer = setTimeout(() => { if (drag && !drag.active) startDrag(); }, LONG_PRESS_MS);
+    });
+    document.addEventListener('pointermove', event => {
+        if (!drag || event.pointerId !== drag.pointerId) return;
+        if (drag.active) { event.preventDefault(); moveDrag(event.clientX, event.clientY); return; }
+        const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
+        // Egérrel pár pixel mozgás indítja a húzást; érintésnél a hosszú nyomás előtti mozgás görgetés.
+        if (!drag.touch && distance > 5) startDrag();
+        else if (drag.touch && distance > 8) endDrag(false);
+    });
+    document.addEventListener('pointerup', event => { if (drag && event.pointerId === drag.pointerId) endDrag(true); });
+    document.addEventListener('pointercancel', event => { if (drag && event.pointerId === drag.pointerId) endDrag(false); });
+    // Húzás közben az ujj mozgása ne görgesse az oldalt.
+    sections.addEventListener('touchmove', event => { if (drag?.active) event.preventDefault(); }, { passive: false });
+    sections.addEventListener('contextmenu', event => { if (drag) event.preventDefault(); });
+
+    // ---------- ⋮ menü ----------
+
+    document.getElementById('noteMoreMenu')?.addEventListener('click', async event => {
+        const button = event.target.closest('[data-note-menu]');
+        if (!button) return;
+        const action = button.dataset.noteMenu;
+        if (action === 'new-category') {
+            const created = await createCategory();
+            if (created) { state.category = String(created.id); render(); }
+            return;
+        }
+        const format = action === 'export-md' ? 'md' : 'json';
+        try {
+            const blob = await noteApi.exportItems('note', format);
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `cloudmark-jegyzetek.${format}`;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        } catch (err) {
+            notify('Az exportálás nem sikerült.', 'error');
+        }
+    });
+
+    document.getElementById('noteImportInput')?.addEventListener('change', async event => {
+        const file = event.target.files[0];
+        event.target.value = '';
+        if (!file) return;
+        let items;
+        try {
+            const data = JSON.parse(await file.text());
+            items = Array.isArray(data) ? data : data.items;
+            if (!Array.isArray(items)) throw new Error('format');
+        } catch (err) {
+            notify('A fájl nem érvényes jegyzetlista (JSON tömb vagy CloudMark export).', 'error');
+            return;
+        }
+        if (!confirm(`${items.length} jegyzet importálása. Folytatod?`)) return;
+        try {
+            const result = await noteApi.importItems('note', items);
+            await load(true);
+            notify(`${result.imported} jegyzet importálva.`, 'success');
+        } catch (err) {
+            notify(err.message || 'Az importálás nem sikerült.', 'error');
+        }
     });
 
     // ---------- eszköztár ----------

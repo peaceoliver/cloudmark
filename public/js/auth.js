@@ -341,8 +341,8 @@ async function setUserActive(userId, isActive) {
     }
 }
 
-/** Opens the user settings modal with database values and local fallbacks. */
-async function openUserSettings() {
+/** Opens the Settings window on the given tab (default: the current view's tab) with database values and local fallbacks. */
+async function openUserSettings(tab) {
     const settings = await api.getUserSettings().catch(() => ({}));
     const titleValue = settings.fetchMetadataTitle ?? settings.fetchMetadata ?? localStorage.getItem(authConfig.storageKeys.fetchMetadataTitle) ?? 'true';
     const imageValue = settings.fetchMetadataImage ?? settings.fetchMetadata ?? localStorage.getItem(authConfig.storageKeys.fetchMetadataImage) ?? 'true';
@@ -354,7 +354,12 @@ async function openUserSettings() {
     document.getElementById('currentPassword').value = '';
     document.getElementById('newPassword').value = '';
     document.getElementById('confirmNewPassword').value = '';
+    document.getElementById('userStartViewSetting').value = ['notes', 'tasks', 'bookmarks', 'commands'].includes(settings.startView) ? settings.startView : 'last';
+    const prefs = window.CloudMark?.prefs;
+    document.querySelectorAll('#userSettingsForm [data-pref]').forEach(select => { if (prefs) select.value = prefs.get(select.dataset.pref); });
+    window.CloudMark?.settings?.showTab(typeof tab === 'string' ? tab : window.CloudMark?.views?.active);
     openModal('userSettingsModal');
+    window.CloudMark?.inbox?.loadSettings?.();
 }
 
 /** Completes the simulated email activation flow. */
@@ -576,6 +581,10 @@ document.getElementById('userSettingsForm').addEventListener('submit', async eve
     const sortMode = document.getElementById('userSortSetting').value;
     const metadataTitleSetting = document.getElementById('userMetadataTitleSetting').value;
     const metadataImageSetting = document.getElementById('userMetadataImageSetting').value;
+    const startView = document.getElementById('userStartViewSetting').value;
+    const prefs = window.CloudMark?.prefs;
+    const changedPrefs = Array.from(document.querySelectorAll('#userSettingsForm [data-pref]'))
+        .filter(select => prefs && select.value !== prefs.get(select.dataset.pref));
     const combinedMetadataSetting = metadataTitleSetting === 'false' && metadataImageSetting === 'false' ? 'false' : 'true';
     if (newPassword && currentPassword.length < 4) {
         showNotification('Jelszócseréhez add meg a jelenlegi jelszavadat.', 'error');
@@ -593,8 +602,14 @@ document.getElementById('userSettingsForm').addEventListener('submit', async eve
             api.saveUserSetting('sortMode', sortMode),
             api.saveUserSetting('fetchMetadataTitle', metadataTitleSetting),
             api.saveUserSetting('fetchMetadataImage', metadataImageSetting),
-            api.saveUserSetting('fetchMetadata', combinedMetadataSetting)
+            api.saveUserSetting('fetchMetadata', combinedMetadataSetting),
+            api.saveUserSetting('startView', startView)
         ]);
+        if (changedPrefs.length) {
+            changedPrefs.forEach(select => prefs.set(select.dataset.pref, select.value));
+            document.dispatchEvent(new CustomEvent('cloudmark:prefs'));
+        }
+        localStorage.setItem('cloudmark_start_view', startView);
         localStorage.setItem(authConfig.storageKeys.theme, theme);
         localStorage.setItem(authConfig.storageKeys.viewMode, viewMode);
         localStorage.setItem(authConfig.storageKeys.sortMode, sortMode);

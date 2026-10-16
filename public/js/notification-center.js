@@ -142,7 +142,6 @@
             : !settings.emailVerified ? `A(z) ${settings.email} cím nincs megerősítve, ezért oda nem küldünk.`
             : `E-mail cím: ${settings.email}`;
         settingsBox.innerHTML = `
-            <div class="bell-settings-title">Értesítési beállítások</div>
             <label class="bell-setting"><input type="checkbox" data-setting="notifyEmail" ${settings.notifyEmail ? 'checked' : ''}> E-mail emlékeztetők</label>
             <label class="bell-setting"><input type="checkbox" data-setting="digestOn" ${settings.dailyDigestTime ? 'checked' : ''}> Napi összefoglaló e-mailben
                 <input type="time" data-setting="dailyDigestTime" value="${esc(settings.dailyDigestTime || '07:30')}" ${settings.dailyDigestTime ? '' : 'disabled'} aria-label="Napi összefoglaló időpontja">
@@ -179,7 +178,10 @@
         toggle.setAttribute('aria-expanded', 'true');
         renderList();
         await refresh();
-        renderList();
+    }
+
+    /** Loads the notification settings into the Settings window (Általános fül). */
+    async function loadSettings() {
         try {
             const [settings] = await Promise.all([notifyApi.getNotificationSettings(), loadPushState()]);
             state.settings = settings;
@@ -215,7 +217,7 @@
     });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
 
-    panel.addEventListener('click', async event => {
+    async function onBellClick(event) {
         const entry = event.target.closest('[data-notification]');
         if (entry) {
             const item = state.items.find(candidate => String(candidate.id) === entry.dataset.notification);
@@ -229,6 +231,11 @@
         }
         const button = event.target.closest('[data-bell]');
         if (!button) return;
+        if (button.dataset.bell === 'open-settings') {
+            closePanel();
+            if (typeof openUserSettings === 'function') openUserSettings('general');
+            return;
+        }
         if (button.dataset.bell === 'remove-device') {
             button.disabled = true;
             try {
@@ -272,7 +279,9 @@
                 button.disabled = false;
             }
         }
-    });
+    }
+    panel.addEventListener('click', onBellClick);
+    settingsBox.addEventListener('click', onBellClick);
 
     settingsBox.addEventListener('change', async event => {
         const input = event.target.closest('[data-setting]');
@@ -326,5 +335,5 @@
         else clearInterval(state.timer);
     }
 
-    window.CloudMark.inbox = { onAuthChange, refresh };
+    window.CloudMark.inbox = { onAuthChange, refresh, loadSettings };
 })();

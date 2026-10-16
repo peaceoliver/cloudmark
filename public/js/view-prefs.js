@@ -7,7 +7,7 @@
         commandSort: ['newest', 'abc', 'used'],
         commandView: ['grid', 'compact', 'list'],
         noteSort: ['updated', 'newest', 'abc'],
-        noteView: ['grid', 'compact', 'list'],
+        noteView: ['grid', 'compact', 'list', 'kanban'],
         taskSort: ['due', 'priority', 'newest', 'abc'],
         taskView: ['list', 'compact']
     };
