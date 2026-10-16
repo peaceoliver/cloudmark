@@ -1,11 +1,11 @@
 /*
- * Közös Beállítások ablak fülekkel (Általános, Jegyzetek, Feladatok, Könyvjelzők, Parancsok),
+ * Közös Beállítások ablak fülekkel (Általános, Jegyzetek, Feladatok, Könyvjelzők, Parancsok, AI),
  * és a nézetek ⋮ menüinek „Beállítások…” pontja, amely az adott nézet fülén nyitja meg.
  */
 (function () {
     const modal = document.getElementById('userSettingsModal');
     if (!modal) return;
-    const TABS = ['general', 'notes', 'tasks', 'bookmarks', 'commands'];
+    const TABS = ['general', 'notes', 'tasks', 'bookmarks', 'commands', 'ai'];
 
     function showTab(name) {
         const tab = TABS.includes(name) ? name : 'general';

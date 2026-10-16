@@ -542,6 +542,7 @@
 
     /** Hides the editor wherever it is open (under the bar for a new command, in the window when editing). */
     function closeEditor() {
+        resetAi();
         newPanel.hidden = true;
         newButton.setAttribute('aria-expanded', 'false');
         if (editForm.parentElement !== modalBox) modalBox.appendChild(editForm);
@@ -560,6 +561,8 @@
         fillCategorySelect(categorySelect, categoryId ?? '', 'Inbox (nincs kategória)');
         if (typeof setTagInputValues === 'function') setTagInputValues('cmdTags', item?.tags || []);
         renderFragmentRows(item && item.fragments.length ? item.fragments : [{ content: '', language: defaultLanguageFor(categoryId) }]);
+        resetAi();
+        refreshAiRow();
         if (item) {
             // Meglévő parancs: a szerkesztő ablakban nyílik.
             newPanel.hidden = true;
@@ -597,6 +600,211 @@
         if (!remove) return;
         const index = Number(remove.closest('.fragment-row').dataset.index);
         renderFragmentRows(readFragments().filter((_, position) => position !== index));
+    });
+
+    // ---------- AI kitöltés ----------
+    // 1) bemásolt kódból kitölti a többi mezőt; 2) a címben / leírásban leírt célból megírja a parancsot is.
+    // Csak gombnyomásra fut, és csak javasol: a mezők kiemelve kapják az értéket, Visszavonom visszaállítja őket.
+
+    const ai = window.CloudMark.ai;
+    const aiRow = document.getElementById('cmdAiRow');
+    const aiButton = document.getElementById('cmdAiFillBtn');
+    const aiOverwrite = document.getElementById('cmdAiOverwrite');
+    const aiHint = document.getElementById('cmdAiHint');
+    const aiExtras = document.getElementById('cmdAiExtras');
+    const titleInput = document.getElementById('cmdTitle');
+    const descriptionInput = document.getElementById('cmdDescription');
+    const tagBox = editForm.querySelector('[data-tag-input="cmdTags"]');
+    let aiSnapshot = null;
+    let aiExtraTabs = [];
+    let aiRun = 0;
+    let aiBusy = false;
+
+    function snapshotForm() {
+        return {
+            title: titleInput.value,
+            description: descriptionInput.value,
+            categoryId: categorySelect.value,
+            tags: typeof getTagInputValues === 'function' ? getTagInputValues('cmdTags') : [],
+            fragments: readFragments()
+        };
+    }
+
+    function restoreForm(snapshot) {
+        titleInput.value = snapshot.title;
+        descriptionInput.value = snapshot.description;
+        categorySelect.value = snapshot.categoryId;
+        if (typeof setTagInputValues === 'function') setTagInputValues('cmdTags', snapshot.tags);
+        renderFragmentRows(snapshot.fragments.length ? snapshot.fragments : [{ content: '', language: '', label: null }]);
+    }
+
+    const aiReview = ai ? ai.createReview(document.getElementById('cmdAiReview'), {
+        onAccept: () => { aiSnapshot = null; },
+        onUndo: () => {
+            if (aiSnapshot) restoreForm(aiSnapshot);
+            aiSnapshot = null;
+            aiExtras.innerHTML = '';
+        }
+    }) : null;
+
+    function setAiBusy(busy) {
+        aiBusy = busy;
+        aiButton.disabled = busy;
+        aiButton.innerHTML = busy
+            ? '<i class="fa-solid fa-spinner fa-spin"></i> <span>AI dolgozik…</span>'
+            : '<i class="fa-solid fa-wand-magic-sparkles"></i> <span>AI kitöltés</span>';
+    }
+
+    function resetAi() {
+        aiRun += 1;
+        aiReview?.clear();
+        aiSnapshot = null;
+        aiExtraTabs = [];
+        aiExtras.innerHTML = '';
+        setAiBusy(false);
+    }
+
+    function showAiRow(current) {
+        const ready = Boolean(current && current.enabled && current.active);
+        aiRow.hidden = !(current && current.enabled);
+        aiButton.hidden = !ready;
+        aiOverwrite.parentElement.hidden = !ready;
+        aiHint.innerHTML = ready
+            ? `Másold be a parancsot, vagy írd a címbe, mit szeretnél. <span class="ai-fill-provider">${esc(current.active.providerLabel)}</span>`
+            : 'Az AI kitöltéshez add meg a saját kulcsodat: <button type="button" class="ai-link" data-open-settings="ai">Beállítások → AI</button>';
+    }
+
+    function refreshAiRow() {
+        if (ai) ai.status(true).then(showAiRow);
+    }
+
+    document.addEventListener('cloudmark:ai', event => showAiRow(event.detail));
+
+    function renderAiExtras(suggestion) {
+        const cards = [];
+        if (suggestion.newCategory && !categorySelect.value) {
+            cards.push(`<div class="ai-extra-card"><span><i class="fa-solid fa-folder-plus"></i> Új kategória javaslat: <strong>${esc(suggestion.newCategory)}</strong></span>
+                <button type="button" class="btn btn-secondary" data-ai-extra="category" data-name="${esc(suggestion.newCategory)}">Létrehozom</button></div>`);
+        }
+        aiExtraTabs = suggestion.extraTabs || [];
+        aiExtraTabs.forEach((tab, index) => {
+            const firstLine = tab.code.split('\n')[0];
+            cards.push(`<div class="ai-extra-card"><span><i class="fa-solid fa-plus"></i> Javasolt fül: <strong>${esc(tab.label || tab.language || 'Új fül')}</strong> <code>${esc(firstLine.length > 60 ? `${firstLine.slice(0, 60)}…` : firstLine)}</code></span>
+                <button type="button" class="btn btn-secondary" data-ai-extra="tab" data-index="${index}">Fül hozzáadása</button></div>`);
+        });
+        aiExtras.innerHTML = cards.join('');
+    }
+
+    function applySuggestion(suggestion, providerLabel) {
+        // Ha még nyitott egy korábbi javaslat, a Visszavonom az AI előtti állapotra álljon vissza.
+        const snapshot = aiReview.active && aiSnapshot ? aiSnapshot : snapshotForm();
+        const overwrite = aiOverwrite.checked;
+        // Leírt célnál a cím és a leírás mindig rendes szövegre íródik át.
+        const rewriteText = suggestion.mode === 'fromText';
+        const changed = [];
+        const setField = (input, value, force) => {
+            if (!value || input.value === value || (!force && !overwrite && input.value.trim())) return;
+            input.value = value;
+            changed.push(input);
+        };
+        setField(titleInput, suggestion.title, rewriteText);
+        setField(descriptionInput, suggestion.description, rewriteText);
+        if (suggestion.categoryId && (overwrite || !categorySelect.value) && categorySelect.value !== String(suggestion.categoryId)
+            && categorySelect.querySelector(`option[value="${Number(suggestion.categoryId)}"]`)) {
+            categorySelect.value = String(suggestion.categoryId);
+            changed.push(categorySelect);
+        }
+        const currentTags = typeof getTagInputValues === 'function' ? getTagInputValues('cmdTags') : [];
+        if (suggestion.tags.length && (overwrite || !currentTags.length) && suggestion.tags.join('\n') !== currentTags.join('\n')) {
+            setTagInputValues('cmdTags', suggestion.tags);
+            changed.push(tagBox);
+        }
+        const fragments = readFragments();
+        if (!fragments.length) fragments.push({ content: '', language: '', label: null });
+        let fragmentChanged = false;
+        if (rewriteText && suggestion.code && !fragments[0].content.trim()) {
+            fragments[0].content = suggestion.code;
+            fragmentChanged = true;
+        }
+        if (suggestion.language && (overwrite || !fragments[0].language) && fragments[0].language !== suggestion.language) {
+            fragments[0].language = suggestion.language;
+            fragmentChanged = true;
+        }
+        if (fragmentChanged) {
+            renderFragmentRows(fragments);
+            changed.push(fragmentsBox.querySelector('.fragment-row'));
+        }
+        renderAiExtras(suggestion);
+        if (!changed.length) {
+            if (!aiExtras.children.length) notify('Nincs mit kitölteni. Az összes mező újraírásához jelöld be a „Mindent újraír” lehetőséget.', 'info');
+            return;
+        }
+        aiSnapshot = snapshot;
+        aiReview.start(changed, `AI javaslat (${providerLabel}). Nézd át, írd át, ha kell, majd fogadd el vagy vond vissza.`);
+    }
+
+    async function runAiFill() {
+        if (!ai || aiBusy || aiButton.hidden || aiRow.hidden) return;
+        const first = readFragments()[0] || { content: '', language: '' };
+        const input = { title: titleInput.value, description: descriptionInput.value, code: first.content, language: first.language || '' };
+        if (!input.code.trim() && !input.title.trim() && !input.description.trim()) {
+            notify('Írd be a parancsot, vagy a címbe vagy a leírásba azt, hogy mit szeretnél.', 'error');
+            titleInput.focus();
+            return;
+        }
+        const run = ++aiRun;
+        setAiBusy(true);
+        try {
+            const result = await ai.fill('command.fill', input);
+            // Közben bezárták vagy újranyitották az űrlapot: a javaslat már nem ide tartozik.
+            if (run !== aiRun) return;
+            applySuggestion(result.suggestion, result.providerLabel);
+        } catch (err) {
+            if (run === aiRun) notify(err.message || 'Az AI kitöltés nem sikerült.', 'error');
+        } finally {
+            if (run === aiRun) setAiBusy(false);
+        }
+    }
+
+    aiButton.addEventListener('click', runAiFill);
+    editForm.addEventListener('keydown', event => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            event.preventDefault();
+            runAiFill();
+        }
+    });
+
+    aiExtras.addEventListener('click', async event => {
+        const button = event.target.closest('[data-ai-extra]');
+        if (!button) return;
+        const card = button.closest('.ai-extra-card');
+        if (button.dataset.aiExtra === 'category') {
+            const name = button.dataset.name;
+            button.disabled = true;
+            try {
+                await commandApi.createCategoryOfKind('command', name);
+                await refreshCategories();
+                const created = state.categories.find(category => category.name === name);
+                fillCategorySelect(categorySelect, created ? created.id : '', 'Inbox (nincs kategória)');
+                if (aiReview.active) aiReview.mark(categorySelect);
+                card.remove();
+                notify(`„${name}” kategória létrehozva.`, 'success');
+            } catch (err) {
+                button.disabled = false;
+                notify(err.message || 'A kategória létrehozása nem sikerült.', 'error');
+            }
+            return;
+        }
+        const tab = aiExtraTabs[Number(button.dataset.index)];
+        if (!tab) return;
+        if (!aiReview.active) aiSnapshot = snapshotForm();
+        const fragments = readFragments();
+        fragments.push({ content: tab.code, language: tab.language || null, label: tab.label || null });
+        renderFragmentRows(fragments);
+        const rows = fragmentsBox.querySelectorAll('.fragment-row');
+        if (aiReview.active) aiReview.mark(rows[rows.length - 1]);
+        else aiReview.start([rows[rows.length - 1]], 'AI javasolt fül hozzáadva. Fogadd el vagy vond vissza.');
+        card.remove();
     });
 
     document.getElementById('cmdCancelBtn').addEventListener('click', closeEditor);

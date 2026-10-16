@@ -66,6 +66,7 @@
             window.CloudMark.commands?.reset();
             window.CloudMark.notes?.reset();
             window.CloudMark.tasks?.reset();
+            window.CloudMark.ai?.reset();
         }
         lastUserId = userId;
         window.CloudMark.inbox?.onAuthChange(user);

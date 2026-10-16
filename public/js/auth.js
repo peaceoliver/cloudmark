@@ -360,6 +360,7 @@ async function openUserSettings(tab) {
     window.CloudMark?.settings?.showTab(typeof tab === 'string' ? tab : window.CloudMark?.views?.active);
     openModal('userSettingsModal');
     window.CloudMark?.inbox?.loadSettings?.();
+    window.CloudMark?.ai?.loadSettings?.();
 }
 
 /** Completes the simulated email activation flow. */

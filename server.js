@@ -14,6 +14,7 @@ const { registerTaskRoutes } = require('./routes/tasks');
 const { registerSearchRoutes } = require('./routes/search');
 const { createPushService, registerPushRoutes } = require('./routes/push');
 const { registerNotificationRoutes, DIGEST_TIME_PATTERN, QUIET_HOURS_PATTERN } = require('./routes/notifications');
+const { registerAiRoutes } = require('./routes/ai');
 const taskDates = require('./public/js/task-parser');
 
 const app = express();
@@ -336,6 +337,8 @@ async function initDatabase() {
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '007_notifications.sql'), 'utf8'));
         // Telefonos/böngészős push feliratkozások és az értesítések „Kész”/„Szundi” gombjainak tokenjei.
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '008_push.sql'), 'utf8'));
+        // Saját AI kulcsok (Gemini, Claude, OpenAI-kompatibilis) titkosítva az „AI kitöltés” gombokhoz.
+        await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '009_ai.sql'), 'utf8'));
 
         client.release();
         console.log(`[OK] Supabase PostgreSQL tablak sikeresen ellenorizve / letrehozva!`);
@@ -2334,6 +2337,7 @@ const taskActions = registerTaskRoutes(app, { pool, requireAuth, recordAuditEven
 const push = createPushService({ pool, getSubject: () => (getPublicBaseUrl().startsWith('https://') ? getPublicBaseUrl() : null) });
 registerPushRoutes(app, { pool, requireAuth, recordAuditEvent, push });
 registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer: getConfiguredMailer, getPublicBaseUrl, push, taskActions });
+registerAiRoutes(app, { pool, requireAuth, recordAuditEvent });
 
 // Főoldal kiszolgálása
 app.get('*', (req, res) => {
