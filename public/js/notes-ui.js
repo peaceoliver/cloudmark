@@ -369,6 +369,7 @@
                     </label>
                     <input type="text" class="note-editor-tags" placeholder="Címkék vesszővel (pl. ötlet, munka)" value="${esc((note.tags || []).join(', '))}" aria-label="Címkék">
                 </div>
+                <div class="note-ai-slot"></div>
                 <div class="note-editor-bar">
                     <div class="note-color-menu">
                         <button type="button" class="note-action" data-editor="palette" title="Háttérszín"><i class="fa-solid fa-palette"></i></button>
@@ -376,6 +377,14 @@
                     </div>
                     <button type="button" class="note-action" data-editor="toggle-checklist" title="${checklist ? 'Szöveges jegyzet' : 'Jelölőnégyzetek'}"><i class="fa-regular ${checklist ? 'fa-file-lines' : 'fa-square-check'}"></i></button>
                     <button type="button" class="note-action ${note.pinned ? 'is-pinned' : ''}" data-editor="pin" title="Rögzítés"><i class="fa-solid fa-thumbtack"></i></button>
+                    ${aiEnabled ? `<div class="note-ai-menu-wrap">
+                        <button type="button" class="note-action note-ai-btn" data-editor="ai" title="AI segítség" aria-haspopup="true"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+                        <div class="note-ai-menu" role="menu">
+                            <button type="button" class="cmd-dropdown-item" data-editor="ai-fill"><i class="fa-solid fa-tags"></i> Cím, címkék, kategória</button>
+                            <button type="button" class="cmd-dropdown-item" data-editor="ai-summary" ${checklist ? 'disabled title="Listás jegyzetnél nem érhető el"' : ''}><i class="fa-solid fa-align-left"></i> Összefoglaló</button>
+                            <button type="button" class="cmd-dropdown-item" data-editor="ai-tasks" ${note.id ? '' : 'disabled title="Mentés után érhető el"'}><i class="fa-solid fa-list-check"></i> Teendők kiszedése</button>
+                        </div>
+                    </div>` : ''}
                     <span class="note-editor-status" aria-live="polite"></span>
                     <button type="button" class="btn btn-secondary note-editor-close" data-editor="close">Bezárás</button>
                 </div>
@@ -428,6 +437,129 @@
         };
     }
 
+    // ---------- AI segítség a szerkesztőben: javaslatkártya, a jegyzet szövegét nem írja át ----------
+
+    const ai = window.CloudMark.ai;
+    let aiEnabled = false;
+    const AI_WARNED_KEY = 'cloudmark_ai_note_warned';
+
+    if (ai) {
+        document.addEventListener('cloudmark:ai', event => { aiEnabled = Boolean(event.detail && event.detail.enabled); });
+        ai.status().then(current => { aiEnabled = Boolean(current && current.enabled); });
+    }
+
+    /** One-time reminder that the note text goes to the AI provider. */
+    function confirmNoteAi() {
+        try { if (localStorage.getItem(AI_WARNED_KEY)) return true; } catch (err) { /* privát mód */ }
+        const ok = confirm('A jegyzet szövege elmegy az AI szolgáltatóhoz (a Gemini ingyenes szintjén a Google felhasználhatja a termékei fejlesztésére). Jelszót, tokent ne küldj vele.\n\nFolytatod?');
+        if (ok) { try { localStorage.setItem(AI_WARNED_KEY, '1'); } catch (err) { /* privát mód */ } }
+        return ok;
+    }
+
+    function noteAiInput(note) {
+        const checklist = checklistOf(note);
+        return checklist
+            ? { title: note.title, checklist: checklist.map(entry => entry.text) }
+            : { title: note.title, body: note.body || '' };
+    }
+
+    async function runNoteAi(action, root, getBase, onChange) {
+        const base = getBase();
+        if (!base) return;
+        const note = readEditor(root, base);
+        const input = noteAiInput(note);
+        if (!(input.body || '').trim() && !(input.checklist || []).length && !(action === 'ai-fill' && note.title)) {
+            notify('Írj előbb valamit a jegyzetbe.', 'info');
+            return;
+        }
+        if (!confirmNoteAi()) return;
+        const button = root.querySelector('[data-editor="ai"]');
+        const name = { 'ai-fill': 'note.fill', 'ai-summary': 'note.summary', 'ai-tasks': 'note.tasks' }[action];
+        const suggestion = await ai.run(name, input, button);
+        // Közben bezárták vagy másik jegyzetet nyitottak meg.
+        const now = getBase();
+        if (!suggestion || !now || (now !== base && (!base.id || now.id !== base.id))) return;
+        const slot = root.querySelector('.note-ai-slot');
+        if (!slot) return;
+        const card = action === 'ai-fill' ? fillCard(root, suggestion, onChange)
+            : action === 'ai-summary' ? summaryCard(root, suggestion, onChange)
+                : tasksCard(base, suggestion);
+        if (!card) return;
+        slot.innerHTML = '';
+        slot.appendChild(card);
+    }
+
+    function fillCard(root, suggestion, onChange) {
+        const editor = root.querySelector('.note-editor');
+        const titleInput = editor.querySelector('.note-editor-title');
+        const tagsInput = editor.querySelector('.note-editor-tags');
+        const select = editor.querySelector('.note-editor-category');
+        const tags = parseTags(tagsInput.value);
+        const newTags = suggestion.tags.filter(tag => !tags.some(existing => existing.toLowerCase() === tag.toLowerCase()));
+        const current = categoryValue(select);
+        const rows = [];
+        if (suggestion.title && suggestion.title !== titleInput.value.trim()) rows.push({ key: 'title', html: `Cím: <strong>${esc(suggestion.title)}</strong>`, checked: !titleInput.value.trim() });
+        if (newTags.length) rows.push({ key: 'tags', html: `Címkék: ${newTags.map(tag => `<strong>#${esc(tag)}</strong>`).join(' ')}` });
+        if (suggestion.categoryId && suggestion.categoryId !== current) rows.push({ key: 'category', html: `Kategória: <strong>${esc(suggestion.categoryName)}</strong>`, checked: !current });
+        else if (!suggestion.categoryId && suggestion.newCategory && !current) rows.push({ key: 'newCategory', html: `Új kategória: <strong>${esc(suggestion.newCategory)}</strong> (létrehozom)`, checked: false });
+        if (!rows.length) { notify('Az AI nem talált új címet, címkét vagy kategóriát.', 'info'); return null; }
+        return ai.suggestionCard({
+            title: `AI javaslat (${suggestion.providerLabel})`,
+            rows,
+            onAccept: async keys => {
+                if (keys.includes('title')) titleInput.value = suggestion.title;
+                if (keys.includes('tags')) tagsInput.value = [...tags, ...newTags].join(', ');
+                let categoryId = keys.includes('category') ? suggestion.categoryId : null;
+                if (keys.includes('newCategory')) {
+                    setCategories(await noteApi.createCategoryOfKind('note', suggestion.newCategory));
+                    categoryId = state.categories.find(category => category.name.toLowerCase() === suggestion.newCategory.toLowerCase())?.id ?? null;
+                    document.querySelectorAll('.note-editor-category').forEach(other => { other.innerHTML = categoryOptionsHtml(categoryValue(other)); });
+                    renderCategories();
+                }
+                if (categoryId) select.innerHTML = categoryOptionsHtml(categoryId);
+                onChange();
+            }
+        });
+    }
+
+    function summaryCard(root, suggestion, onChange) {
+        const body = root.querySelector('.note-editor-body');
+        if (!suggestion.summary || !body) { notify('Az AI nem adott összefoglalót.', 'info'); return null; }
+        return ai.suggestionCard({
+            title: `Összefoglaló (${suggestion.providerLabel})`,
+            rows: [{ key: 'summary', html: esc(suggestion.summary) }],
+            acceptLabel: 'Beszúrás az elejére',
+            onAccept: async () => {
+                body.value = `${suggestion.summary}\n\n${body.value}`;
+                onChange();
+            }
+        });
+    }
+
+    function tasksCard(base, suggestion) {
+        if (!suggestion.tasks.length) { notify('Az AI nem talált teendőt a jegyzetben.', 'info'); return null; }
+        const timeZone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (err) { return undefined; } })();
+        return ai.suggestionCard({
+            title: `Teendők a jegyzetből (${suggestion.providerLabel})`,
+            rows: suggestion.tasks.map((task, index) => ({ key: index, html: `${esc(task.title)}${task.dueDate ? ` <small>· ${esc(task.dueDate)}</small>` : ''}` })),
+            acceptLabel: 'Feladatok létrehozása',
+            onAccept: async keys => {
+                const parser = window.CloudMark.taskParser;
+                for (const index of keys) {
+                    const task = suggestion.tasks[index];
+                    const dueAt = task.dueDate && parser ? parser.zonedTimeToUtc(task.dueDate, '00:00', parser.isValidTimeZone(timeZone) ? timeZone : parser.DEFAULT_TIME_ZONE).toISOString() : null;
+                    await noteApi.createItem({
+                        type: 'task', title: task.title, dueAt, dueAllDay: Boolean(dueAt), fragments: [],
+                        links: [{ targetType: 'item', targetId: Number(base.id) }]
+                    });
+                }
+                window.CloudMark.tasks?.reload?.();
+                window.CloudMark.tasks?.refreshBadge?.();
+                notify(`${keys.length} feladat létrehozva a Feladatok között (a jegyzethez kapcsolva).`, 'success');
+            }
+        });
+    }
+
     /** Wires an editor rendered into `root`; `onChange` runs after every edit, `onClose` on the close button. */
     function bindEditor(root, getBase, setBase, { onChange, onClose }) {
         root.addEventListener('input', event => {
@@ -471,6 +603,15 @@
             const action = button.dataset.editor;
             if (action === 'palette') {
                 editor.querySelector('.note-palette').classList.toggle('show');
+                return;
+            }
+            if (action === 'ai') {
+                editor.querySelector('.note-ai-menu').classList.toggle('show');
+                return;
+            }
+            if (action === 'ai-fill' || action === 'ai-summary' || action === 'ai-tasks') {
+                editor.querySelector('.note-ai-menu').classList.remove('show');
+                runNoteAi(action, root, getBase, onChange);
                 return;
             }
             if (action === 'set-color') {

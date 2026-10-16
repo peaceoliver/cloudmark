@@ -2547,6 +2547,29 @@ button.new-item-bar:focus-visible, .new-item-bar:focus-within { border-color: va
 .ai-extra-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.5rem 0.75rem; border: 1px dashed var(--accent); border-radius: 10px; font-size: 0.85rem; color: var(--text-primary); }
 .ai-extra-card > span { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
 .ai-extra-card code { color: var(--text-secondary); font-size: 0.78rem; }
+.ai-suggest-card { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.65rem 0.75rem; border: 1px dashed var(--accent); border-radius: 10px; background: var(--accent-glow); color: var(--text-primary); font-size: 0.85rem; }
+.ai-suggest-head { font-weight: 600; }
+.ai-suggest-head > i { color: var(--accent); }
+.ai-suggest-rows { display: flex; flex-direction: column; gap: 0.35rem; }
+.ai-suggest-row { display: flex; align-items: flex-start; gap: 0.45rem; margin: 0; font-weight: 400; color: var(--text-primary); cursor: pointer; overflow-wrap: anywhere; }
+.ai-suggest-row input[type="checkbox"] { width: auto; min-width: 0; height: auto; margin: 0.2rem 0 0; padding: 0; flex-shrink: 0; }
+.ai-suggest-row > span { flex: 1 1 auto; min-width: 0; text-align: left; }
+.ai-suggest-row small { color: var(--text-secondary); }
+.ai-suggest-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; }
+.task-ai-tools { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.task-ai-slot:empty, .note-ai-slot:empty { display: none; }
+.task-ai-split { margin-left: auto; font-size: 0.78rem; font-weight: 400; text-decoration: none; }
+.task-ai-split:hover { text-decoration: underline; }
+.task-quick-add .task-quick-ai { padding-left: 0.75rem; padding-right: 0.75rem; }
+.task-quick-add .task-quick-ai[hidden] { display: none; }
+.task-chip-ai { border-color: var(--accent); color: var(--accent); }
+.task-quick-ai-dismiss { font-size: 0.78rem; }
+.note-ai-menu-wrap { position: relative; }
+.note-ai-btn { color: var(--accent); }
+.note-ai-menu { position: absolute; bottom: 2.3rem; left: 0; z-index: 50; display: none; min-width: 220px; padding: 0.35rem; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-card); box-shadow: var(--shadow); }
+.note-ai-menu.show { display: flex; flex-direction: column; }
+.note-ai-menu .cmd-dropdown-item:disabled { opacity: 0.5; cursor: not-allowed; }
+.note-ai-slot { margin: 0.25rem 0; }
 .ai-settings { display: flex; flex-direction: column; gap: 0.6rem; }
 .ai-settings [hidden] { display: none; }
 .ai-settings .settings-hint a { color: var(--accent); }

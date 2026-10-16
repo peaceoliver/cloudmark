@@ -4,6 +4,8 @@
  */
 const rateLimit = require('express-rate-limit');
 const { ACTIONS, MAX_INPUT_CHARS, encryptSecret, decryptSecret } = require('./ai-actions');
+const taskDates = require('../public/js/task-parser');
+const { publicHttpUrl } = require('./safe-fetch');
 const { PROVIDERS, AiError, listModels, generate, pickDefaultModel, assertPublicBaseUrl, DEFAULT_OPENAI_BASE_URL } = require('./ai-providers');
 
 const MAX_KEYS_PER_USER = 10;
@@ -29,7 +31,7 @@ function publicKey(row) {
     };
 }
 
-function registerAiRoutes(app, { pool, requireAuth, recordAuditEvent }) {
+function registerAiRoutes(app, { pool, requireAuth, recordAuditEvent, fetchPageMetadata = async () => ({}) }) {
     const aiLimiter = rateLimit({
         windowMs: 60 * 1000,
         limit: 10,
@@ -196,11 +198,18 @@ function registerAiRoutes(app, { pool, requireAuth, recordAuditEvent }) {
             const keyResult = await pool.query('SELECT * FROM user_ai_keys WHERE user_id = $1 AND is_active LIMIT 1', [req.user.id]);
             const row = keyResult.rows[0];
             if (!row) return res.status(400).json({ error: 'Nincs aktív AI kulcs. Add meg a Beállítások AI fülén.' });
-            const [categories, tags] = await Promise.all([
+            const [categories, tags] = action.kind ? await Promise.all([
                 pool.query('SELECT id, name, default_language FROM categories WHERE owner_user_id = $1 AND kind = $2 ORDER BY name', [req.user.id, action.kind]),
                 pool.query('SELECT name FROM tags WHERE user_id = $1 ORDER BY name LIMIT 300', [req.user.id])
-            ]);
+            ]) : [{ rows: [] }, { rows: [] }];
             const context = { categories: categories.rows, tags: tags.rows.map(tag => tag.name) };
+            if (action.needsToday) {
+                // A dátumokat a felhasználó időzónájában kell érteni („holnap”, „péntek”).
+                context.timeZone = taskDates.isValidTimeZone(input.timeZone) ? input.timeZone : taskDates.DEFAULT_TIME_ZONE;
+                context.today = taskDates.localDate(new Date(), context.timeZone);
+            }
+            // Könyvjelzőnél az oldal címe és leírása is segít; csak nyilvános címről kéri le.
+            if (action.fetchPage && publicHttpUrl(input.url)) context.page = await fetchPageMetadata(String(input.url).trim());
             const prompt = action.build(input, context);
             const raw = await generate(row.provider, { ...credentialsOf(row), model: row.model || pickDefaultModel(row.provider, []), ...prompt });
             const suggestion = action.validate(raw, input, context);

@@ -67,6 +67,9 @@
             window.CloudMark.notes?.reset();
             window.CloudMark.tasks?.reset();
             window.CloudMark.ai?.reset();
+            window.CloudMark.bookmarkAi?.reset();
+            // A ✨ gombok a bejelentkezett felhasználó kulcsa szerint jelennek meg.
+            if (user) window.CloudMark.ai?.refresh();
         }
         lastUserId = userId;
         window.CloudMark.inbox?.onAuthChange(user);

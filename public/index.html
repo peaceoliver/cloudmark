@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261016-ai">
+    <link rel="stylesheet" href="/css/styles.css?v=20261016-ai2">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -138,6 +138,19 @@
                         <i class="fa-solid fa-arrow-down"></i> Bookmarkletből beérkezett adatok!
                     </div>
             <form id="bookmarkForm" class="add-form-grid" style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="ai-fill-row" id="bmAiRow" hidden>
+                    <button type="button" class="btn btn-secondary ai-fill-btn" id="bmAiFillBtn" title="AI kitöltés (Ctrl+Enter)"><i class="fa-solid fa-wand-magic-sparkles"></i> <span>AI kitöltés</span></button>
+                    <label class="ai-overwrite" title="A már kitöltött mezőket is újraírja"><input type="checkbox" id="bmAiOverwrite"> Mindent újraír</label>
+                    <small class="ai-fill-hint" id="bmAiHint">Írd be az URL-t, az AI kitölti a többit.</small>
+                </div>
+                <div class="ai-review-bar" id="bmAiReview" hidden>
+                    <span class="ai-review-text"><i class="fa-solid fa-wand-magic-sparkles"></i> <span data-ai-review-text></span></span>
+                    <span class="ai-review-actions">
+                        <button type="button" class="btn btn-secondary" data-ai-review="undo"><i class="fa-solid fa-rotate-left"></i> Visszavonom</button>
+                        <button type="button" class="btn btn-primary" data-ai-review="accept"><i class="fa-solid fa-check"></i> Elfogadom</button>
+                    </span>
+                </div>
+                <div class="ai-extras" id="bmAiExtras"></div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div class="form-control">
                         <label>Cím</label>
@@ -407,6 +420,7 @@
                 <form class="task-quick-add new-item-bar" id="taskQuickAddForm" autocomplete="off">
                     <i class="fa-solid fa-plus new-item-icon" aria-hidden="true"></i>
                     <input id="taskQuickAdd" type="text" maxlength="500" placeholder="Új feladat, pl. „holnap 9-kor számla befizetése !1 #pénzügy”" aria-label="Új feladat (N)">
+                    <button type="button" class="btn btn-secondary ai-fill-btn task-quick-ai" id="taskQuickAi" title="AI: feladat a beírt mondatból (Ctrl+Enter)" aria-label="AI: feladat a beírt mondatból" hidden><i class="fa-solid fa-wand-magic-sparkles"></i></button>
                     <button type="submit" class="btn btn-primary">Hozzáadás</button>
                 </form>
                 <div class="task-quick-preview" id="taskQuickPreview" aria-live="polite"></div>
@@ -1079,6 +1093,19 @@
             </div>
             <form id="editBookmarkForm" class="modal-form" style="display: flex; flex-direction: column; gap: 1rem;">
                 <input type="hidden" id="editBmId">
+                <div class="ai-fill-row" id="editBmAiRow" hidden>
+                    <button type="button" class="btn btn-secondary ai-fill-btn" id="editBmAiFillBtn" title="AI kitöltés (Ctrl+Enter)"><i class="fa-solid fa-wand-magic-sparkles"></i> <span>AI kitöltés</span></button>
+                    <label class="ai-overwrite" title="A már kitöltött mezőket is újraírja"><input type="checkbox" id="editBmAiOverwrite"> Mindent újraír</label>
+                    <small class="ai-fill-hint" id="editBmAiHint">Írd be az URL-t, az AI kitölti a többit.</small>
+                </div>
+                <div class="ai-review-bar" id="editBmAiReview" hidden>
+                    <span class="ai-review-text"><i class="fa-solid fa-wand-magic-sparkles"></i> <span data-ai-review-text></span></span>
+                    <span class="ai-review-actions">
+                        <button type="button" class="btn btn-secondary" data-ai-review="undo"><i class="fa-solid fa-rotate-left"></i> Visszavonom</button>
+                        <button type="button" class="btn btn-primary" data-ai-review="accept"><i class="fa-solid fa-check"></i> Elfogadom</button>
+                    </span>
+                </div>
+                <div class="ai-extras" id="editBmAiExtras"></div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div class="form-control">
                         <label>Cím</label>
@@ -1156,7 +1183,7 @@
                 <p>Gyakran használt parancssorok kategóriákba rendezve, több kódfüllel. Egy kattintással másolható az egész, egy sor, Markdownként vagy kommentek nélkül.</p>
 
                 <h3><i class="fa-solid fa-wand-magic-sparkles"></i> AI kitöltés</h3>
-                <p>A Beállítások → AI fülön megadhatod a saját AI kulcsodat (Gemini ingyenes, Claude vagy OpenAI-kompatibilis). Ezután az új parancs űrlapon az <strong>AI kitöltés</strong> gomb (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>) a bemásolt parancsból kitölti a többi mezőt, vagy a címbe írt célból megírja a parancsot. A javaslatot elfogadod vagy visszavonod; az AI semmit nem ment magától.</p>
+                <p>A Beállítások → AI fülön megadhatod a saját AI kulcsodat (Gemini ingyenes, Claude vagy OpenAI-kompatibilis). Ezután a ✨ gombok (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>): a parancs űrlap a bemásolt parancsból kitölti a többi mezőt, vagy a címbe írt célból megírja a parancsot; a könyvjelző űrlap az URL-ből címet, leírást, címkéket, kategóriát javasol; a feladatoknál kötetlen mondatból feladat lesz, a panelben címke, projekt és lépésekre bontás; a jegyzetszerkesztőben cím, címke, kategória, összefoglaló és teendők kiszedése. A javaslatot elfogadod vagy elveted; az AI semmit nem ment magától.</p>
 
                 <h3><i class="fa-solid fa-gear"></i> Menük és beállítások</h3>
                 <p>Minden nézet sorának végén ugyanaz a <strong>⋮</strong> menü: kategóriák, import/export és <strong>Beállítások…</strong>. A Beállítások ablak fülei: Általános (téma, induló nézet, értesítések, jelszó), Jegyzetek, Feladatok, Könyvjelzők, Parancsok, AI. A rendezés és a nézet a fiókhoz mentődik, így minden eszközön ugyanaz.</p>
@@ -1184,14 +1211,15 @@
     <script src="/js/app.js?v=20261016-settings"></script>
     <script src="/js/view-prefs.js?v=20261016-settings"></script>
     <script src="/js/main-menu.js?v=20261016-settings"></script>
-    <script src="/js/ai-ui.js?v=20261016-ai"></script>
+    <script src="/js/ai-ui.js?v=20261016-ai2"></script>
     <script src="/js/commands-ui.js?v=20261016-langlist"></script>
-    <script src="/js/notes-ui.js?v=20261016-palette"></script>
-    <script src="/js/tasks-ui.js?v=20261016-palette"></script>
+    <script src="/js/bookmark-ai.js?v=20261016-ai2"></script>
+    <script src="/js/notes-ui.js?v=20261016-ai2"></script>
+    <script src="/js/tasks-ui.js?v=20261016-ai2"></script>
     <script src="/js/notification-center.js?v=20261016-settings"></script>
     <script src="/js/settings-ui.js?v=20261016-ai"></script>
     <script src="/js/palette.js?v=20261016-palette"></script>
-    <script src="/js/views.js?v=20261016-ai"></script>
+    <script src="/js/views.js?v=20261016-ai2"></script>
     <script src="/js/pwa.js?v=20261016-cdnfix"></script>
 </body>
 </html>

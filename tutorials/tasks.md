@@ -25,6 +25,7 @@ Jelölések: `!1`–`!4` prioritás, `#címke`, `@Projekt` (ha nincs ilyen proje
 
 ## Tippek
 
+- **AI:** saját AI kulccsal a ✨ gomb kötetlen mondatból készít feladatot, a panelben címkét, projektet javasol és lépésekre bont. Lásd [ai-assist.md](ai-assist.md).
 - **Okos listák:** Ma (a lejártakkal), Következő 7 nap, Beérkezett, Mind, Kész, Kuka.
 - **Kipipálás:** az ismétlődő feladat a következő esedékességre ugrik. Alul „Visszavonás” gomb jelenik meg.
 - **Billentyűk:** `↑`/`↓` mozgás, `Enter` részletek, `szóköz` kész, `T` áthelyezés mára, `Esc` panel bezárása.

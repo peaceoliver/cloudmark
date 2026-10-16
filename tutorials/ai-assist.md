@@ -1,7 +1,8 @@
 # AI kitöltés saját kulccsal
 
 A saját AI kulcsoddal (Gemini, Claude vagy egy OpenAI-kompatibilis szolgáltató) az **✨ AI kitöltés** gomb
-kitölti az Új parancs űrlap mezőit. Az AI csak a gomb megnyomására fut, és semmit nem ment el magától.
+kitölti a parancsok és a könyvjelzők űrlapját, a feladatoknál és a jegyzeteknél pedig javaslatot ad. Az AI csak a
+gomb megnyomására fut, és semmit nem ment el magától.
 
 ## Kulcs megadása
 
@@ -34,6 +35,37 @@ az AI gomb nem látszik.
 Ha az AI egy másik változatot is javasol (pl. PowerShell egy bash parancshoz), egy külön kártyán jelenik meg:
 **Fül hozzáadása**. Ha egyik kategóriád sem illik, új kategória nevét javasolhatja: **Létrehozom**.
 
+## Könyvjelző kitöltése
+
+1. Könyvjelzők fül → **Új könyvjelző hozzáadása** (vagy egy könyvjelző **Szerkesztés** ablaka).
+2. Írd vagy másold be az **URL**-t.
+3. Kattints az **✨ AI kitöltés** gombra (vagy `Ctrl`+`Enter`). Az AI megnézi az oldal címét és leírását, és javasol
+   címet (az oldal nyelvén, a márkanévvel), leírást, címkéket és kategóriát.
+4. **Elfogadom** vagy **Visszavonom**, majd **Mentés**. Ha új kategóriát javasol, a **Létrehozom** gombbal hozod létre.
+
+## Feladatok
+
+- **Gyors felvétel kötetlen mondatból:** írd be a felső mezőbe, amit kell csinálni, pl. „jövő kedden fel kéne hívni a
+  könyvelőt a számlák miatt, fontos”, és kattints a sor végi **✨** gombra (vagy `Ctrl`+`Enter`). Alatta megjelenik a
+  javaslat („AI” jellel): cím, határidő, prioritás, címkék, projekt. **Enter**rel mented, az **Elvetem** vagy a szöveg
+  átírása eltünteti. A megszokott `holnap 9`, `!1`, `#címke` írásmód AI nélkül is működik.
+- **Címkék, projekt, prioritás:** nyisd meg a feladatot, és kattints az **✨ AI: címkék, projekt** gombra. A
+  javaslatkártyán pipáld ki, ami kell, majd **Elfogadom**.
+- **Bontás lépésekre:** a részletes panel Részfeladatok részénél a **Bontsd lépésekre** 3–7 lépést javasol. A kipipáltakból
+  a **Részfeladatok létrehozása** gomb részfeladatot készít.
+
+## Jegyzetek
+
+A jegyzetszerkesztő alsó sávjában a **✨** gomb menüje:
+
+- **Cím, címkék, kategória:** javaslatkártya pipákkal; új kategóriát is javasolhat (ezt alapból nem pipálja be).
+- **Összefoglaló:** 2–4 mondatos összefoglaló, a **Beszúrás az elejére** gombbal kerül a jegyzet elejére. Listás jegyzetnél nem érhető el.
+- **Teendők kiszedése:** a jegyzetből feladatokat javasol; a kipipáltakat a **Feladatok létrehozása** gomb felveszi a
+  Feladatok közé, a jegyzethez kapcsolva. Új jegyzetnél az első mentés után érhető el.
+
+Az AI a jegyzet szövegét nem írja át. Első használatkor a CloudMark figyelmeztet, hogy a jegyzet szövege elmegy az AI
+szolgáltatóhoz: jelszót, tokent ne küldj vele.
+
 ## Tippek
 
 - Alapból csak az üres mezőket tölti ki. A **Mindent újraír** jelölővel a kitöltött mezőket is újraírja (a bemásolt kódot ekkor sem).
@@ -42,9 +74,9 @@ Ha az AI egy másik változatot is javasol (pl. PowerShell egy bash parancshoz),
 
 ## Gyakori kérdések
 
-- **Mit kap meg az AI?** Csak az űrlap mezőit, a parancs-kategóriáid és a címkéid nevét. Más elemeidet nem.
+- **Mit kap meg az AI?** Csak az adott űrlap mezőit (könyvjelzőnél az oldal címét és leírását is), az adott nézet kategóriáinak vagy projektjeinek és a címkéidnek a nevét. Más elemeidet nem.
 - **Hol van a kulcsom?** A szerveren titkosítva. A böngésző soha nem kapja vissza, a Beállításokban csak az utolsó 4 karaktere látszik.
 - **A Gemini ingyenes kulcsa biztonságos?** Az ingyenes szinten a Google a beküldött szöveget felhasználhatja a
-  termékei fejlesztésére, ezért titkot (jelszót, tokent) ne írj a mezőkbe, amikor az AI-t használod.
+  termékei fejlesztésére, ezért titkot (jelszót, tokent) ne írj a mezőkbe vagy a jegyzetbe, amikor az AI-t használod.
 - **„Elfogyott a korlát” hibát kapok.** Az ingyenes szinten percenkénti és napi korlát van; várj egy kicsit.
   A CloudMark is korlátozza: legfeljebb 10 AI kérés percenként.
