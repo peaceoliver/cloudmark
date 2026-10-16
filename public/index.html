@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261016-newbar">
+    <link rel="stylesheet" href="/css/styles.css?v=20261016-newform">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -306,11 +306,13 @@
         <!-- Parancstár -->
         <div class="app-view" id="commandsView" data-view="commands" hidden>
             <section class="dashboard-section add-item-section" aria-label="Új parancs">
-                <button type="button" class="new-item-bar" id="commandNewBtn" title="Új parancs (N)">
+                <button type="button" class="new-item-bar" id="commandNewBtn" title="Új parancs (N)" aria-expanded="false" aria-controls="commandNewPanel">
                     <i class="fa-solid fa-plus new-item-icon" aria-hidden="true"></i>
                     <span class="new-item-text">Új parancs hozzáadása</span>
-                    <i class="fa-solid fa-up-right-from-square new-item-hint" aria-hidden="true"></i>
+                    <i class="accordion-icon fa-solid fa-chevron-down" aria-hidden="true"></i>
                 </button>
+                <!-- Új parancsnál ide kerül át a szerkesztő űrlap; meglévő parancs szerkesztésekor az ablakban marad. -->
+                <div class="control-panel command-new-panel" id="commandNewPanel" hidden></div>
             </section>
             <section class="dashboard-section category-section" aria-label="Parancs kategóriák">
                 <div class="category-inner-content">
@@ -909,7 +911,7 @@
                     <option value="yaml"></option><option value="docker"></option><option value="git"></option>
                 </datalist>
                 <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
-                    <button type="button" class="btn btn-danger" data-close-modal="commandEditModal">Mégse</button>
+                    <button type="button" class="btn btn-danger" id="cmdCancelBtn">Mégse</button>
                     <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Mentés</button>
                 </div>
             </form>
@@ -1041,7 +1043,7 @@
     <script src="/js/app.js?v=20261016-toolbar"></script>
     <script src="/js/view-prefs.js?v=20261016-toolbar"></script>
     <script src="/js/main-menu.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/commands-ui.js?v=20261016-toolbar"></script>
+    <script src="/js/commands-ui.js?v=20261016-newform"></script>
     <script src="/js/notes-ui.js?v=20261016-newbar"></script>
     <script src="/js/tasks-ui.js?v=20261016-toolbar"></script>
     <script src="/js/notification-center.js?v=20261016-push"></script>

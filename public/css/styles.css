@@ -2453,3 +2453,7 @@ button.new-item-bar:focus-visible, .new-item-bar:focus-within { border-color: va
 .task-quick-add.new-item-bar .btn { height: 2.35rem; min-height: 2.35rem; padding-top: 0; padding-bottom: 0; }
 .add-item-section[hidden] { display: none; }
 .add-item-section .new-item-bar, .add-bookmark-section .new-item-bar { margin-bottom: 0.5rem; }
+.new-item-bar .accordion-icon { transition: transform 0.2s ease; }
+.new-item-bar[aria-expanded="true"] .accordion-icon { transform: rotate(180deg); }
+.command-new-panel { margin: 0 0 1rem; padding: 1.25rem; }
+.command-new-panel[hidden] { display: none; }
