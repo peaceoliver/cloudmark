@@ -272,6 +272,9 @@ redraw after sign-in.
   `[data-theme="dark"]` and `[data-theme="light"]` must look right; never hard-code colours.
 - Reuse the existing classes: `.btn .btn-primary/.btn-secondary`, `.btn-icon`, `.modal-overlay`, cards,
   toolbars. Icons are Font Awesome (`fa-solid` / `fa-regular`).
+- Hidden overlays (modals, menus, backdrops that fade with `opacity`) must also be `visibility: hidden` when closed and get
+  `backdrop-filter` only in their open state. Otherwise every closed one stays a full-screen composited layer, and Android
+  Chrome runs out of GPU tile memory and paints only part of the screen (iOS hides the problem).
 - Check the phone width too: the toolbar must wrap, no horizontal scroll, composers open on screen.
 - Escape every user value put into HTML template strings with the module's `esc()` helper (bookmarks build
   DOM nodes with `textContent` instead).
