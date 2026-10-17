@@ -16,6 +16,7 @@ const { createPushService, registerPushRoutes } = require('./routes/push');
 const { registerNotificationRoutes, DIGEST_TIME_PATTERN, QUIET_HOURS_PATTERN } = require('./routes/notifications');
 const { registerAiRoutes } = require('./routes/ai');
 const { registerShareRoutes } = require('./routes/shares');
+const { registerLiveRoutes } = require('./routes/live');
 const shareAccess = require('./routes/share-access');
 const { fetchPublicText } = require('./routes/safe-fetch');
 const taskDates = require('./public/js/task-parser');
@@ -141,6 +142,9 @@ const pool = new Pool({
         rejectUnauthorized: false // Supabase SSL kapcsolat beállítása
     }
 });
+
+// Élő frissítés (SSE): a mentések után szól a többi nyitott ablaknak; minden útvonal előtt kell regisztrálni.
+const live = registerLiveRoutes(app, { pool, requireAuth });
 
 /** Ensures the required PostgreSQL tables and default categories exist. */
 async function initDatabase() {
@@ -2463,7 +2467,7 @@ const taskActions = registerTaskRoutes(app, { pool, requireAuth, recordAuditEven
 // A push szolgáltatók egy elérhetőséget kérnek a küldőtől; alapból az app címe.
 const push = createPushService({ pool, getSubject: () => (getPublicBaseUrl().startsWith('https://') ? getPublicBaseUrl() : null) });
 registerPushRoutes(app, { pool, requireAuth, recordAuditEvent, push });
-registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer: getConfiguredMailer, getPublicBaseUrl, push, taskActions });
+registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer: getConfiguredMailer, getPublicBaseUrl, push, taskActions, live });
 shareRoutes = registerShareRoutes(app, { pool, requireAuth, recordAuditEvent, push, shareLimiter, loadItem: itemHelpers.loadItem, getMailer: getConfiguredMailer, getPublicBaseUrl });
 registerAiRoutes(app, { pool, requireAuth, recordAuditEvent, fetchPageMetadata: fetchBookmarkMetadata });
 

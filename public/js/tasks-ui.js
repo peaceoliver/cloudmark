@@ -3,6 +3,8 @@
     const taskApi = window.CloudMark.api;
     const parser = window.CloudMark.taskParser;
     const share = window.CloudMark.share;
+    // Az élő frissítés (live.js) később töltődik be, ezért mindig a hívás pillanatában kérjük le.
+    const live = () => window.CloudMark.live;
     const listBox = document.getElementById('taskList');
     if (!listBox || !parser) return;
 
@@ -645,6 +647,8 @@
     let saveTimer = null;
     let savePromise = Promise.resolve();
     let draft = null;
+    // A máshol mentett újabb változat, amíg a felhasználó a „Frissítés / Saját változat megtartása” sávban nem dönt.
+    let remoteConflict = null;
 
     function draftFrom(item) {
         return {
@@ -842,7 +846,11 @@
     function openDetail(id) {
         const item = findItem(id);
         if (!item) return;
-        if (draft && String(draft.id) !== String(id)) flushSave();
+        if (draft && String(draft.id) !== String(id)) {
+            if (remoteConflict) keepOwnVersion(false);
+            flushSave();
+        }
+        remoteConflict = null;
         state.selectedId = item.id;
         draft = draftFrom(item);
         detailBox.innerHTML = detailHtml(item);
@@ -868,6 +876,9 @@
 
     function closeDetail(save = true) {
         links.close();
+        // Bezáráskor a látott sáv ellenére megírt szöveg nem vész el: a saját változat marad.
+        if (save && remoteConflict) keepOwnVersion(false);
+        remoteConflict = null;
         if (save) flushSave();
         state.selectedId = null;
         draft = null;
@@ -912,6 +923,7 @@
         clearTimeout(saveTimer);
         saveTimer = null;
         if (!draft) return savePromise;
+        if (remoteConflict) { setStatus('Nincs mentve: válassz a fenti sávban'); return savePromise; }
         if (detailBox.querySelector('[data-field="title"]')) readFields();
         const snapshot = { ...draft };
         if (!snapshot.title) { setStatus('A cím nem lehet üres'); return savePromise; }
@@ -937,6 +949,41 @@
             if (rerender) refreshDetail();
         });
         return savePromise;
+    }
+
+    /** The list already holds the newer copy, so the next save carries its updated_at (no 409): the user's text wins. */
+    function keepOwnVersion(save = true) {
+        remoteConflict = null;
+        if (save) flushSave();
+    }
+
+    /**
+     * A newer copy of the open task arrived from elsewhere. Without unsaved typing the panel refreshes silently
+     * (cursor kept); with unsaved typing a bar asks first, and nothing is overwritten until the user picks.
+     */
+    function showRemoteInDetail(item) {
+        if (!draft || String(state.selectedId) !== String(item.id) || detailBox.hidden) return;
+        if (saveTimer === null && !remoteConflict) {
+            live().keepFocus(detailBox, refreshDetail);
+            return;
+        }
+        remoteConflict = item;
+        setStatus('Nincs mentve');
+        live().conflictBar(detailBox, {
+            text: 'Ez a feladat közben máshol módosult.',
+            onReload: () => {
+                clearTimeout(saveTimer);
+                saveTimer = null;
+                remoteConflict = null;
+                refreshDetail();
+            },
+            onKeep: () => keepOwnVersion()
+        });
+    }
+
+    function removeLocal(id) {
+        state.items = state.items.filter(entry => String(entry.id) !== String(id));
+        state.trash = state.trash.filter(entry => String(entry.id) !== String(id));
     }
 
     function setDueDate(dateText) {
@@ -1442,6 +1489,40 @@
             quickInput.value = text;
             renderQuickPreview();
             await quickAdd();
+        },
+        /** A task changed elsewhere (live.js): `item` is the fresh copy, null when it is gone or no longer visible. */
+        applyRemote(id, item) {
+            if (!state.loaded) return;
+            const previous = findItem(id);
+            if (!item || item.type !== 'task') {
+                if (!previous) return;
+                removeLocal(id);
+            } else if (item.trashed) {
+                removeLocal(id);
+                if (state.view === 'trash') state.trash.push(item);
+            } else {
+                state.trash = state.trash.filter(entry => String(entry.id) !== String(id));
+                upsert(item);
+            }
+            render();
+            refreshBadge();
+            if (String(state.selectedId) !== String(id)) return;
+            const current = findItem(id);
+            if (!current) {
+                notify('Ez a feladat közben törlődött, vagy már nem éred el.', 'info');
+                closeDetail(false);
+            } else if (live()?.isNewer(current, previous)) showRemoteInDetail(current);
+        },
+        /** Reloads the list quietly after the live connection was lost for a while. */
+        async refreshAll() {
+            if (!state.loaded) return;
+            const previous = state.selectedId ? findItem(state.selectedId) : null;
+            try { await reloadItems(); } catch (err) { return; }
+            refreshBadge();
+            if (!state.selectedId) return;
+            const current = findItem(state.selectedId);
+            if (!current) closeDetail(false);
+            else if (live()?.isNewer(current, previous)) showRemoteInDetail(current);
         },
         /** Opens a task's detail panel by id (used by the bell and by links). */
         async openById(id) {

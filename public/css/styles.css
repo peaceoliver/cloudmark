@@ -2945,3 +2945,22 @@ button.inline-link:hover, button.inline-link:focus-visible { background: var(--a
     .share-contact-settings .share-row { flex-wrap: wrap; }
     .share-auto-accept { white-space: normal; }
 }
+
+/* ---------- Élő frissítés: „közben máshol módosult” sáv a nyitott szerkesztőben (live.js) ---------- */
+.live-conflict {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--warning);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--warning) 12%, var(--bg-card));
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+.live-conflict > i { color: var(--warning); }
+.live-conflict-text { flex: 1 1 12rem; }
+.live-conflict-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.live-conflict-actions .btn { padding: 0.35rem 0.75rem; font-size: 0.8125rem; }

@@ -38,6 +38,8 @@
     const editBox = document.getElementById('noteEditBox');
     const links = window.CloudMark.inlineLinks;
     const share = window.CloudMark.share;
+    // Az élő frissítés (live.js) később töltődik be, ezért mindig a hívás pillanatában kérjük le.
+    const live = () => window.CloudMark.live;
     if (!sections) return;
 
     function esc(value) {
@@ -767,6 +769,8 @@
     let editing = null;
     let saveTimer = null;
     let savePromise = Promise.resolve();
+    // A máshol mentett újabb változat, amíg a felhasználó a „Frissítés / Saját változat megtartása” sávban nem dönt.
+    let remoteConflict = null;
 
     function setStatus(text) {
         const status = editBox.querySelector('.note-editor-status');
@@ -783,6 +787,7 @@
         clearTimeout(saveTimer);
         saveTimer = null;
         if (!editing) return savePromise;
+        if (remoteConflict) { setStatus('Nincs mentve: válassz a fenti sávban'); return savePromise; }
         const note = readEditor(editBox, editing);
         if (isEmptyNote(note)) { setStatus('Üres jegyzet nem menthető'); return savePromise; }
         savePromise = savePromise.then(() => saveNote(editing, note)).then(saved => {
@@ -797,6 +802,7 @@
     }
 
     function openEditor(item) {
+        remoteConflict = null;
         editing = { ...item };
         editBox.innerHTML = editorHtml(editing, { composer: false });
         openModal('noteEditModal');
@@ -807,9 +813,51 @@
     async function closeEditor() {
         if (!editing) return;
         links.close();
+        // Bezáráskor a látott sáv ellenére megírt szöveg nem vész el: a saját változat marad.
+        if (remoteConflict) keepOwnVersion(false);
         await flushSave();
         editing = null;
         closeModal('noteEditModal');
+    }
+
+    function renderEditBox() {
+        editBox.innerHTML = editorHtml(editing, { composer: false });
+        links.loadBacklinks(editBox.querySelector('[data-backlinks]'), editing.id);
+    }
+
+    function keepOwnVersion(save = true) {
+        if (!remoteConflict || !editing) return;
+        // Az újabb updated_at-tel a megosztott jegyzet mentése sem kap 409-et: a saját szöveg kerül be.
+        editing = { ...editing, updated_at: remoteConflict.updated_at };
+        remoteConflict = null;
+        if (save) flushSave();
+    }
+
+    /**
+     * A newer copy of the open note arrived from elsewhere. Without unsaved typing the editor refreshes silently
+     * (cursor kept); with unsaved typing a bar asks first, and nothing is overwritten until the user picks.
+     */
+    function showRemoteInEditor(item) {
+        if (!editing || String(editing.id) !== String(item.id) || !live()?.isNewer(item, remoteConflict || editing)) return;
+        if (saveTimer === null && !remoteConflict) {
+            editing = { ...item };
+            live().keepFocus(editBox, renderEditBox);
+            setStatus('Frissítve');
+            return;
+        }
+        remoteConflict = item;
+        setStatus('Nincs mentve');
+        live().conflictBar(editBox, {
+            text: 'Ez a jegyzet közben máshol módosult.',
+            onReload: () => {
+                clearTimeout(saveTimer);
+                saveTimer = null;
+                editing = { ...(remoteConflict || item) };
+                remoteConflict = null;
+                renderEditBox();
+            },
+            onKeep: () => keepOwnVersion()
+        });
     }
 
     bindEditor(editBox, () => editing, next => { editing = next; }, { onChange: queueSave, onClose: closeEditor });
@@ -1165,6 +1213,29 @@
             if (!state.loaded || !item || item.type !== 'note') return;
             upsert(item);
             render();
+        },
+        /** A note changed elsewhere (live.js): `item` is the fresh copy, null when it is gone or no longer visible. */
+        applyRemote(id, item) {
+            if (!state.loaded) return;
+            if (!item || item.type !== 'note') {
+                if (!findItem(id)) return;
+                if (editing && String(editing.id) === String(id)) notify('Ez a jegyzet közben törlődött, vagy már nem éred el.', 'info');
+                forget({ id });
+                return;
+            }
+            upsert(item);
+            showRemoteInEditor(item);
+            render();
+        },
+        /** Reloads the list quietly after the live connection was lost for a while. */
+        async refreshAll() {
+            if (!state.loaded) return;
+            try { state.items = await noteApi.getItems('note', { all: 'true' }); } catch (err) { return; }
+            render();
+            if (!editing) return;
+            const current = findItem(editing.id);
+            if (current) showRemoteInEditor(current);
+            else forget({ id: editing.id });
         },
         /** Opens a note's editor by id (used by links from tasks and [[ links). */
         async openById(id) {
