@@ -2,6 +2,8 @@
  * Közös kereső: egyszerre keres a jegyzetekben, feladatokban, parancsokban és könyvjelzőkben.
  * A Command Palette (Ctrl+K) és a feladatok „Kapcsolt elemek” mezője használja.
  */
+const shareAccess = require('./share-access');
+
 const SEARCH_TYPES = ['note', 'task', 'command', 'bookmark'];
 const MAX_QUERY_LENGTH = 200;
 // Ékezetek nélkül is talál: „kazan” megtalálja a „Kazán”-t és fordítva (a magyar ékezetes betűk alapbetűvé válnak).
@@ -62,15 +64,16 @@ function registerSearchRoutes(app, { pool, requireAuth }) {
             const [itemRows, bookmarkRows] = await Promise.all([
                 itemTypes.length ? pool.query(
                     `WITH matches AS (
-                         SELECT i.id, i.type, i.title, i.body, i.description, i.status, i.archived, i.due_at, i.due_all_day,
-                                i.priority, i.updated_at, c.name AS category_name,
+                         SELECT i.id, i.type, i.title, i.body, i.description, i.status, v.archived, i.due_at, i.due_all_day,
+                                i.priority, i.updated_at, c.name AS category_name, sh.id IS NOT NULL AS shared,
                                 (SELECT f.content FROM item_fragments f WHERE f.item_id = i.id ORDER BY f.position LIMIT 1) AS code,
                                 (SELECT f.language FROM item_fragments f WHERE f.item_id = i.id ORDER BY f.position LIMIT 1) AS language,
                                 COALESCE((SELECT array_agg(t.name ORDER BY t.name) FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = i.id), '{}') AS tags,
                                 CASE WHEN ${fold('i.title')} LIKE $3 ESCAPE '\\' THEN 0 WHEN ${fold('i.title')} LIKE $2 ESCAPE '\\' THEN 1 ELSE 2 END AS rank
                          FROM items i
-                         LEFT JOIN categories c ON c.id = i.category_id
-                         WHERE i.owner_user_id = $1 AND i.trashed = FALSE AND i.type = ANY($4)
+                         ${shareAccess.viewerJoinSql('$1')}
+                         LEFT JOIN categories c ON c.id = v.category_id
+                         WHERE ${shareAccess.visibleSql('$1')} AND i.trashed = FALSE AND i.type = ANY($4)
                            AND (${fold('i.title')} LIKE $2 ESCAPE '\\' OR ${fold('i.body')} LIKE $2 ESCAPE '\\' OR ${fold('i.description')} LIKE $2 ESCAPE '\\'
                                 OR ${fold('c.name')} LIKE $2 ESCAPE '\\'
                                 OR EXISTS (SELECT 1 FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = i.id AND ${fold('t.name')} LIKE $2 ESCAPE '\\')
@@ -109,6 +112,7 @@ function registerSearchRoutes(app, { pool, requireAuth }) {
                     tags: row.tags,
                     status: row.status || null,
                     archived: Boolean(row.archived),
+                    shared: Boolean(row.shared),
                     dueAt: row.due_at,
                     dueAllDay: row.due_all_day,
                     priority: row.priority,

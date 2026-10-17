@@ -15,6 +15,7 @@ const { registerSearchRoutes } = require('./routes/search');
 const { createPushService, registerPushRoutes } = require('./routes/push');
 const { registerNotificationRoutes, DIGEST_TIME_PATTERN, QUIET_HOURS_PATTERN } = require('./routes/notifications');
 const { registerAiRoutes } = require('./routes/ai');
+const { registerShareRoutes } = require('./routes/shares');
 const { fetchPublicText } = require('./routes/safe-fetch');
 const taskDates = require('./public/js/task-parser');
 
@@ -109,6 +110,8 @@ const loginUserLimiter = rateLimit({
 });
 const authLimiter = rateLimit({ ...ipLimiterOptions, windowMs: 60 * 60 * 1000, limit: 10 });
 const passwordLimiter = rateLimit({ ...ipLimiterOptions, windowMs: 15 * 60 * 1000, limit: 10 });
+// Megosztás: felhasználónként, hogy a végpontot ne lehessen tömeges meghívásra vagy címek próbálgatására használni.
+const shareLimiter = rateLimit({ ...ipLimiterOptions, windowMs: 15 * 60 * 1000, limit: 60, keyGenerator: (req) => 'share:' + String(req.user?.id || '') });
 
 // Középrétegek (Middleware)
 app.use(express.json());
@@ -340,6 +343,8 @@ async function initDatabase() {
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '008_push.sql'), 'utf8'));
         // Saját AI kulcsok (Gemini, Claude, OpenAI-kompatibilis) titkosítva az „AI kitöltés” gombokhoz.
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '009_ai.sql'), 'utf8'));
+        // Elemek megosztása más felhasználókkal (e-mail cím alapján) és az ismerősök listája.
+        await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '012_sharing.sql'), 'utf8'));
         // Minden public tábla zárva a Supabase REST API (anon/authenticated) elől: RLS szabályok nélkül.
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '010_row_level_security.sql'), 'utf8'));
 
@@ -1205,7 +1210,9 @@ app.get('/api/admin/backup/export', requireAdmin, async (req, res) => {
             pool.query('SELECT * FROM item_fragments ORDER BY item_id, position'),
             pool.query('SELECT * FROM item_tags ORDER BY item_id, tag_id'),
             pool.query('SELECT * FROM item_reminders ORDER BY id'),
-            pool.query('SELECT * FROM item_links ORDER BY item_id, target_type, target_id')
+            pool.query('SELECT * FROM item_links ORDER BY item_id, target_type, target_id'),
+            pool.query('SELECT * FROM shares ORDER BY id'),
+            pool.query('SELECT * FROM contacts ORDER BY user_id, contact_user_id')
         ]);
         const payload = {
             exportedAt: new Date().toISOString(),
@@ -1223,7 +1230,9 @@ app.get('/api/admin/backup/export', requireAdmin, async (req, res) => {
                 item_fragments: tables[9].rows,
                 item_tags: tables[10].rows,
                 item_reminders: tables[11].rows,
-                item_links: tables[12].rows
+                item_links: tables[12].rows,
+                shares: tables[13].rows,
+                contacts: tables[14].rows
             }
         };
         res.type('application/json').attachment('cloudmark-backup.json').send(JSON.stringify(payload, null, 2));
@@ -1239,7 +1248,7 @@ app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
         const data = payload.data || {};
         if (!data || typeof data !== 'object') return res.status(400).json({ error: 'Érvénytelen mentési csomag.' });
 
-        const tables = ['users', 'teams', 'settings_app', 'settings_user', 'tags', 'categories', 'bookmarks', 'bookmark_tags', 'items', 'item_fragments', 'item_tags', 'item_reminders', 'item_links'];
+        const tables = ['users', 'teams', 'settings_app', 'settings_user', 'tags', 'categories', 'bookmarks', 'bookmark_tags', 'items', 'item_fragments', 'item_tags', 'item_reminders', 'item_links', 'shares', 'contacts'];
         for (const table of tables) {
             const rows = Array.isArray(data[table]) ? data[table] : [];
             if (!rows.length) continue;
@@ -1421,10 +1430,36 @@ app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
                         [row.item_id, row.target_type, row.target_id, row.created_at || new Date()]
                     );
                 }
+                continue;
+            }
+            if (table === 'shares') {
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO shares (id, owner_user_id, item_id, bookmark_id, recipient_user_id, recipient_email, permission, status,
+                                             recipient_category_id, recipient_pinned, recipient_starred, recipient_archived, created_at, accepted_at)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                         ON CONFLICT (id) DO UPDATE SET recipient_user_id = EXCLUDED.recipient_user_id, permission = EXCLUDED.permission,
+                           status = EXCLUDED.status, recipient_category_id = EXCLUDED.recipient_category_id, recipient_pinned = EXCLUDED.recipient_pinned,
+                           recipient_starred = EXCLUDED.recipient_starred, recipient_archived = EXCLUDED.recipient_archived, accepted_at = EXCLUDED.accepted_at`,
+                        [row.id, row.owner_user_id, row.item_id || null, row.bookmark_id || null, row.recipient_user_id || null, row.recipient_email,
+                            row.permission === 'edit' ? 'edit' : 'view', row.status || 'pending', row.recipient_category_id || null,
+                            Boolean(row.recipient_pinned), Boolean(row.recipient_starred), Boolean(row.recipient_archived), row.created_at || new Date(), row.accepted_at || null]
+                    );
+                }
+                continue;
+            }
+            if (table === 'contacts') {
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO contacts (user_id, contact_user_id, auto_accept, created_at) VALUES ($1, $2, $3, $4)
+                         ON CONFLICT (user_id, contact_user_id) DO UPDATE SET auto_accept = EXCLUDED.auto_accept`,
+                        [row.user_id, row.contact_user_id, Boolean(row.auto_accept), row.created_at || new Date()]
+                    );
+                }
             }
         }
         // A kézzel megadott id-k után a sorozatokat a legnagyobb id-ra állítjuk, különben az új sorok ütköznének.
-        for (const table of ['users', 'teams', 'tags', 'categories', 'bookmarks', 'items', 'item_fragments', 'item_reminders']) {
+        for (const table of ['users', 'teams', 'tags', 'categories', 'bookmarks', 'items', 'item_fragments', 'item_reminders', 'shares']) {
             await pool.query(`SELECT setval(pg_get_serial_sequence('${table}', 'id'), GREATEST((SELECT COALESCE(MAX(id), 0) FROM ${table}), 1))`);
         }
         await recordAuditEvent({ userId: req.user.id, action: 'backup_imported', entityType: 'backup', details: { importedTables: tables }, req });
@@ -2338,6 +2373,7 @@ const taskActions = registerTaskRoutes(app, { pool, requireAuth, recordAuditEven
 const push = createPushService({ pool, getSubject: () => (getPublicBaseUrl().startsWith('https://') ? getPublicBaseUrl() : null) });
 registerPushRoutes(app, { pool, requireAuth, recordAuditEvent, push });
 registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer: getConfiguredMailer, getPublicBaseUrl, push, taskActions });
+registerShareRoutes(app, { pool, requireAuth, recordAuditEvent, push, shareLimiter, loadItem: itemHelpers.loadItem });
 registerAiRoutes(app, { pool, requireAuth, recordAuditEvent, fetchPageMetadata: fetchBookmarkMetadata });
 
 // Főoldal kiszolgálása

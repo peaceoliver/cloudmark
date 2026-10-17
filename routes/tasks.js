@@ -6,6 +6,7 @@
 
 const taskDates = require('../public/js/task-parser');
 const { syncReminders, resolveTimeZone, dayBoundsSql, TASK_VIEW_CONDITIONS } = require('./items');
+const shareAccess = require('./share-access');
 
 const MAX_PARSE_LENGTH = 1000;
 const DEFAULT_SNOOZE_MINUTES = 10;
@@ -35,14 +36,18 @@ function registerTaskRoutes(app, { pool, requireAuth, recordAuditEvent, loadItem
     /**
      * Completes a task. A repeating task stays open and moves to its next occurrence
      * (its reminders and subtasks are re-armed); any other task and its subtasks become done.
-     * Pending snoozes are dropped either way. Returns null when the user has no such task.
+     * Pending snoozes are dropped either way. Returns null when the user cannot see such a task, and
+     * { forbidden: true } when it is shared with them for viewing only.
      */
     async function completeTask(userId, id, tz, req = null) {
+        const access = await shareAccess.itemAccess(pool, id, userId);
+        if (!access || access.type !== 'task') return null;
+        if (access.access === 'view') return { forbidden: true };
         const timeZone = await resolveTimeZone(pool, userId, tz);
         const outcome = await withTransaction(async client => {
             const found = await client.query(
-                "SELECT * FROM items WHERE id = $1 AND owner_user_id = $2 AND type = 'task' FOR UPDATE",
-                [id, userId]
+                "SELECT * FROM items WHERE id = $1 AND type = 'task' FOR UPDATE",
+                [id]
             );
             const task = found.rows[0];
             if (!task) return null;
@@ -92,6 +97,7 @@ function registerTaskRoutes(app, { pool, requireAuth, recordAuditEvent, loadItem
         try {
             const outcome = await completeTask(req.user.id, id, req.body?.tz, req);
             if (!outcome) return res.status(404).json({ error: 'Not found' });
+            if (outcome.forbidden) return res.status(403).json({ error: 'Ehhez a feladathoz csak megtekintési jogod van.' });
             res.json({ item: outcome.item, recurring: outcome.recurring, previousDueAt: outcome.previousDueAt });
         } catch (err) {
             res.status(500).json({ error: err.message });
@@ -126,10 +132,13 @@ function registerTaskRoutes(app, { pool, requireAuth, recordAuditEvent, loadItem
             if (Number.isNaN(restoreDue.getTime())) return res.status(400).json({ error: 'Érvénytelen határidő.' });
         }
         try {
+            const access = await shareAccess.itemAccess(pool, id, req.user.id);
+            if (access?.access === 'view') return res.status(403).json({ error: 'Ehhez a feladathoz csak megtekintési jogod van.' });
+            if (!access) return res.status(404).json({ error: 'Not found' });
             const item = await withTransaction(async client => {
                 const found = await client.query(
-                    "SELECT due_at, recurrence_rule FROM items WHERE id = $1 AND owner_user_id = $2 AND type = 'task' FOR UPDATE",
-                    [id, req.user.id]
+                    "SELECT due_at, recurrence_rule FROM items WHERE id = $1 AND type = 'task' FOR UPDATE",
+                    [id]
                 );
                 const task = found.rows[0];
                 if (!task) return null;
@@ -164,8 +173,8 @@ function registerTaskRoutes(app, { pool, requireAuth, recordAuditEvent, loadItem
                 .join(', ');
             const result = await pool.query(
                 `SELECT ${counts}, COUNT(*) FILTER (WHERE i.status <> 'done')::int AS open
-                 FROM items i CROSS JOIN (SELECT ${dayBoundsSql('$2')}) d
-                 WHERE i.owner_user_id = $1 AND i.type = 'task' AND i.trashed = FALSE AND i.archived = FALSE`,
+                 FROM items i ${shareAccess.viewerJoinSql('$1')} CROSS JOIN (SELECT ${dayBoundsSql('$2')}) d
+                 WHERE ${shareAccess.visibleSql('$1')} AND i.type = 'task' AND i.trashed = FALSE AND v.archived = FALSE`,
                 [req.user.id, timeZone]
             );
             res.json({ ...result.rows[0], timeZone });
