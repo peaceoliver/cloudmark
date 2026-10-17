@@ -16,6 +16,16 @@
     --code-bg: #090d16;
     --code-text: #e2e8f0;
     --code-border: #1e293b;
+    /* Kódszínezés (VS Code Dark+) */
+    --code-keyword: #569cd6;
+    --code-string: #ce9178;
+    --code-comment: #6a9955;
+    --code-number: #b5cea8;
+    --code-function: #dcdcaa;
+    --code-variable: #9cdcfe;
+    --code-type: #4ec9b0;
+    --code-meta: #c586c0;
+    --code-line-no: #4b5563;
 }
 
 :root[data-theme="light"] {
@@ -36,6 +46,16 @@
     --code-bg: #f1f5f9;
     --code-text: #0f172a;
     --code-border: #cbd5e1;
+    /* Kódszínezés (VS Code Light+) */
+    --code-keyword: #0000ff;
+    --code-string: #a31515;
+    --code-comment: #008000;
+    --code-number: #098658;
+    --code-function: #795e26;
+    --code-variable: #001080;
+    --code-type: #267f99;
+    --code-meta: #af00db;
+    --code-line-no: #94a3b8;
 }
 
 * {
@@ -584,6 +604,22 @@ input:focus, select:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-glow);
 }
+
+/* Kódtár: a többsoros leírás úgy néz ki, mint a többi mező. */
+#cmdDescription {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-input);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    outline: none;
+    resize: vertical;
+}
+#cmdDescription:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
 
 .tag-input { position: relative; display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; min-height: 46px; padding: .4rem .65rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-input); }
 .tag-input:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
@@ -1676,8 +1712,10 @@ input:focus, select:focus {
     line-height: 1.45;
     color: var(--code-text);
     white-space: pre-wrap;
-    word-break: break-all;
+    /* Szóköznél tör, mint egy szerkesztő; a nagyon hosszú szót (URL, útvonal) is megtöri, ha kell. */
+    overflow-wrap: anywhere;
     flex-grow: 1;
+    min-width: 0;
 }
 .line-copy-btn, .code-action-btn {
     flex-shrink: 0;
@@ -1695,6 +1733,51 @@ input:focus, select:focus {
 @media (hover: none) { .line-copy-btn { opacity: 0.8; } }
 .line-copy-btn:hover, .code-action-btn:hover { color: var(--accent); border-color: var(--code-border); background: var(--bg-card-hover); }
 .copy-ok { color: var(--success); }
+/* Kijelölő mód: több kódrészlet áthelyezése */
+.command-select-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    background: var(--accent-glow);
+}
+.command-select-bar[hidden] { display: none; }
+.command-select-count { font-weight: 600; margin-right: auto; }
+.command-select-bar select { width: auto; flex: 0 1 18rem; min-width: 12rem; max-width: 100%; height: 2.5rem; padding: 0 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); font: inherit; font-size: .85rem; }
+.commands-grid.is-selecting .command-card { cursor: pointer; user-select: none; }
+.commands-grid.is-selecting .command-card-actions { visibility: hidden; }
+.command-card.is-selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+.command-select-box { color: var(--accent); font-size: 1.1rem; margin-right: 0.4rem; flex-shrink: 0; }
+@media (max-width: 640px) {
+    .command-select-count { width: 100%; }
+    .command-select-bar select { flex: 1 1 100%; }
+}
+/* Sorszám és kódszínezés (highlight.js osztályai, code-highlight.js) */
+.code-line-no {
+    flex-shrink: 0;
+    min-width: 1.4rem;
+    padding: 0.15rem 0.35rem 0 0;
+    text-align: right;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+    font-size: 0.75rem;
+    line-height: calc(0.82rem * 1.45);
+    color: var(--code-line-no);
+    user-select: none;
+}
+.code-line .hljs-keyword, .code-line .hljs-literal, .code-line .hljs-selector-tag, .code-line .hljs-name { color: var(--code-keyword); }
+.code-line .hljs-string, .code-line .hljs-regexp, .code-line .hljs-template-tag, .code-line .hljs-addition { color: var(--code-string); }
+.code-line .hljs-comment, .code-line .hljs-quote, .code-line .hljs-deletion { color: var(--code-comment); font-style: italic; }
+.code-line .hljs-number, .code-line .hljs-symbol, .code-line .hljs-bullet { color: var(--code-number); }
+.code-line .hljs-built_in, .code-line .hljs-title, .code-line .hljs-title.function_, .code-line .hljs-section { color: var(--code-function); }
+.code-line .hljs-variable, .code-line .hljs-attr, .code-line .hljs-attribute, .code-line .hljs-params, .code-line .hljs-property, .code-line .hljs-template-variable { color: var(--code-variable); }
+.code-line .hljs-type, .code-line .hljs-title.class_, .code-line .hljs-class .hljs-title, .code-line .hljs-selector-class { color: var(--code-type); }
+.code-line .hljs-meta, .code-line .hljs-subst, .code-line .hljs-doctag, .code-line .hljs-selector-id { color: var(--code-meta); }
+.code-line .hljs-strong { font-weight: 700; }
+.code-line .hljs-emphasis { font-style: italic; }
 .code-actions { position: absolute; top: 0.4rem; right: 0.4rem; z-index: 10; display: flex; gap: 0.2rem; padding: 0.15rem; border-radius: 6px; background: var(--code-bg); }
 
 .cmd-dropdown {

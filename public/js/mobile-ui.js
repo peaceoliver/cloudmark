@@ -262,7 +262,7 @@
         fab.hidden = !signedIn;
         const open = newItemIsOpen(name);
         fab.classList.toggle('is-open', open);
-        const labels = { notes: 'Új jegyzet', tasks: 'Új feladat', bookmarks: 'Új könyvjelző', commands: 'Új parancs' };
+        const labels = { notes: 'Új jegyzet', tasks: 'Új feladat', bookmarks: 'Új könyvjelző', commands: 'Új kódrészlet' };
         fab.setAttribute('aria-label', open ? 'Bezárás' : labels[name] || 'Új');
         fab.title = fab.getAttribute('aria-label');
     }

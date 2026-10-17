@@ -68,7 +68,7 @@
             return;
         }
         box.innerHTML = `
-            <small class="settings-hint">A saját AI kulcsoddal a ✨ AI kitöltés gomb kitölti az űrlap mezőit (első körben az Új parancs űrlapon). Az AI csak gombnyomásra fut, és csak az űrlap mezőit, a kategóriáid és a címkéid nevét kapja meg. A kulcsot a szerver titkosítva tárolja, és soha nem küldi vissza a böngészőbe.</small>
+            <small class="settings-hint">A saját AI kulcsoddal a ✨ AI kitöltés gomb kitölti az űrlap mezőit (kódtár, könyvjelző, feladat és jegyzet űrlapokon). Az AI csak gombnyomásra fut, és csak az űrlap mezőit, a kategóriáid és a címkéid nevét kapja meg. A kulcsot a szerver titkosítva tárolja, és soha nem küldi vissza a böngészőbe.</small>
             <div class="ai-key-list">${state.keys.length ? state.keys.map(keyRowHtml).join('') : '<p class="settings-hint">Még nincs mentett kulcs.</p>'}</div>
             <div class="section-divider"><i class="fa-solid fa-plus"></i> Új kulcs</div>
             <div class="form-control">

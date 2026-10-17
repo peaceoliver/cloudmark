@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>CloudMark - Modern Multi-User Bookmark Hub</title>
-    <meta name="description" content="Könyvjelzők, parancsok, jegyzetek és feladatok egy helyen.">
+    <meta name="description" content="Jegyzetek, feladatok, könyvjelzők és kódrészletek egy helyen.">
     <meta name="theme-color" content="#0b0f19">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261017-androidpaint">
+    <link rel="stylesheet" href="/css/styles.css?v=20261017-kodtar">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -118,8 +118,8 @@
             <button type="button" class="app-tab active" role="tab" data-view-tab="bookmarks" aria-selected="true" title="Könyvjelzők (Alt+3)">
                 <i class="fa-solid fa-bookmark"></i><span>Könyvjelzők</span>
             </button>
-            <button type="button" class="app-tab" role="tab" data-view-tab="commands" aria-selected="false" title="Parancsok (Alt+4)">
-                <i class="fa-solid fa-terminal"></i><span>Parancsok</span>
+            <button type="button" class="app-tab" role="tab" data-view-tab="commands" aria-selected="false" title="Kódtár (Alt+4)">
+                <i class="fa-solid fa-code"></i><span>Kódtár</span>
             </button>
         </nav>
 
@@ -296,28 +296,28 @@
         </div>
         </div>
 
-        <!-- Parancstár -->
+        <!-- Kódtár (régen Parancsok): kódrészletek, items.type = command -->
         <div class="app-view" id="commandsView" data-view="commands" hidden>
-            <section class="dashboard-section add-item-section" aria-label="Új parancs">
-                <button type="button" class="new-item-bar" id="commandNewBtn" title="Új parancs (N)" aria-expanded="false" aria-controls="commandNewPanel">
+            <section class="dashboard-section add-item-section" aria-label="Új kódrészlet">
+                <button type="button" class="new-item-bar" id="commandNewBtn" title="Új kódrészlet (N)" aria-expanded="false" aria-controls="commandNewPanel">
                     <i class="fa-solid fa-plus new-item-icon" aria-hidden="true"></i>
-                    <span class="new-item-text">Új parancs hozzáadása</span>
+                    <span class="new-item-text">Új kódrészlet hozzáadása</span>
                     <i class="accordion-icon fa-solid fa-chevron-down" aria-hidden="true"></i>
                 </button>
                 <!-- Új parancsnál ide kerül át a szerkesztő űrlap; meglévő parancs szerkesztésekor az ablakban marad. -->
                 <div class="control-panel command-new-panel" id="commandNewPanel" hidden></div>
             </section>
-            <section class="dashboard-section category-section" aria-label="Parancs kategóriák">
+            <section class="dashboard-section category-section" aria-label="Kódtár kategóriák">
                 <div class="category-inner-content">
                     <div class="category-bubbles-label toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</div>
                     <div class="categories-bar" id="commandCategoriesBar"></div>
                 </div>
             </section>
-            <section class="enterprise-toolbar" aria-label="Keresés a parancsokban">
+            <section class="enterprise-toolbar" aria-label="Keresés a kódtárban">
                 <div class="toolbar-group">
                     <div class="commands-search enterprise-search">
                         <i class="fa-solid fa-magnifying-glass"></i>
-                        <input id="commandSearch" type="search" placeholder="Keresés parancs, leírás vagy címke alapján…" autocomplete="off">
+                        <input id="commandSearch" type="search" placeholder="Keresés… (#címke, /kategória)" autocomplete="off">
                         <button type="button" class="btn-icon commands-search-clear" id="commandSearchClear" title="Keresés törlése" hidden><i class="fa-solid fa-xmark"></i></button>
                     </div>
                 </div>
@@ -328,7 +328,7 @@
                     <option value="abc">🔤 ABC sorrend</option>
                     <option value="used">🔥 Leggyakrabban másolt</option>
                 </select>
-                <div class="bookmark-state-group commands-state-group" aria-label="Parancs nézetek">
+                <div class="bookmark-state-group commands-state-group" aria-label="Kódtár nézetek">
                     <button type="button" class="btn btn-secondary cmd-state active" data-cmd-state="active">Aktív</button>
                     <button type="button" class="btn btn-secondary cmd-state" data-cmd-state="starred">★ Kedvencek</button>
                     <button type="button" class="btn btn-secondary cmd-state" data-cmd-state="shared">Megosztva velem</button>
@@ -344,6 +344,7 @@
                     <button type="button" class="btn btn-secondary item-more-btn" id="commandMoreBtn" aria-haspopup="true" aria-expanded="false" title="További műveletek"><i class="fa-solid fa-ellipsis-vertical"></i></button>
                     <div class="cmd-dropdown" id="commandMoreMenu" role="menu">
                         <button type="button" class="cmd-dropdown-item" data-cmd-menu="categories"><i class="fa-solid fa-folder-tree"></i> Kategóriák kezelése</button>
+                        <button type="button" class="cmd-dropdown-item" data-cmd-menu="select"><i class="fa-solid fa-check-double"></i> Kijelölés és áthelyezés</button>
                         <label class="cmd-dropdown-item"><i class="fa-solid fa-upload"></i> Import (JSON)<input type="file" id="commandImportInput" accept=".json,application/json" hidden></label>
                         <button type="button" class="cmd-dropdown-item" data-cmd-menu="export-json"><i class="fa-solid fa-download"></i> Export JSON</button>
                         <button type="button" class="cmd-dropdown-item" data-cmd-menu="export-md"><i class="fa-brands fa-markdown"></i> Export Markdown</button>
@@ -351,6 +352,14 @@
                     </div>
                 </div>
                 </div>
+            </div>
+            <!-- Több kódrészlet áthelyezése egy kategóriába (pl. az Inbox rendezése) -->
+            <div class="command-select-bar" id="commandSelectBar" hidden>
+                <span class="command-select-count" id="commandSelectCount">0 kijelölve</span>
+                <button type="button" class="btn btn-secondary" id="commandSelectAll">Mind</button>
+                <select id="commandSelectTarget" aria-label="Cél kategória"></select>
+                <button type="button" class="btn btn-primary" id="commandSelectMove" disabled><i class="fa-solid fa-folder-open"></i> Áthelyezés</button>
+                <button type="button" class="btn btn-secondary" id="commandSelectCancel">Kész</button>
             </div>
             <div class="commands-grid" id="commandGrid" aria-live="polite"></div>
         </div>
@@ -530,7 +539,7 @@
         <div class="palette" role="dialog" aria-label="Keresés mindenhol">
             <div class="palette-search">
                 <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-                <input type="text" id="paletteInput" placeholder="Keresés mindenhol… („>” műveletek)" autocomplete="off" spellcheck="false" aria-label="Keresés mindenhol" aria-controls="paletteResults">
+                <input type="text" id="paletteInput" placeholder="Keresés mindenhol… (#címke, /kategória, @kód, „>” műveletek)" autocomplete="off" spellcheck="false" aria-label="Keresés mindenhol" aria-controls="paletteResults">
                 <kbd>Esc</kbd>
             </div>
             <div class="palette-results" id="paletteResults" role="listbox"></div>
@@ -549,7 +558,7 @@
                 <button type="button" class="settings-tab" role="tab" data-settings-tab="notes">Jegyzetek</button>
                 <button type="button" class="settings-tab" role="tab" data-settings-tab="tasks">Feladatok</button>
                 <button type="button" class="settings-tab" role="tab" data-settings-tab="bookmarks">Könyvjelzők</button>
-                <button type="button" class="settings-tab" role="tab" data-settings-tab="commands">Parancsok</button>
+                <button type="button" class="settings-tab" role="tab" data-settings-tab="commands">Kódtár</button>
                 <button type="button" class="settings-tab" role="tab" data-settings-tab="ai"><i class="fa-solid fa-wand-magic-sparkles"></i> AI</button>
             </div>
             <form id="userSettingsForm" class="modal-form">
@@ -569,7 +578,7 @@
                             <option value="notes">Jegyzetek</option>
                             <option value="tasks">Feladatok</option>
                             <option value="bookmarks">Könyvjelzők</option>
-                            <option value="commands">Parancsok</option>
+                            <option value="commands">Kódtár</option>
                         </select>
                     </div>
                     <div class="section-divider"><i class="fa-solid fa-scissors"></i> Mentés CloudMarkba (Clipper)</div>
@@ -1003,17 +1012,17 @@
         </div>
     </div>
 
-    <!-- Modal: Parancs szerkesztése -->
+    <!-- Modal: Kódrészlet szerkesztése -->
     <div class="modal-overlay" id="commandEditModal">
         <div class="modal command-edit-modal">
-            <div class="modal-title"><i class="fa-solid fa-terminal"></i> <span id="commandEditTitle">Új parancs</span></div>
+            <div class="modal-title"><i class="fa-solid fa-code"></i> <span id="commandEditTitle">Új kódrészlet</span></div>
             <form id="commandEditForm" class="modal-form" style="display:flex; flex-direction:column; gap:1rem;">
                 <p class="share-editor-note" id="cmdShareNote" hidden></p>
                 <input type="hidden" id="cmdId">
                 <div class="ai-fill-row" id="cmdAiRow" hidden>
                     <button type="button" class="btn btn-secondary ai-fill-btn" id="cmdAiFillBtn" title="AI kitöltés (Ctrl+Enter)"><i class="fa-solid fa-wand-magic-sparkles"></i> <span>AI kitöltés</span></button>
                     <label class="ai-overwrite" title="A már kitöltött mezőket is újraírja (a bemásolt kódot nem)"><input type="checkbox" id="cmdAiOverwrite"> Mindent újraír</label>
-                    <small class="ai-fill-hint" id="cmdAiHint">Másold be a parancsot, vagy írd a címbe, mit szeretnél.</small>
+                    <small class="ai-fill-hint" id="cmdAiHint">Másold be a kódot, vagy írd a címbe, mit szeretnél.</small>
                 </div>
                 <div class="ai-review-bar" id="cmdAiReview" hidden>
                     <span class="ai-review-text"><i class="fa-solid fa-wand-magic-sparkles"></i> <span data-ai-review-text></span></span>
@@ -1025,11 +1034,11 @@
                 <div class="ai-extras" id="cmdAiExtras"></div>
                 <div class="form-control">
                     <label for="cmdTitle">Cím</label>
-                    <input type="text" id="cmdTitle" required maxlength="300" placeholder="Pl. Virtuális környezet aktiválása">
+                    <input type="text" id="cmdTitle" required maxlength="300" placeholder="Amit keresnél, pl. Postgres: tétlen kapcsolatok bontása">
                 </div>
                 <div class="form-control">
                     <label for="cmdDescription">Leírás (opcionális)</label>
-                    <input type="text" id="cmdDescription" maxlength="5000" placeholder="Mire való, mikor használod">
+                    <textarea id="cmdDescription" rows="2" maxlength="5000" placeholder="Mire való, mikor használod, honnan van (link), mire figyelj"></textarea>
                 </div>
                 <div class="command-edit-row">
                     <div class="form-control">
@@ -1048,13 +1057,16 @@
                 <div class="form-control">
                     <label>Kód</label>
                     <div id="cmdFragments" class="command-fragments-editor"></div>
-                    <button type="button" class="btn btn-secondary command-add-fragment" id="cmdAddFragmentBtn"><i class="fa-solid fa-plus"></i> Fül hozzáadása (pl. PowerShell / bash változat)</button>
+                    <button type="button" class="btn btn-secondary command-add-fragment" id="cmdAddFragmentBtn"><i class="fa-solid fa-plus"></i> Fül hozzáadása (pl. másik nyelv vagy shell változat)</button>
                 </div>
                 <datalist id="cmdLanguageList">
                     <option value="bash"></option><option value="powershell"></option><option value="cmd"></option>
                     <option value="sh"></option><option value="zsh"></option><option value="python"></option>
                     <option value="sql"></option><option value="javascript"></option><option value="json"></option>
                     <option value="yaml"></option><option value="docker"></option><option value="git"></option>
+                    <option value="typescript"></option><option value="html"></option><option value="css"></option>
+                    <option value="go"></option><option value="java"></option><option value="csharp"></option>
+                    <option value="php"></option><option value="regex"></option><option value="markdown"></option>
                 </datalist>
                 <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
                     <button type="button" class="btn btn-danger" id="cmdCancelBtn">Mégse</button>
@@ -1079,10 +1091,10 @@
         </div>
     </div>
 
-    <!-- Modal: Parancs kategóriák -->
+    <!-- Modal: Kódtár kategóriák -->
     <div class="modal-overlay" id="commandCategoryModal" style="z-index: 2200;">
         <div class="modal">
-            <div class="modal-title"><i class="fa-solid fa-folder-tree"></i> Parancs kategóriák</div>
+            <div class="modal-title"><i class="fa-solid fa-folder-tree"></i> Kódtár kategóriák</div>
             <form id="commandCategoryForm" class="form-control" style="margin-bottom:1rem;">
                 <label for="cmdNewCategoryName">Új kategória</label>
                 <div style="display:flex; gap:0.5rem;">
@@ -1181,19 +1193,19 @@
         <div class="modal">
             <div class="modal-title"><i class="fa-solid fa-circle-info"></i> CloudMark – rövid ismertető</div>
             <div class="modal-form info-content" style="max-height: 60vh; overflow-y: auto;">
-                <p>A CloudMark egy helyen tartja a jegyzeteidet, feladataidat, könyvjelzőidet és parancsaidat. Bejelentkezés után a fenti fülekkel válthatsz közöttük (<kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>4</kbd>).</p>
+                <p>A CloudMark egy helyen tartja a jegyzeteidet, feladataidat, könyvjelzőidet és kódrészleteidet (Kódtár). Bejelentkezés után a fenti fülekkel válthatsz közöttük (<kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>4</kbd>).</p>
 
                 <h3><i class="fa-solid fa-magnifying-glass"></i> Keresés mindenhol (Ctrl+K)</h3>
-                <p>A <kbd>Ctrl</kbd>+<kbd>K</kbd> (Macen <kbd>⌘</kbd>+<kbd>K</kbd>) vagy a fejléc nagyító gombja egy keresőablakot nyit, amely egyszerre keres mind a négy helyen. <kbd>Enter</kbd>: megnyitja a jegyzetet vagy feladatot, könyvjelzőnél a weboldalt, parancsnál a kódot a vágólapra másolja. <kbd>Shift</kbd>+<kbd>Enter</kbd>: szerkesztés. A lista alján új elemet is létrehozhatsz a beírt szövegből, a <kbd>&gt;</kbd> jellel kezdve pedig gyors műveletek jönnek (nézetváltás, Beállítások, téma).</p>
+                <p>A <kbd>Ctrl</kbd>+<kbd>K</kbd> (Macen <kbd>⌘</kbd>+<kbd>K</kbd>) vagy a fejléc nagyító gombja egy keresőablakot nyit, amely egyszerre keres mind a négy helyen. <kbd>Enter</kbd>: megnyitja a jegyzetet vagy feladatot, könyvjelzőnél a weboldalt, kódrészletnél a kódot a vágólapra másolja. <kbd>Shift</kbd>+<kbd>Enter</kbd>: szerkesztés. Szűkítés: <code>#címke</code>, <code>/kategória</code>, <code>@kód</code> (vagy <code>@jegyzet</code>, <code>@feladat</code>, <code>@könyvjelző</code>), pl. <code>stop #docker @kód</code>. A lista alján új elemet is létrehozhatsz a beírt szövegből, a <kbd>&gt;</kbd> jellel kezdve pedig gyors műveletek jönnek (nézetváltás, Beállítások, téma).</p>
 
                 <h3><i class="fa-solid fa-note-sticky"></i> Jegyzetek</h3>
                 <p>Keep-szerű jegyzetek: szöveg vagy jelölőnégyzetes lista, háttérszín, rögzítés, kategóriák és címkék. Gépelés közben automatikusan ment. Nézetek: normál, kompakt, lista és kanban, ahol a jegyzetet másik kategória oszlopába húzhatod.</p>
 
                 <h3><i class="fa-solid fa-list-check"></i> Feladatok</h3>
-                <p>Egy sorban felvehető, pl. <code>holnap 9-kor számla befizetése !1 #pénzügy @Otthon</code>: dátum, idő, ismétlés, prioritás (<code>!1</code>–<code>!4</code>), címke és projekt. Részfeladatok, emlékeztetők, és kapcsolat jegyzethez, parancshoz vagy könyvjelzőhöz. Az esedékes feladatokról a csengő, telefonos értesítés és e-mail szól.</p>
+                <p>Egy sorban felvehető, pl. <code>holnap 9-kor számla befizetése !1 #pénzügy @Otthon</code>: dátum, idő, ismétlés, prioritás (<code>!1</code>–<code>!4</code>), címke és projekt. Részfeladatok, emlékeztetők, és kapcsolat jegyzethez, kódrészlethez vagy könyvjelzőhöz. Az esedékes feladatokról a csengő, telefonos értesítés és e-mail szól.</p>
 
                 <h3><i class="fa-solid fa-link"></i> Belső hivatkozások ([[)</h3>
-                <p>Jegyzet szövegében vagy feladat leírásában írd be: <code>[[</code>, majd kezdd el gépelni egy jegyzet, feladat, parancs vagy könyvjelző nevét, és válaszd ki a listából (<kbd>↑</kbd>/<kbd>↓</kbd>, <kbd>Enter</kbd>). Ha nincs ilyen, új jegyzetet is létrehozhatsz belőle. A kártyán a link kék, kattintható, mindig az elem mostani címével; a megnyitott elem alján a „Hivatkoznak rá” mutatja, honnan linkeltek ide.</p>
+                <p>Jegyzet szövegében vagy feladat leírásában írd be: <code>[[</code>, majd kezdd el gépelni egy jegyzet, feladat, kódrészlet vagy könyvjelző nevét, és válaszd ki a listából (<kbd>↑</kbd>/<kbd>↓</kbd>, <kbd>Enter</kbd>). Ha nincs ilyen, új jegyzetet is létrehozhatsz belőle. A kártyán a link kék, kattintható, mindig az elem mostani címével; a megnyitott elem alján a „Hivatkoznak rá” mutatja, honnan linkeltek ide.</p>
 
                 <h3><i class="fa-solid fa-bookmark"></i> Könyvjelzők</h3>
                 <p>Weboldalak kategóriákba és címkékkel. Az oldal címe és képe automatikusan beolvasható. Állapotok: kedvenc, később elolvasandó, ellenőrzésre, archivált, kuka.</p>
@@ -1201,17 +1213,17 @@
                 <h3><i class="fa-solid fa-scissors"></i> Mentés CloudMarkba (Clipper)</h3>
                 <p>A Beállítások → Általános fülön lévő <strong>Mentés CloudMarkba</strong> gombot húzd a böngésző könyvjelzősávjára. Bármelyik oldalon rákattintva kis ablakban mentheted az oldalt könyvjelzőként, a kijelölt szöveget jegyzetként, vagy feladatot készíthetsz belőle („Elolvasni: …”). Androidon a telepített CloudMark a <strong>Megosztás</strong> menüben is megjelenik; iPhone-on a gombot a Safari Kedvencek közé mentheted.</p>
 
-                <h3><i class="fa-solid fa-terminal"></i> Parancsok</h3>
-                <p>Gyakran használt parancssorok kategóriákba rendezve, több kódfüllel. Egy kattintással másolható az egész, egy sor, Markdownként vagy kommentek nélkül.</p>
+                <h3><i class="fa-solid fa-code"></i> Kódtár</h3>
+                <p>Kódrészletek (parancsok, SQL, konfiguráció, kód) egy helyen, VS Code-szerű színezéssel és több kódfüllel (pl. bash / PowerShell). Rendezd munkaterület szerint kategóriákba (pl. shell, backend, devops, alkategóriával is), a témákat címkézd. A kereső ékezet nélkül is talál, <code>#címke</code> és <code>/kategória</code> szűkít. Az új, kategória nélküli elemek az Inboxba kerülnek: ⋮ → Kijelölés és áthelyezés. Egy kattintással másolható az egész, egy sor, Markdownként vagy kommentek nélkül.</p>
 
                 <h3><i class="fa-solid fa-wand-magic-sparkles"></i> AI kitöltés</h3>
-                <p>A Beállítások → AI fülön megadhatod a saját AI kulcsodat (Gemini ingyenes, Claude vagy OpenAI-kompatibilis). Ezután a ✨ gombok (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>): a parancs űrlap a bemásolt parancsból kitölti a többi mezőt, vagy a címbe írt célból megírja a parancsot; a könyvjelző űrlap az URL-ből címet, leírást, címkéket, kategóriát javasol; a feladatoknál kötetlen mondatból feladat lesz, a panelben címke, projekt és lépésekre bontás; a jegyzetszerkesztőben cím, címke, kategória, összefoglaló és teendők kiszedése. A javaslatot elfogadod vagy elveted; az AI semmit nem ment magától.</p>
+                <p>A Beállítások → AI fülön megadhatod a saját AI kulcsodat (Gemini ingyenes, Claude vagy OpenAI-kompatibilis). Ezután a ✨ gombok (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>): a kódtár űrlap a bemásolt kódból minden mezőt kitölt, vagy a címbe írt célból megírja a kódot; a könyvjelző űrlap az URL-ből címet, leírást, címkéket, kategóriát javasol; a feladatoknál kötetlen mondatból feladat lesz, a panelben címke, projekt és lépésekre bontás; a jegyzetszerkesztőben cím, címke, kategória, összefoglaló és teendők kiszedése. A javaslatot elfogadod vagy elveted; az AI semmit nem ment magától.</p>
 
                 <h3><i class="fa-solid fa-gear"></i> Menük és beállítások</h3>
-                <p>Minden nézet sorának végén ugyanaz a <strong>⋮</strong> menü: kategóriák, import/export és <strong>Beállítások…</strong>. A Beállítások ablak fülei: Általános (téma, induló nézet, értesítések, jelszó), Jegyzetek, Feladatok, Könyvjelzők, Parancsok, AI. A rendezés és a nézet a fiókhoz mentődik, így minden eszközön ugyanaz.</p>
+                <p>Minden nézet sorának végén ugyanaz a <strong>⋮</strong> menü: kategóriák, import/export és <strong>Beállítások…</strong>. A Beállítások ablak fülei: Általános (téma, induló nézet, értesítések, jelszó), Jegyzetek, Feladatok, Könyvjelzők, Kódtár, AI. A rendezés és a nézet a fiókhoz mentődik, így minden eszközön ugyanaz.</p>
 
                 <h3><i class="fa-solid fa-keyboard"></i> Billentyűk</h3>
-                <p><kbd>Ctrl</kbd>+<kbd>K</kbd> keresés mindenhol · <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>4</kbd> nézetváltás · <kbd>/</kbd> keresés az aktuális nézetben · <kbd>N</kbd> új jegyzet, feladat vagy parancs · <kbd>Esc</kbd> bezárás.</p>
+                <p><kbd>Ctrl</kbd>+<kbd>K</kbd> keresés mindenhol · <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>4</kbd> nézetváltás · <kbd>/</kbd> keresés az aktuális nézetben · <kbd>N</kbd> új jegyzet, feladat vagy kódrészlet · <kbd>Esc</kbd> bezárás.</p>
 
                 <h3><i class="fa-solid fa-mobile-screen"></i> Telefonon</h3>
                 <p>A CloudMark alkalmazásként telepíthető (fejléc ⋮ menü → Telepítés; iPhone-on Safari → Megosztás → Hozzáadás a Főképernyőhöz), így értesítést is kaphatsz. Telefonon a nézetek alul váltanak, a szűrők, a rendezés és a nézet a kereső melletti <strong>Szűrők</strong> gombbal nyílnak (a választott szűrők chipként látszanak a kereső alatt, a × törli őket), újat pedig a jobb alsó <strong>+</strong> gombbal veszel fel; Feladatoknál a gyors beírás a billentyűzet fölé csúszik fel. A téma váltása és a kilépés a fejléc <strong>⋮</strong> menüjében van.</p>
@@ -1224,6 +1236,9 @@
     <script src="/js/config.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/api.js?v=20261017-live"></script>
     <script src="/js/task-parser.js?v=20261015-tasks"></script>
+    <script src="/js/search-query.js?v=20261017-kodtar"></script>
+    <script src="/js/vendor/highlight.min.js?v=11.11.1"></script>
+    <script src="/js/code-highlight.js?v=20261017-kodtar"></script>
     <script src="/js/notifications.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/modal.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/categories-ui.js?v=20260905k-pagesize-setting"></script>
@@ -1233,21 +1248,21 @@
     <script src="/js/app.js?v=20261017-sharing2"></script>
     <script src="/js/view-prefs.js?v=20261016-settings"></script>
     <script src="/js/main-menu.js?v=20261016-settings"></script>
-    <script src="/js/ai-ui.js?v=20261016-ai2"></script>
-    <script src="/js/share-ui.js?v=20261017-sharing2"></script>
-    <script src="/js/commands-ui.js?v=20261017-live"></script>
+    <script src="/js/ai-ui.js?v=20261017-kodtar"></script>
+    <script src="/js/share-ui.js?v=20261017-kodtar"></script>
+    <script src="/js/commands-ui.js?v=20261017-kodtar"></script>
     <script src="/js/bookmark-ai.js?v=20261016-ai2"></script>
     <script src="/js/inline-links.js?v=20261017-links"></script>
-    <script src="/js/link-autocomplete.js?v=20261017-links"></script>
+    <script src="/js/link-autocomplete.js?v=20261017-kodtar"></script>
     <script src="/js/notes-ui.js?v=20261017-live"></script>
-    <script src="/js/tasks-ui.js?v=20261017-live"></script>
+    <script src="/js/tasks-ui.js?v=20261017-kodtar"></script>
     <script src="/js/notification-center.js?v=20261017-sharing2"></script>
     <script src="/js/clip-parse.js?v=20261017-clipper"></script>
     <script src="/js/settings-ui.js?v=20261017-sharing2"></script>
-    <script src="/js/palette.js?v=20261016-palette"></script>
+    <script src="/js/palette.js?v=20261017-kodtar"></script>
     <script src="/js/live.js?v=20261017-live"></script>
-    <script src="/js/views.js?v=20261017-live"></script>
-    <script src="/js/mobile-ui.js?v=20261017-mobile"></script>
+    <script src="/js/views.js?v=20261017-kodtar"></script>
+    <script src="/js/mobile-ui.js?v=20261017-kodtar"></script>
     <script src="/js/pwa.js?v=20261017-sharing"></script>
 </body>
 </html>

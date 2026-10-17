@@ -48,6 +48,15 @@ test('validateCommandFill never changes pasted code and maps the category by nam
     assert.ok(!('unknown' in result));
 });
 
+test('validateCommandFill keeps a short tab label and the snippet prompt asks for retrieval-friendly fields', () => {
+    const result = validateCommandFill({ label: ` ${'Bash'.repeat(30)} ` }, { code: 'ls' }, context);
+    assert.strictEqual(result.label.length, 80);
+    assert.strictEqual(validateCommandFill({ label: 42 }, { code: 'ls' }, context).label, '');
+    const prompt = buildCommandFill({ code: 'ls' }, context);
+    assert.match(prompt.system, /area of work/);
+    assert.ok(prompt.schema.required.includes('label'));
+});
+
 test('validateCommandFill takes the written code in the text case and drops bad values', () => {
     const raw = {
         title: 'x'.repeat(500), description: 'd', code: 'docker stop $(docker ps -q)\n\n', language: 'not a language!',

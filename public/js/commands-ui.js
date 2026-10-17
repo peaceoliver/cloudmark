@@ -1,6 +1,8 @@
-/* Parancstár: parancskártyák, másológombok, szerkesztő és kategóriák. Az adat a /api/items végpontokról jön. */
+/* Kódtár (régen Parancsok): kódrészlet-kártyák, másológombok, szerkesztő és kategóriák. Az adat a /api/items végpontokról jön (type = command). */
 (function () {
     const commandApi = window.CloudMark.api;
+    const searchQuery = window.CloudMark.searchQuery;
+    const highlight = window.CloudMark.codeHighlight;
     const share = window.CloudMark.share;
     // Az élő frissítés (live.js) később töltődik be, ezért mindig a hívás pillanatában kérjük le.
     const live = () => window.CloudMark.live;
@@ -39,7 +41,10 @@
         view: prefs.get('commandView'),
         activeFragment: new Map(),
         // Lista nézetben kinyitott parancsok (a kód csak ezeknél látszik).
-        openIds: new Set()
+        openIds: new Set(),
+        // Kijelölő mód: több kódrészlet áthelyezése egy kategóriába.
+        selecting: false,
+        selected: new Set()
     };
 
     const grid = document.getElementById('commandGrid');
@@ -93,7 +98,7 @@
     async function load(force = false) {
         if (state.loaded && !force) return;
         if (state.loading && !force) return state.loading;
-        grid.innerHTML = '<div class="empty-state">Parancsok betöltése…</div>';
+        grid.innerHTML = '<div class="empty-state">Kódtár betöltése…</div>';
         state.loading = Promise.all([
             commandApi.getItems('command', { all: 'true' }),
             commandApi.getCategoriesOfKind('command')
@@ -103,7 +108,7 @@
             state.loaded = true;
             render();
         }).catch(err => {
-            grid.innerHTML = `<div class="empty-state">A parancsok betöltése nem sikerült: ${esc(err.message)}</div>`;
+            grid.innerHTML = `<div class="empty-state">A kódtár betöltése nem sikerült: ${esc(err.message)}</div>`;
         }).finally(() => { state.loading = null; });
         return state.loading;
     }
@@ -114,6 +119,8 @@
         state.loaded = false;
         state.category = 'all';
         state.query = '';
+        state.selecting = false;
+        state.selected.clear();
         state.activeFragment.clear();
         if (searchInput) searchInput.value = '';
         if (searchClear) searchClear.hidden = true;
@@ -188,8 +195,22 @@
 
     // ---------- kártyák ----------
 
+    /** The names of a category and all its parents, so `/shell` also finds items in `shell / git`. */
+    function categoryPath(categoryId) {
+        const names = [];
+        const seen = new Set();
+        let category = state.categories.find(entry => String(entry.id) === String(categoryId));
+        while (category && !seen.has(category.id)) {
+            seen.add(category.id);
+            names.push(category.name);
+            category = category.parent_id ? state.categories.find(entry => String(entry.id) === String(category.parent_id)) : null;
+        }
+        return names;
+    }
+
     function visibleItems() {
-        const query = state.query.trim().toLowerCase();
+        // Ékezetfüggetlen, több szónál mindegyik kell; #címke és /kategória szűkít (search-query.js).
+        const query = searchQuery.parse(state.query);
         const categoryIds = /^\d+$/.test(state.category) ? descendantIds(state.category) : null;
         const list = state.items.filter(item => {
             if (state.filter === 'trash') { if (!item.trashed) return false; }
@@ -198,9 +219,11 @@
             if (state.filter === 'shared' && isOwn(item)) return false;
             if (state.category === 'inbox' && item.category_id !== null) return false;
             if (categoryIds && !(item.category_id !== null && categoryIds.has(Number(item.category_id)))) return false;
-            if (!query) return true;
-            return [item.title, item.description, item.category_name, ...item.fragments.map(fragment => fragment.content), ...item.tags]
-                .some(value => String(value || '').toLowerCase().includes(query));
+            return searchQuery.matches(query, {
+                texts: [item.title, item.description, item.category_name, ...item.fragments.map(fragment => `${fragment.label || ''} ${fragment.language || ''}\n${fragment.content}`), ...item.tags.map(tag => `#${tag}`)],
+                tags: item.tags,
+                categories: item.category_id === null ? ['inbox'] : (categoryPath(item.category_id).length ? categoryPath(item.category_id) : [item.category_name || ''])
+            });
         });
         const byTitle = (a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'hu');
         if (state.sort === 'abc') list.sort(byTitle);
@@ -225,10 +248,13 @@
             <div class="command-tabs" role="tablist">
                 ${fragments.map((entry, index) => `<button type="button" class="command-tab ${index === fragmentIndex ? 'active' : ''}" role="tab" aria-selected="${index === fragmentIndex}" data-action="tab" data-index="${index}">${esc(entry.label || entry.language || `${index + 1}. fül`)}</button>`).join('')}
             </div>` : '';
+        // VS Code-szerű színezés (code-highlight.js escape-eli a szöveget), több sornál sorszámokkal.
+        const highlighted = highlight ? highlight.highlightLines(fragment.content, fragment.language) : lines.map(esc);
         const lineHtml = lines.map((line, index) => `
             <div class="code-line">
                 <button type="button" class="line-copy-btn" data-action="copy-line" data-line="${index}" title="Csak ezen sor másolása (kommentek nélkül)" aria-label="Sor másolása"><i class="fa-regular fa-copy"></i></button>
-                <pre><code>${esc(line) || ' '}</code></pre>
+                ${isMultiLine ? `<span class="code-line-no" aria-hidden="true">${index + 1}</span>` : ''}
+                <pre><code class="hljs">${highlighted[index] || ' '}</code></pre>
             </div>`).join('');
         const actions = isMultiLine ? `
             <div class="code-actions">
@@ -250,9 +276,10 @@
                 ? '<button type="button" class="action-btn" data-action="trash" title="Kukába"><i class="fa-solid fa-trash"></i></button>'
                 : (item.share_direct ? '<button type="button" class="action-btn" data-action="leave" title="Eltávolítás a listámból"><i class="fa-solid fa-right-from-bracket"></i></button>' : '')}`;
         return `
-            <article class="card command-card ${state.openIds.has(item.id) ? 'is-open' : ''}" data-item-id="${Number(item.id)}">
+            <article class="card command-card ${state.openIds.has(item.id) ? 'is-open' : ''} ${state.selected.has(Number(item.id)) ? 'is-selected' : ''}" data-item-id="${Number(item.id)}">
                 <div>
                     <div class="command-card-head">
+                        ${state.selecting ? `<span class="command-select-box" aria-hidden="true"><i class="${state.selected.has(Number(item.id)) ? 'fa-solid fa-square-check' : 'fa-regular fa-square'}"></i></span>` : ''}
                         <h3 class="card-title">${esc(item.title)}</h3>
                         <div class="command-card-actions">
                             ${item.trashed ? '' : '<button type="button" class="action-btn command-quick-copy" data-action="copy-all" title="Másolás" aria-label="Másolás"><i class="fa-regular fa-copy"></i></button>'}
@@ -280,18 +307,20 @@
     function renderGrid() {
         grid.classList.remove('view-grid', 'view-compact', 'view-list');
         grid.classList.add(`view-${state.view}`);
+        grid.classList.toggle('is-selecting', state.selecting);
+        renderSelectBar();
         prefs.markSwitcher(viewSwitcher, state.view);
         const list = visibleItems();
         if (state.filter === 'shared' && !list.length) {
-            grid.innerHTML = '<div class="empty-state">Még senki nem osztott meg veled parancsot. Ha valaki megoszt, a csengőnél fogadhatod el.</div>';
+            grid.innerHTML = '<div class="empty-state">Még senki nem osztott meg veled kódrészletet. Ha valaki megoszt, a csengőnél fogadhatod el.</div>';
             return;
         }
         if (!state.items.length) {
-            grid.innerHTML = '<div class="empty-state">Még nincs parancsod. Hozz létre egyet az „Új parancs” gombbal, vagy importáld a meglévő listádat (⋮ → Import).</div>';
+            grid.innerHTML = '<div class="empty-state">Még nincs kódrészleted. Hozz létre egyet az „Új kódrészlet” gombbal, vagy importáld a meglévő listádat (⋮ → Import).</div>';
             return;
         }
         if (!list.length) {
-            grid.innerHTML = `<div class="empty-state">${state.filter === 'trash' ? 'A kuka üres.' : 'Nincs a keresésnek megfelelő parancs.'}</div>`;
+            grid.innerHTML = `<div class="empty-state">${state.filter === 'trash' ? 'A kuka üres.' : 'Nincs a keresésnek megfelelő kódrészlet.'}</div>`;
             return;
         }
         grid.innerHTML = list.map(cardHtml).join('');
@@ -355,6 +384,14 @@
     }
 
     grid.addEventListener('click', async event => {
+        // Kijelölő módban a kártyára kattintás csak kijelöl (nem másol, nem nyit).
+        if (state.selecting) {
+            const card = event.target.closest('[data-item-id]');
+            if (!card) return;
+            event.preventDefault();
+            toggleSelected(Number(card.dataset.itemId));
+            return;
+        }
         const button = event.target.closest('[data-action]');
         if (!button) {
             // Lista nézetben a sorra kattintva nyílik és csukódik a kód.
@@ -387,15 +424,15 @@
         if (action === 'edit') return openEditor(item);
         if (action === 'share') return share?.open(item, { onChange: () => render(), onLeft: forget });
         if (action === 'leave') { if (await share?.leave(item)) forget(item); return; }
-        if (action === 'trash') return changeState(item, { trashed: true }, 'Parancs a kukába helyezve.');
-        if (action === 'restore') return changeState(item, { trashed: false }, 'Parancs visszaállítva.');
+        if (action === 'trash') return changeState(item, { trashed: true }, 'Kódrészlet a kukába helyezve.');
+        if (action === 'restore') return changeState(item, { trashed: false }, 'Kódrészlet visszaállítva.');
         if (action === 'delete') {
             if (!confirm(`Véglegesen törlöd: „${item.title}”?`)) return;
             try {
                 await commandApi.deleteItemPermanently(item.id);
                 state.items = state.items.filter(entry => entry.id !== item.id);
                 render();
-                notify('Parancs véglegesen törölve.', 'success');
+                notify('Kódrészlet véglegesen törölve.', 'success');
             } catch (err) {
                 notify(err.message || 'A törlés nem sikerült.', 'error');
             }
@@ -405,7 +442,11 @@
     document.addEventListener('click', event => {
         if (!event.target.closest('.cmd-dropdown') && !event.target.closest('[data-action="menu"]') && !event.target.closest('#commandMoreBtn')) closeDropdowns();
     });
-    document.addEventListener('keydown', event => { if (event.key === 'Escape') closeDropdowns(); });
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        closeDropdowns();
+        if (state.selecting && !document.querySelector('.modal-overlay.active')) stopSelecting();
+    });
 
     // ---------- eszköztár ----------
 
@@ -477,13 +518,14 @@
         closeDropdowns();
         const action = button.dataset.cmdMenu;
         if (action === 'categories') return openCategoryManager();
+        if (action === 'select') return startSelecting();
         if (action === 'export-json' || action === 'export-md') {
             const format = action === 'export-md' ? 'md' : 'json';
             try {
                 const blob = await commandApi.exportItems('command', format);
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
-                link.download = `cloudmark-parancsok.${format}`;
+                link.download = `cloudmark-kodtar.${format}`;
                 link.click();
                 setTimeout(() => URL.revokeObjectURL(link.href), 1000);
             } catch (err) {
@@ -503,17 +545,108 @@
             items = Array.isArray(data) ? data : data.items;
             if (!Array.isArray(items)) throw new Error('format');
         } catch (err) {
-            notify('A fájl nem érvényes parancslista (JSON tömb vagy CloudMark export).', 'error');
+            notify('A fájl nem érvényes kódtár lista (JSON tömb vagy CloudMark export).', 'error');
             return;
         }
-        if (!confirm(`${items.length} parancs importálása. Folytatod?`)) return;
+        if (!confirm(`${items.length} kódrészlet importálása. Folytatod?`)) return;
         try {
             const result = await commandApi.importItems('command', items);
             await load(true);
-            notify(`${result.imported} parancs importálva.`, 'success');
+            notify(`${result.imported} kódrészlet importálva.`, 'success');
         } catch (err) {
             notify(err.message || 'Az importálás nem sikerült.', 'error');
         }
+    });
+
+    // ---------- kijelölés és áthelyezés (Inbox rendezése) ----------
+
+    const selectBar = document.getElementById('commandSelectBar');
+    const selectCount = document.getElementById('commandSelectCount');
+    const selectTarget = document.getElementById('commandSelectTarget');
+    const selectMove = document.getElementById('commandSelectMove');
+
+    function startSelecting() {
+        state.selecting = true;
+        state.selected.clear();
+        // Az áthelyezés a saját kategóriáidba visz; a kuka elemei nem mozognak.
+        if (state.filter === 'trash') {
+            state.filter = 'active';
+            document.querySelectorAll('[data-cmd-state]').forEach(other => other.classList.toggle('active', other.dataset.cmdState === 'active'));
+        }
+        fillCategorySelect(selectTarget, /^\d+$/.test(state.category) ? state.category : '', 'Inbox (nincs kategória)');
+        renderGrid();
+        notify('Kattints a kártyákra a kijelöléshez, majd válassz kategóriát.', 'info');
+    }
+
+    function stopSelecting() {
+        state.selecting = false;
+        state.selected.clear();
+        renderGrid();
+    }
+
+    function toggleSelected(id) {
+        if (state.selected.has(id)) state.selected.delete(id); else state.selected.add(id);
+        const card = grid.querySelector(`[data-item-id="${id}"]`);
+        const item = findItem(id);
+        if (card && item) card.outerHTML = cardHtml(item);
+        renderSelectBar();
+    }
+
+    function renderSelectBar() {
+        selectBar.hidden = !state.selecting;
+        if (!state.selecting) return;
+        // Ami már nem látszik (szűrő, keresés), az a kijelölésből is kiesik. Az id-k számként (a szerver szövegként is küldheti).
+        const visible = new Set(visibleItems().map(item => Number(item.id)));
+        state.selected.forEach(id => { if (!visible.has(id)) state.selected.delete(id); });
+        selectCount.textContent = `${state.selected.size} kijelölve`;
+        selectMove.disabled = !state.selected.size;
+    }
+
+    document.getElementById('commandSelectAll').addEventListener('click', () => {
+        const list = visibleItems();
+        const all = list.length && list.every(item => state.selected.has(Number(item.id)));
+        list.forEach(item => { if (all) state.selected.delete(Number(item.id)); else state.selected.add(Number(item.id)); });
+        renderGrid();
+    });
+    document.getElementById('commandSelectCancel').addEventListener('click', stopSelecting);
+
+    /** The full PUT body of a command with a new category; the server replaces every field, so the rest is sent back. */
+    function payloadWithCategory(item, categoryId) {
+        return {
+            type: 'command',
+            title: item.title,
+            description: item.description || '',
+            categoryId,
+            tags: item.tags,
+            fragments: item.fragments.map(fragment => ({ content: fragment.content, language: fragment.language || null, label: fragment.label || null })),
+            starred: item.starred,
+            pinned: item.pinned,
+            color: item.color,
+            position: item.position,
+            extra: item.extra || {},
+            ...(isOwn(item) ? {} : { expectedUpdatedAt: item.updated_at })
+        };
+    }
+
+    selectMove.addEventListener('click', async () => {
+        const categoryId = selectTarget.value ? Number(selectTarget.value) : null;
+        const items = [...state.selected].map(findItem).filter(item => item && String(item.category_id ?? '') !== String(categoryId ?? ''));
+        if (!items.length) { notify('A kijelöltek már ebben a kategóriában vannak.', 'info'); return; }
+        selectMove.disabled = true;
+        let moved = 0;
+        let failed = 0;
+        for (const item of items) {
+            try {
+                upsertItem(await commandApi.updateItem(item.id, payloadWithCategory(item, categoryId)));
+                moved += 1;
+            } catch (err) {
+                failed += 1;
+            }
+        }
+        state.selected.clear();
+        render();
+        const target = selectTarget.selectedOptions[0]?.textContent.trim() || 'Inbox';
+        notify(failed ? `${moved} kódrészlet áthelyezve, ${failed} nem sikerült.` : `${moved} kódrészlet áthelyezve ide: ${target}.`, failed ? 'error' : 'success');
     });
 
     document.querySelectorAll('[data-close-modal]').forEach(button => button.addEventListener('click', () => closeModal(button.dataset.closeModal)));
@@ -600,7 +733,7 @@
         if (!state.loaded) await load();
         live()?.clearConflictBar(editForm);
         editing = item;
-        document.getElementById('commandEditTitle').textContent = item ? 'Parancs szerkesztése' : 'Új parancs';
+        document.getElementById('commandEditTitle').textContent = item ? 'Kódrészlet szerkesztése' : 'Új kódrészlet';
         document.getElementById('cmdId').value = item ? item.id : '';
         document.getElementById('cmdTitle').value = item?.title || '';
         document.getElementById('cmdDescription').value = item?.description || '';
@@ -684,6 +817,8 @@
     const tagBox = editForm.querySelector('[data-tag-input="cmdTags"]');
     let aiSnapshot = null;
     let aiExtraTabs = [];
+    // Az AI javasolta fülnév az első fülre, ha később egy javasolt második fület is hozzáadnak.
+    let aiFirstLabel = '';
     let aiRun = 0;
     let aiBusy = false;
 
@@ -737,7 +872,7 @@
         aiButton.hidden = !ready;
         aiOverwrite.parentElement.hidden = !ready;
         aiHint.innerHTML = ready
-            ? `Másold be a parancsot, vagy írd a címbe, mit szeretnél. <span class="ai-fill-provider">${esc(current.active.providerLabel)}</span>`
+            ? `Másold be a kódot, vagy írd a címbe, mit szeretnél. <span class="ai-fill-provider">${esc(current.active.providerLabel)}</span>`
             : 'Az AI kitöltéshez add meg a saját kulcsodat: <button type="button" class="ai-link" data-open-settings="ai">Beállítások → AI</button>';
     }
 
@@ -762,7 +897,8 @@
         aiExtras.innerHTML = cards.join('');
     }
 
-    const LANGUAGE_LABELS = { bash: 'Bash', powershell: 'PowerShell', cmd: 'CMD', sh: 'sh', zsh: 'zsh', python: 'Python', sql: 'SQL', javascript: 'JavaScript', json: 'JSON', yaml: 'YAML', docker: 'Docker', git: 'Git' };
+    const LANGUAGE_LABELS = { bash: 'Bash', powershell: 'PowerShell', cmd: 'CMD', sh: 'sh', zsh: 'zsh', python: 'Python', sql: 'SQL', javascript: 'JavaScript', json: 'JSON', yaml: 'YAML', docker: 'Docker', git: 'Git',
+        typescript: 'TypeScript', html: 'HTML', css: 'CSS', go: 'Go', java: 'Java', csharp: 'C#', php: 'PHP', regex: 'Regex', markdown: 'Markdown' };
 
     function languageLabel(language) {
         return LANGUAGE_LABELS[language] || language.charAt(0).toUpperCase() + language.slice(1);
@@ -803,10 +939,16 @@
             fragments[0].language = suggestion.language;
             fragmentChanged = true;
         }
+        // A fül neve csak több fülnél látszik a kártyán, ezért egy fülnél nem írjuk be.
+        if (suggestion.label && fragments.length > 1 && (overwrite || !fragments[0].label) && fragments[0].label !== suggestion.label) {
+            fragments[0].label = suggestion.label;
+            fragmentChanged = true;
+        }
         if (fragmentChanged) {
             renderFragmentRows(fragments);
             changed.push(fragmentsBox.querySelector('.fragment-row'));
         }
+        aiFirstLabel = suggestion.label || '';
         renderAiExtras(suggestion);
         if (!changed.length) {
             if (!aiExtras.children.length) notify('Nincs mit kitölteni. Az összes mező újraírásához jelöld be a „Mindent újraír” lehetőséget.', 'info');
@@ -821,7 +963,7 @@
         const first = readFragments()[0] || { content: '', language: '' };
         const input = { title: titleInput.value, description: descriptionInput.value, code: first.content, language: first.language || '' };
         if (!input.code.trim() && !input.title.trim() && !input.description.trim()) {
-            notify('Írd be a parancsot, vagy a címbe vagy a leírásba azt, hogy mit szeretnél.', 'error');
+            notify('Írd be a kódot, vagy a címbe vagy a leírásba azt, hogy mit szeretnél.', 'error');
             titleInput.focus();
             return;
         }
@@ -873,7 +1015,7 @@
         if (!aiReview.active) aiSnapshot = snapshotForm();
         const fragments = readFragments();
         // Két fülnél az első is kapjon nevet (a nyelvéből), különben a kártyán csak a nyelv látszik.
-        if (fragments[0] && !fragments[0].label && fragments[0].language) fragments[0].label = languageLabel(fragments[0].language);
+        if (fragments[0] && !fragments[0].label && (aiFirstLabel || fragments[0].language)) fragments[0].label = aiFirstLabel || languageLabel(fragments[0].language);
         fragments.push({ content: tab.code, language: tab.language || null, label: tab.label || null });
         renderFragmentRows(fragments);
         const rows = fragmentsBox.querySelectorAll('.fragment-row');
@@ -911,7 +1053,7 @@
             const wasEditing = Boolean(editing);
             closeEditor();
             render();
-            notify(wasEditing ? 'Parancs mentve.' : 'Parancs létrehozva.', 'success');
+            notify(wasEditing ? 'Kódrészlet mentve.' : 'Kódrészlet létrehozva.', 'success');
         } catch (err) {
             if (err.status === 409 && err.body?.item) {
                 // Valaki közben módosította: a friss változatot mutatjuk, a felhasználó újra elvégezheti a módosítást.
@@ -935,7 +1077,7 @@
                 <span class="command-category-name">${esc(category.label)}${category.default_language ? ` <span class="command-lang">${esc(category.default_language)}</span>` : ''}</span>
                 <button type="button" class="btn-icon" data-cat-action="rename" title="Átnevezés"><i class="fa-solid fa-pen"></i></button>
                 <button type="button" class="btn-icon" data-cat-action="delete" title="Törlés"><i class="fa-solid fa-trash"></i></button>
-            </div>`).join('') : '<div class="empty-state">Még nincs parancs kategória.</div>';
+            </div>`).join('') : '<div class="empty-state">Még nincs kódtár kategória.</div>';
     }
 
     async function openCategoryManager() {
@@ -977,7 +1119,7 @@
                 if (!newName || !newName.trim() || newName.trim() === name) return;
                 await commandApi.renameCategoryOfKind('command', name, newName.trim());
             } else {
-                if (!confirm(`Törlöd a(z) „${name}” kategóriát? A benne lévő parancsok az Inboxba kerülnek.`)) return;
+                if (!confirm(`Törlöd a(z) „${name}” kategóriát? A benne lévő kódrészletek az Inboxba kerülnek.`)) return;
                 await commandApi.deleteCategoryOfKind('command', name);
             }
             await refreshCategories();
@@ -989,7 +1131,7 @@
     /** The open command was deleted or unshared elsewhere. */
     function dropEditor() {
         closeEditor();
-        notify('Ez a parancs közben törlődött, vagy már nem éred el.', 'info');
+        notify('Ez a kódrészlet közben törlődött, vagy már nem éred el.', 'info');
     }
 
     /**
@@ -999,7 +1141,7 @@
     function showRemoteInEditor(item) {
         if (!editing || String(editing.id) !== String(item.id) || !live()?.isNewer(item, editing)) return;
         live().conflictBar(editForm, {
-            text: 'Ez a parancs közben máshol módosult.',
+            text: 'Ez a kódrészlet közben máshol módosult.',
             onReload: () => openEditor(findItem(item.id) || item),
             onKeep: () => { editing = { ...(findItem(item.id) || item) }; }
         });

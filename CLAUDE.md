@@ -63,6 +63,7 @@ migrations/NNN_*.sql    schema changes, run on every server start
 public/index.html       the whole single-page UI (all four views are in this file)
 public/css/styles.css   one stylesheet, themed with CSS variables
 public/js/*.js          one IIFE per feature, exposed on window.CloudMark.<name> (mobile-ui.js = phone layout)
+public/js/vendor/       vendored third-party scripts (highlight.js for the Kódtár colouring), loaded from 'self' because of the CSP
 public/sw.js            service worker (install/offline page/push), never caches /api
 public/clip.html        Clipper page (/clip): bookmarklet + Android share target save a page/selection as bookmark, note or task
 test/*.test.js          node:test unit tests (`npm test`)
@@ -101,7 +102,9 @@ tutorials/*.md          Hungarian user guides, one per feature (index: tutorials
 
 ## Front end: the views pattern
 
-The signed-in main page has four views, in this tab order: **Jegyzetek, Feladatok, Könyvjelzők, Parancsok**
+The signed-in main page has four views, in this tab order: **Jegyzetek, Feladatok, Könyvjelzők, Kódtár**
+(Kódtár = the former Parancsok: code snippets, still `items.type = 'command'` and `commands` in code; hash `#/kodtar`, the old
+`#/parancsok` still opens it via `OLD_HASHES` in `views.js`; UI calls one item a „kódrészlet”)
 (Alt+1…4 follow the order, default view = notes). `public/js/views.js` owns switching:
 
 - Each view is a `<div class="app-view" id="<name>View" data-view="<name>" hidden>` in `index.html` and a tab
@@ -147,6 +150,9 @@ The Bookmarks view is the reference layout; copy its markup and classes rather t
 - Tags at the bottom of the card as `#tag` in blue text: `<div class="card-tags">`. Compact notes and compact
   tasks hide tags.
 - Views: commands have grid / compact / list, notes grid / compact / list / kanban, tasks list / compact.
+- Kódtár cards colour the code with `CloudMark.codeHighlight.highlightLines(code, language)` (`public/js/code-highlight.js` over the
+  vendored highlight.js; it escapes the text and splits the HTML per line, tests in `test/code-highlight.test.js`). Token colours are the
+  `--code-*` theme variables. Several lines get `.code-line-no` numbers. Multi-select move: ⋮ → Kijelölés és áthelyezés (`state.selecting`).
 
 ### Command Palette and search
 
@@ -154,6 +160,9 @@ The Bookmarks view is the reference layout; copy its markup and classes rather t
   `#paletteToggle`). It calls `api.search()` → `GET /api/search?q=&types=&limit=` (`routes/search.js`), which
   matches title, body, description, category, tags, command fragments and checklists, accent-insensitively
   (`translate(lower(…))` in SQL, `foldText` in JS), and returns the top N per type in tab order.
+- Search prefixes are parsed by `public/js/search-query.js` (`CloudMark.searchQuery`, Node + browser, `test/search-query.test.js`):
+  `#tag` (tag prefix), `/category` (category or any parent, recursive CTE in SQL), `@kód` / `@jegyzet` / `@feladat` / `@könyvjelző`
+  (type; another word after `@` is a category). The server parses `q` itself; the Kódtár list uses `searchQuery.matches()` the same way.
 - The task "Kapcsolt elemek" picker uses the same endpoint. A new searchable type or field must be added to
   `routes/search.js`, and the palette's open/create actions to `palette.js`.
 - Palette actions call the view modules' public functions (`notes.openComposer`, `tasks.addFromText`,

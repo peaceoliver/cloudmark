@@ -1,10 +1,10 @@
-/* Főoldali nézetváltó: jegyzetek, feladatok, könyvjelzők és parancsok között, oldalbetöltés nélkül. */
+/* Főoldali nézetváltó: jegyzetek, feladatok, könyvjelzők és a kódtár között, oldalbetöltés nélkül. */
 (function () {
     const VIEW_STORAGE_KEY = 'cloudmark_active_view';
     const START_VIEW_KEY = 'cloudmark_start_view';
     const VIEWS = {
         bookmarks: { hash: '#/konyvjelzok', searchId: 'bookmarkSearch' },
-        commands: { hash: '#/parancsok', searchId: 'commandSearch' },
+        commands: { hash: '#/kodtar', searchId: 'commandSearch' },
         notes: { hash: '#/jegyzetek', searchId: 'noteSearch' },
         tasks: { hash: '#/feladatok', searchId: 'taskSearch' }
     };
@@ -20,8 +20,11 @@
     let lastUserId = null;
     let started = false;
 
+    // A régi címek (könyvjelzők, megosztott linkek, PWA parancsikon) továbbra is működnek.
+    const OLD_HASHES = { '#/parancsok': 'commands' };
+
     function viewFromHash() {
-        return Object.keys(VIEWS).find(name => VIEWS[name].hash === window.location.hash) || null;
+        return Object.keys(VIEWS).find(name => VIEWS[name].hash === window.location.hash) || OLD_HASHES[window.location.hash] || null;
     }
 
     function readSavedView() {

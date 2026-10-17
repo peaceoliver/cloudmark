@@ -1,6 +1,6 @@
 # Belső hivatkozások (`[[` link)
 
-Egy jegyzetből vagy feladatból egy kattintással átugorhatsz egy másik jegyzetre, feladatra, parancsra vagy
+Egy jegyzetből vagy feladatból egy kattintással átugorhatsz egy másik jegyzetre, feladatra, kódrészletre vagy
 könyvjelzőre, és az elem alján azt is látod, mi hivatkozik rá.
 
 ## Így kezdj hozzá
@@ -8,7 +8,7 @@ könyvjelzőre, és az elem alján azt is látod, mi hivatkozik rá.
 1. Nyiss meg egy jegyzetet (vagy írj újat), illetve egy feladat részletes paneljén kattints a **Leírás** mezőbe.
 2. Írd be: `[[`. A kurzor alatt megjelenik egy kis lista.
 3. Kezdd el gépelni a keresett elem nevét. Ékezet nélkül is jó: a „kazan” megtalálja a „Kazán”-t.
-   A listában minden sor elején ikon, a végén a típus (jegyzet, feladat, parancs, könyvjelző) látszik.
+   A listában minden sor elején ikon, a végén a típus (jegyzet, feladat, kódrészlet, könyvjelző) látszik.
 4. A `↑`/`↓` billentyűkkel válaszd ki, és nyomd meg az `Enter`-t (vagy kattints, telefonon koppints rá).
    A szövegbe ilyesmi kerül: `[[jegyzet:123|Kazán szervizelés]]`.
 5. Ha még nincs ilyen jegyzet, válaszd a lista alján az **Új jegyzet: „…”** sort: létrejön egy üres jegyzet
@@ -20,7 +20,7 @@ könyvjelzőre, és az elem alján azt is látod, mi hivatkozik rá.
 
 - **jegyzet:** megnyílik a szerkesztője,
 - **feladat:** megnyílik a részletes panelje,
-- **parancs:** megnyílik a szerkesztője,
+- **kódrészlet:** megnyílik a szerkesztője,
 - **könyvjelző:** a weboldal új lapon nyílik meg.
 
 ## Hivatkoznak rá
@@ -40,7 +40,7 @@ mely jegyzetek és feladatok linkelnek erre az elemre. Rájuk kattintva oda ugra
 
 ## Gyakori kérdések
 
-**Működik a parancsok leírásában is?** Egyelőre a jegyzetek szövegében és a feladatok leírásában.
+**Működik a kódrészletek leírásában is?** Egyelőre a jegyzetek szövegében és a feladatok leírásában.
 
 **Mi van, ha valaki más jegyzetére mutató linket másolok be?** Az nem nyílik meg, a kártyán „nem található”
 jelöléssel látszik. Mindenki csak a saját elemeire hivatkozhat.

@@ -819,10 +819,10 @@
                                 <i class="fa-solid ${linkIcon(link)}"></i> ${esc(link.title || 'Névtelen')}
                             </button>
                             ${trashed || !own ? '' : `<button type="button" class="note-action" data-detail="remove-link" data-index="${index}" title="Kapcsolat törlése" aria-label="Kapcsolat törlése"><i class="fa-solid fa-xmark"></i></button>`}
-                        </div>`).join('') : '<div class="task-detail-empty">Nincs kapcsolt jegyzet, parancs vagy könyvjelző.</div>'}
+                        </div>`).join('') : '<div class="task-detail-empty">Nincs kapcsolt jegyzet, kódrészlet vagy könyvjelző.</div>'}
                 </div>
                 ${trashed || !own ? '' : `<div class="task-link-search">
-                    <input type="search" class="task-detail-input" data-detail-input="link" placeholder="Jegyzet, parancs vagy könyvjelző keresése…" aria-label="Kapcsolat keresése" autocomplete="off">
+                    <input type="search" class="task-detail-input" data-detail-input="link" placeholder="Jegyzet, kódrészlet vagy könyvjelző keresése…" aria-label="Kapcsolat keresése" autocomplete="off">
                     <div class="task-link-results" hidden></div>
                 </div>`}
                 <div class="inline-backlinks" data-backlinks hidden></div>
@@ -1030,7 +1030,7 @@
             results.innerHTML = matches.length ? matches.map((match, index) => `
                 <button type="button" class="task-link-result" data-result="${index}">
                     <i class="fa-solid ${linkIcon(match)}"></i> <span>${esc(match.title)}</span>
-                    <small>${match.targetType === 'bookmark' ? 'könyvjelző' : { note: 'jegyzet', command: 'parancs', task: 'feladat' }[match.itemType]}</small>
+                    <small>${match.targetType === 'bookmark' ? 'könyvjelző' : { note: 'jegyzet', command: 'kódrészlet', task: 'feladat' }[match.itemType]}</small>
                 </button>`).join('') : '<div class="task-detail-empty">Nincs találat.</div>';
             results.hidden = false;
             results._matches = matches;

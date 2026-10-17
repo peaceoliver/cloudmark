@@ -6,7 +6,7 @@
 (function () {
     const parser = window.CloudMark.linkParser;
     const api = window.CloudMark.api;
-    const KIND_LABEL = { note: 'jegyzet', task: 'feladat', command: 'parancs', bookmark: 'könyvjelző' };
+    const KIND_LABEL = { note: 'jegyzet', task: 'feladat', command: 'kódrészlet', bookmark: 'könyvjelző' };
     const KIND_ICON = { note: 'fa-note-sticky', task: 'fa-list-check', command: 'fa-terminal', bookmark: 'fa-bookmark' };
     const SEARCH_DELAY_MS = 200;
     const BACKLINK_CACHE_MS = 30000;
@@ -188,7 +188,7 @@
                 ${match.create ? '' : `<small>${KIND_LABEL[match.kind]}</small>`}
             </button>`).join('');
         const hint = !query.trim()
-            ? '<div class="link-ac-hint">Kezdd el gépelni egy jegyzet, feladat, parancs vagy könyvjelző nevét…</div>'
+            ? '<div class="link-ac-hint">Kezdd el gépelni egy jegyzet, feladat, kódrészlet vagy könyvjelző nevét…</div>'
             : (loading && !matches.length ? '<div class="link-ac-hint">Keresés…</div>' : (!matches.length ? '<div class="link-ac-hint">Nincs találat.</div>' : ''));
         popup.innerHTML = rows + hint;
         popup.hidden = false;

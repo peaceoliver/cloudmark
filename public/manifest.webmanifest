@@ -2,7 +2,7 @@
   "id": "/",
   "name": "CloudMark",
   "short_name": "CloudMark",
-  "description": "Könyvjelzők, parancsok, jegyzetek és feladatok egy helyen.",
+  "description": "Jegyzetek, feladatok, könyvjelzők és kódrészletek egy helyen.",
   "lang": "hu",
   "dir": "ltr",
   "start_url": "/?source=pwa",
@@ -25,6 +25,6 @@
   "shortcuts": [
     { "name": "Feladatok", "short_name": "Feladatok", "url": "/?source=pwa#/feladatok", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Jegyzetek", "short_name": "Jegyzetek", "url": "/?source=pwa#/jegyzetek", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Parancsok", "short_name": "Parancsok", "url": "/?source=pwa#/parancsok", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Kódtár", "short_name": "Kódtár", "url": "/?source=pwa#/kodtar", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

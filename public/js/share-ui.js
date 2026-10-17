@@ -11,7 +11,7 @@
     if (!modal || !body) return;
 
     const PERMISSION_LABELS = { view: 'Megtekintheti', edit: 'Szerkesztheti' };
-    const TYPE_LABELS = { note: 'jegyzet', task: 'feladat', command: 'parancs', bookmark: 'könyvjelző' };
+    const TYPE_LABELS = { note: 'jegyzet', task: 'feladat', command: 'kódrészlet', bookmark: 'könyvjelző' };
     let current = null;
 
     function esc(value) {
