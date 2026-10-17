@@ -71,7 +71,7 @@ ${actionsHtml}
 </div></body></html>`;
 }
 
-function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer, getPublicBaseUrl, push, taskActions }) {
+function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer, getPublicBaseUrl, push, taskActions, live = null }) {
     let running = null;
     let lastBaseUrl = null;
     const lastTestByUser = new Map();
@@ -423,13 +423,15 @@ function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, 
         );
         const row = claimed.rows[0];
         if (!row) return { status: 'invalid' };
+        // A nyitott ablakok (a saját és a megosztottaké is) azonnal lássák a változást.
+        const announce = result => { if (result.status !== 'gone') live?.notifyItem(Number(row.item_id), row.user_id); return result; };
         if (action === 'done') {
             const outcome = await taskActions.completeTask(row.user_id, Number(row.item_id));
-            return outcome ? { status: 'done', title: outcome.title, recurring: outcome.recurring } : { status: 'gone' };
+            return announce(outcome ? { status: 'done', title: outcome.title, recurring: outcome.recurring } : { status: 'gone' });
         }
         const snoozed = await taskActions.snoozeTask(row.user_id, Number(row.item_id));
         const item = await pool.query('SELECT title FROM items WHERE id = $1', [row.item_id]);
-        return snoozed ? { status: 'snoozed', title: item.rows[0]?.title } : { status: 'gone' };
+        return announce(snoozed ? { status: 'snoozed', title: item.rows[0]?.title } : { status: 'gone' });
     }
 
     function actionResultPage(result, appUrl) {

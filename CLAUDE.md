@@ -53,6 +53,7 @@ routes/ai-providers.js  Gemini (@google/genai), Anthropic (@anthropic-ai/sdk), O
 routes/safe-fetch.js    fetch a user-given URL safely (no private / metadata addresses), used by bookmark metadata
 routes/shares.js        sharing: /api/shares (create, permission, revoke/leave, accept/decline), /api/contacts
 routes/share-access.js  who may see / edit an item (owner or accepted share), SQL helpers used by every item query
+routes/live.js          live updates: GET /api/events (SSE) + middleware that tells everyone who sees a changed item
 migrations/NNN_*.sql    schema changes, run on every server start
 public/index.html       the whole single-page UI (all four views are in this file)
 public/css/styles.css   one stylesheet, themed with CSS variables
@@ -243,6 +244,20 @@ redraw after sign-in.
 - Front end: `CloudMark.share` (`public/js/share-ui.js`): `open(item, { onChange, onLeft })`, `badgeHtml(item)`,
   `isOwn(item)`, `leave(item)`. Views show the badge in `.card-meta` and a "Megosztva velem" state filter
   (`shared` in notes, tasks, bookmarks and commands).
+
+### Live updates
+
+- `routes/live.js` keeps one SSE connection per open window (`GET /api/events`, ≤5 per user, 25 s ping) and sends events from
+  memory (one Render instance; Postgres `LISTEN` does not work through the Supabase pooler). Its middleware runs before every
+  route: after a 2xx POST/PUT/PATCH/DELETE it maps the path with `changeFromRequest` (tests in `test/live.test.js`) and sends
+  `item` / `bookmark` `{ id }` to the owner and accepted recipients (also through a subtask's parent), `notifications` for share
+  changes, `refresh` for imports. Events carry only ids; the browser re-reads through the normal endpoints.
+- A new mutating endpoint is picked up only if `changeFromRequest` knows its path; add it there with a test. Changes made without
+  a request user call `live.notifyItem(id)` (e.g. the push / e-mail „Kész” buttons).
+- `api.js` sends `X-Client-Id` so a window doesn't get its own changes back. `public/js/live.js` (`CloudMark.live`) calls
+  `applyRemote(id, item|null)` and, after a reconnect, `refreshAll()` on notes, tasks and commands; bookmarks reload the list.
+  An open editor refreshes silently when nothing is unsaved, else shows `live.conflictBar()` (Frissítés / Saját változat
+  megtartása) and doesn't autosave until the user picks. A new view or editor needs the same two functions.
 
 ### Notes kanban
 

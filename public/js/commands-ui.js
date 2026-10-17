@@ -2,6 +2,8 @@
 (function () {
     const commandApi = window.CloudMark.api;
     const share = window.CloudMark.share;
+    // Az élő frissítés (live.js) később töltődik be, ezért mindig a hívás pillanatában kérjük le.
+    const live = () => window.CloudMark.live;
     /** Whether the user owns the command (not shared with them). */
     const isOwn = item => !share || share.isOwn(item);
     const COPY_FEEDBACK_MS = 1500;
@@ -585,6 +587,7 @@
 
     /** Hides the editor wherever it is open (under the bar for a new command, in the window when editing). */
     function closeEditor() {
+        live()?.clearConflictBar(editForm);
         resetAi();
         newPanel.hidden = true;
         newButton.setAttribute('aria-expanded', 'false');
@@ -595,6 +598,7 @@
 
     async function openEditor(item) {
         if (!state.loaded) await load();
+        live()?.clearConflictBar(editForm);
         editing = item;
         document.getElementById('commandEditTitle').textContent = item ? 'Parancs szerkesztése' : 'Új parancs';
         document.getElementById('cmdId').value = item ? item.id : '';
@@ -982,6 +986,25 @@
         }
     });
 
+    /** The open command was deleted or unshared elsewhere. */
+    function dropEditor() {
+        closeEditor();
+        notify('Ez a parancs közben törlődött, vagy már nem éred el.', 'info');
+    }
+
+    /**
+     * A newer copy of the command open in the editor arrived from elsewhere. The form is never refilled on its own:
+     * a bar offers Frissítés (refill) or Saját változat megtartása (the next save measures against the newer copy, no 409).
+     */
+    function showRemoteInEditor(item) {
+        if (!editing || String(editing.id) !== String(item.id) || !live()?.isNewer(item, editing)) return;
+        live().conflictBar(editForm, {
+            text: 'Ez a parancs közben máshol módosult.',
+            onReload: () => openEditor(findItem(item.id) || item),
+            onKeep: () => { editing = { ...(findItem(item.id) || item) }; }
+        });
+    }
+
     window.CloudMark.commands = {
         show: () => load(),
         reset,
@@ -993,6 +1016,30 @@
             // Frissen elfogadott megosztás még nincs a betöltött listában.
             if (!item) { await load(true); item = findItem(id); }
             if (item) openEditor(item);
+        },
+        /** A command changed elsewhere (live.js): `item` is the fresh copy, null when it is gone or no longer visible. */
+        applyRemote(id, item) {
+            if (!state.loaded) return;
+            const previous = findItem(id);
+            if (!item || item.type !== 'command') {
+                if (!previous) return;
+                forget(previous);
+                if (editing && String(editing.id) === String(id)) dropEditor();
+                return;
+            }
+            upsertItem(item);
+            render();
+            showRemoteInEditor(item);
+        },
+        /** Reloads the list quietly after the live connection was lost for a while. */
+        async refreshAll() {
+            if (!state.loaded) return;
+            try { state.items = await commandApi.getItems('command', { all: 'true' }); } catch (err) { return; }
+            render();
+            if (!editing?.id) return;
+            const current = findItem(editing.id);
+            if (current) showRemoteInEditor(current);
+            else dropEditor();
         },
         focusSearch: () => searchInput.focus(),
         copyRules

@@ -5,9 +5,13 @@ function shareTarget(target) {
     return target && typeof target === 'object' ? target : { itemId: target };
 }
 
+/** This window's id: the server leaves it out of the live updates caused by its own requests (routes/live.js). */
+const liveClientId = (window.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
+apiNamespace.clientId = liveClientId;
+
 /** Sends an HTTP request and parses a successful JSON response. */
 async function requestJson(url, options = {}) {
-    const response = await fetch(url, options);
+    const response = await fetch(url, { ...options, headers: { ...(options.headers || {}), 'X-Client-Id': liveClientId } });
     if (!response.ok) {
         let message = `API error: ${response.status}`;
         let body = null;
