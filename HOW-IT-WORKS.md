@@ -11,7 +11,7 @@ A CloudMark egy többfelhasználós könyvjelző-kezelő alkalmazás. Bejelentke
 - A kézzel megadott **Cím** lesz a könyvjelző fő címe.
 - A kézzel megadott **Leírás** változatlanul elmentődik és megjelenik a kártyán.
 - Azonos URL ugyanahhoz a felhasználóhoz egyszer menthető el.
-- Könyvjelzőt a gyorsmentő (bookmarklet) is elő tud készíteni az aktuális oldal URL-jével és címével.
+- Könyvjelzőt bármelyik oldalról a **Mentés CloudMarkba** (Clipper) gombbal is menthetsz, lásd lent.
 
 ## Automatikus weboldal-adatok
 
@@ -73,14 +73,26 @@ A **Ctrl+K** (Macen ⌘K) bármelyik nézetből, vagy a fejléc nagyító gombja
 - **`>` előtaggal** gyors műveletek jönnek: nézetváltás, Beállítások, téma váltása, új elem.
 - A feladat „Kapcsolt elemek” keresője ugyanezt a közös keresőt használja.
 
+### Mentés CloudMarkba (Clipper)
+
+Bármelyik weboldal egy kattintással menthető, átváltás nélkül.
+
+- **Gomb:** Beállítások → Általános → „Mentés CloudMarkba (Clipper)”. A gombot a böngésző könyvjelzősávjára kell húzni (bookmarklet). Rákattintva kis ablak (`/clip`) nyílik az oldal címével, URL-jével és a kijelölt szöveggel (legfeljebb 4000 karakter).
+- **Mi legyen belőle:** az ablak tetején **Könyvjelző / Jegyzet / Feladat**. Kijelölés nélkül könyvjelző az alap („Később olvasom” bepipálva), kijelöléssel jegyzet (a szöveg, alatta „Forrás: URL”). Feladatnál a cím „Elolvasni: &lt;oldal címe&gt;”, a leírásban az oldal linkje.
+- **Kategória:** típusonként megjegyzi az utoljára választottat; könyvjelzőnél először az „Inbox” kategóriát, ha van. Címkék vesszővel elválasztva adhatók meg.
+- **Mentés után** „Mentve” felirat és **Megnyitás a CloudMarkban** gomb, a felugró ablak 1,5 másodperc múlva bezárul. Már elmentett URL esetén hibaüzenet és link a meglévő könyvjelzőhöz. Kijelentkezett állapotban az ablak bejelentkezést kér, utána ott folytatható.
+- **Android:** a telepített CloudMark megjelenik a rendszer **Megosztás** menüjében (Web Share Target); ugyanez az ablak nyílik meg. Ha nem látszik, az appot egyszer meg kell nyitni vagy újratelepíteni.
+- **iPhone:** a webes appok nem kerülhetnek a Megosztás menübe; a gomb a Safari Kedvencek közül működik, vagy egy Parancsok (Shortcuts) művelet nyithatja meg a `/clip?url=…&title=…` címet.
+- A régi, Könyvjelzők fülről behúzott gyorsmentő gombok továbbra is működnek, ugyanide irányítanak.
+
 ### Beállítások
 
 Egy közös ablak hat füllel; a fejléc ⋮ menüjéből (Általános fül) vagy bármelyik nézet ⋮ menüjéből (az adott nézet füle) nyílik.
 
-- **Általános:** téma, induláskor megnyíló nézet, értesítések (e-mail, napi összefoglaló, telefonos értesítés eszközönként, csendes időszak, teszt értesítés), jelszócsere. Az értesítési kapcsolók azonnal mentődnek; a csengő panel alján egy link vezet ide.
+- **Általános:** téma, induláskor megnyíló nézet, a **Mentés CloudMarkba** (Clipper) gomb, értesítések (e-mail, napi összefoglaló, telefonos értesítés eszközönként, csendes időszak, teszt értesítés), jelszócsere. Az értesítési kapcsolók azonnal mentődnek; a csengő panel alján egy link vezet ide.
 - **Jegyzetek, Feladatok, Parancsok:** alapértelmezett rendezés és nézet.
 - **AI:** saját AI kulcsok (Gemini, Claude, OpenAI-kompatibilis) az AI kitöltéshez, modellválasztás, kapcsolat tesztelése.
-- **Könyvjelzők:** nézet, rendezés, weboldal címsor és kép olvasása, az export tartalma és az import célkategóriája, valamint a „Mentés CloudMarkba” gyorsmentő gomb.
+- **Könyvjelzők:** nézet, rendezés, weboldal címsor és kép olvasása, az export tartalma és az import célkategóriája (a Clipper gombra itt csak egy utalás van, az Általános fülön található).
 - A fejléc ⋮ menüjében csak az általános dolgok maradtak: Beállítások, Team, alkalmazás telepítése, Info. Az **Info** egy rövid ismertető mind a négy nézetről, a keresőről, a menükről és a gyorsbillentyűkről.
 
 ### Parancsok
