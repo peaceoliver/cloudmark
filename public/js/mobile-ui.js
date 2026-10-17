@@ -35,6 +35,13 @@
                 { bar: '#commandCategoriesBar', label: 'Kategória' },
                 { bar: '#commandsView .commands-state-group', label: 'Nézet' }
             ]
+        },
+        accounts: {
+            sheet: ['#accountsView > .category-section', '#accountsView > .item-list-toolbar'],
+            groups: [
+                { bar: '#accountCategoriesBar', label: 'Kategória' },
+                { bar: '#accountsView .accounts-state-group', label: 'Nézet' }
+            ]
         }
     };
 
@@ -223,6 +230,7 @@
         if (name === 'tasks') return document.body.classList.contains('m-quickadd-open');
         if (name === 'bookmarks') return document.querySelector('#bookmarksView .add-bookmark-toggle')?.getAttribute('aria-expanded') === 'true';
         if (name === 'commands') return document.getElementById('commandNewBtn')?.getAttribute('aria-expanded') === 'true';
+        if (name === 'accounts') return document.getElementById('accountNewBtn')?.getAttribute('aria-expanded') === 'true';
         return false;
     }
 
@@ -247,6 +255,10 @@
             button?.click();
             if (newItemIsOpen('commands')) scrollToSection('#commandsView > .add-item-section');
         }
+        if (name === 'accounts') {
+            document.getElementById('accountNewBtn')?.click();
+            if (newItemIsOpen('accounts')) scrollToSection('#accountsView > .add-item-section');
+        }
         if (name === 'bookmarks') {
             const button = document.querySelector('#bookmarksView .add-bookmark-toggle');
             button?.click();
@@ -262,7 +274,7 @@
         fab.hidden = !signedIn;
         const open = newItemIsOpen(name);
         fab.classList.toggle('is-open', open);
-        const labels = { notes: 'Új jegyzet', tasks: 'Új feladat', bookmarks: 'Új könyvjelző', commands: 'Új kódrészlet' };
+        const labels = { notes: 'Új jegyzet', tasks: 'Új feladat', bookmarks: 'Új könyvjelző', commands: 'Új kódrészlet', accounts: 'Új fiók' };
         fab.setAttribute('aria-label', open ? 'Bezárás' : labels[name] || 'Új');
         fab.title = fab.getAttribute('aria-label');
     }

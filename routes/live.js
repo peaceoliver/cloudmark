@@ -32,6 +32,8 @@ function changeFromRequest(method, path, body = {}, answer = null) {
     if ((match = clean.match(/^\/api\/items\/(\d+)(?:\/(state|permanent|complete|snooze|uncomplete))?$/))) {
         return { items: [Number(match[1])] };
     }
+    // A széf (fiókok mesterjelszava) változott: a többi ablak újra lekéri, és törlés után zárol.
+    if (clean === '/api/vault') return { scope: 'vault' };
     if (clean === '/api/bookmarks/import') return { scope: 'bookmarks' };
     if (clean === '/api/bookmarks') {
         const id = parseId(answer?.id);

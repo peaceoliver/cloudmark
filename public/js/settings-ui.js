@@ -1,11 +1,11 @@
 /*
- * Közös Beállítások ablak fülekkel (Általános, Jegyzetek, Feladatok, Könyvjelzők, Parancsok, AI),
+ * Közös Beállítások ablak fülekkel (Általános, Jegyzetek, Feladatok, Könyvjelzők, Kódtár, Fiókok, AI),
  * és a nézetek ⋮ menüinek „Beállítások…” pontja, amely az adott nézet fülén nyitja meg.
  */
 (function () {
     const modal = document.getElementById('userSettingsModal');
     if (!modal) return;
-    const TABS = ['general', 'notes', 'tasks', 'bookmarks', 'commands', 'ai'];
+    const TABS = ['general', 'notes', 'tasks', 'bookmarks', 'commands', 'accounts', 'ai'];
 
     function showTab(name) {
         const tab = TABS.includes(name) ? name : 'general';
@@ -16,6 +16,7 @@
         });
         modal.querySelectorAll('[data-settings-pane]').forEach(pane => { pane.hidden = pane.dataset.settingsPane !== tab; });
         if (tab === 'general') window.CloudMark.share?.renderContacts(document.getElementById('shareContactSettings'));
+        if (tab === 'accounts') window.CloudMark.accounts?.renderSettings();
     }
 
     modal.querySelector('.settings-tabs').addEventListener('click', event => {

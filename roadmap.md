@@ -40,6 +40,7 @@ A fejlesztési szabályok és a felület egységességének szabályai a `CLAUDE
 - értesítések: csengő, e-mail, napi összefoglaló, Web Push (Supabase pg_cron ütemezéssel)
 - PWA: telepíthető app, offline oldal, push értesítés Kész/Szundi gombokkal
 - egységes nézetek: fülek, „+ Új …” sáv, eszközsor, kártyák (kategória és #címkék) mind a négy nézetben
+- Fiókok nézet (jelszókezelő): böngészőben titkosított széf mesterjelszóval és helyreállító kulccsal, automatikus zárolás, jelszógenerátor, CSV import (Chrome, Firefox, Bitwarden)
 
 ## 2. Részben kész ⚠️
 
@@ -82,3 +83,4 @@ Az aktuális ötletek feladatként vannak felvéve az appban (Feladatok, „Clou
 7. AI asszisztens: saját kulcsos AI kitöltés. Kész: Parancsok, Könyvjelzők, Feladatok (gyors felvétel, címke/projekt, bontás), Jegyzetek (cím/címke/kategória, összefoglaló, teendők) (tervek: `cloudmark-plan/ai-assist-plan.md`, `ai-assist-2-plan.md`). Később: címkézetlen könyvjelzők tömeges címkézése, parancs elmagyarázása, helyesírás-javítás jegyzetben
 8. Megosztás más felhasználókkal (e-mail cím, ismerősök vagy a Team funkció alapján), minden elemtípusra
 9. Saját domain és e-mail domain-hitelesítés (elhalasztva)
+10. ~~Fiókkezelő / jelszókezelő~~ elkészült (terv: `cloudmark-plan/password-manager-plan.md`). Később: fiókok megosztása végponttól végpontig titkosítva, TOTP (kétlépcsős kód) generátor, Argon2id kulcsszármaztatás, böngészőbővítmény automatikus kitöltéshez

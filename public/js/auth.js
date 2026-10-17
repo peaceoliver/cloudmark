@@ -354,7 +354,7 @@ async function openUserSettings(tab) {
     document.getElementById('currentPassword').value = '';
     document.getElementById('newPassword').value = '';
     document.getElementById('confirmNewPassword').value = '';
-    document.getElementById('userStartViewSetting').value = ['notes', 'tasks', 'bookmarks', 'commands'].includes(settings.startView) ? settings.startView : 'last';
+    document.getElementById('userStartViewSetting').value = ['notes', 'tasks', 'bookmarks', 'commands', 'accounts'].includes(settings.startView) ? settings.startView : 'last';
     const prefs = window.CloudMark?.prefs;
     document.querySelectorAll('#userSettingsForm [data-pref]').forEach(select => { if (prefs) select.value = prefs.get(select.dataset.pref); });
     window.CloudMark?.settings?.showTab(typeof tab === 'string' ? tab : window.CloudMark?.views?.active);

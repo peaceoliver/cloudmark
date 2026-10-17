@@ -1,4 +1,4 @@
-/* Főoldali nézetváltó: jegyzetek, feladatok, könyvjelzők és a kódtár között, oldalbetöltés nélkül. */
+/* Főoldali nézetváltó: jegyzetek, feladatok, könyvjelzők, a kódtár és a fiókok között, oldalbetöltés nélkül. */
 (function () {
     const VIEW_STORAGE_KEY = 'cloudmark_active_view';
     const START_VIEW_KEY = 'cloudmark_start_view';
@@ -6,10 +6,11 @@
         bookmarks: { hash: '#/konyvjelzok', searchId: 'bookmarkSearch' },
         commands: { hash: '#/kodtar', searchId: 'commandSearch' },
         notes: { hash: '#/jegyzetek', searchId: 'noteSearch' },
-        tasks: { hash: '#/feladatok', searchId: 'taskSearch' }
+        tasks: { hash: '#/feladatok', searchId: 'taskSearch' },
+        accounts: { hash: '#/fiokok', searchId: 'accountSearch' }
     };
     // A gyorsbillentyűk a fülek sorrendjét követik.
-    const SHORTCUTS = { 1: 'notes', 2: 'tasks', 3: 'bookmarks', 4: 'commands' };
+    const SHORTCUTS = { 1: 'notes', 2: 'tasks', 3: 'bookmarks', 4: 'commands', 5: 'accounts' };
     // Bejelentkezve ez nyílik meg, ha még nincs elmentett nézet (az első fül).
     const DEFAULT_VIEW = 'notes';
     const tabs = document.getElementById('appTabs');
@@ -58,6 +59,7 @@
         if (name === 'commands') window.CloudMark.commands?.show();
         if (name === 'notes') window.CloudMark.notes?.show();
         if (name === 'tasks') window.CloudMark.tasks?.show();
+        if (name === 'accounts') window.CloudMark.accounts?.show();
     }
 
     /** Called from updateUserUI on page load, login and logout. */
@@ -69,6 +71,8 @@
             window.CloudMark.commands?.reset();
             window.CloudMark.notes?.reset();
             window.CloudMark.tasks?.reset();
+            // Másik felhasználó vagy kilépés: a feloldott széfkulcs is törlődik.
+            window.CloudMark.accounts?.reset();
             window.CloudMark.ai?.reset();
             window.CloudMark.bookmarkAi?.reset();
             // A ✨ gombok a bejelentkezett felhasználó kulcsa szerint jelennek meg.
@@ -125,6 +129,9 @@
         } else if ((event.key === 'n' || event.key === 'N') && activeView === 'tasks') {
             event.preventDefault();
             window.CloudMark.tasks?.focusQuickAdd();
+        } else if ((event.key === 'n' || event.key === 'N') && activeView === 'accounts') {
+            event.preventDefault();
+            window.CloudMark.accounts?.openEditor(null);
         }
     });
 

@@ -8,7 +8,10 @@ const taskDates = require('../public/js/task-parser');
 const linkParser = require('../public/js/inline-links');
 const shareAccess = require('./share-access');
 
-const ITEM_TYPES = ['command', 'note', 'task'];
+const ITEM_TYPES = ['command', 'note', 'task', 'account'];
+// Fiók belépési módjai (public/js/accounts-ui.js LOGIN_METHODS listájával egyezik).
+const LOGIN_METHODS = ['password', 'google', 'github', 'microsoft', 'apple', 'facebook', 'sso', 'ssh', 'other'];
+const MAX_SECRET_LENGTH = 24000;
 const TASK_STATUSES = ['todo', 'doing', 'done'];
 const TASK_VIEWS = ['today', 'upcoming', 'overdue', 'inbox', 'done'];
 const MAX_REMINDERS = 10;
@@ -57,7 +60,6 @@ function normalizeFragments(input, fallbackLanguage) {
     return { fragments };
 }
 
-/** Validates the shared item fields used by create, update and import. */
 /** A validation failure detected inside a transaction; the route answers it with 400. */
 class ItemInputError extends Error {}
 
@@ -134,11 +136,48 @@ function normalizeTaskInput(body) {
     };
 }
 
+/**
+ * The plain (searchable) fields of an account, kept in `extra`: url, username, loginMethod, ssoAccount.
+ * Anything else in extra is dropped, so a secret can never end up there by mistake.
+ */
+function normalizeAccountExtra(extra) {
+    const text = (value, max) => (value === undefined || value === null ? '' : String(value).trim().slice(0, max));
+    const loginMethod = text(extra.loginMethod, 20) || 'password';
+    if (!LOGIN_METHODS.includes(loginMethod)) return { error: 'Érvénytelen belépési mód.' };
+    const value = { url: text(extra.url, 2000), username: text(extra.username, 300), loginMethod, ssoAccount: text(extra.ssoAccount, 300) };
+    if (extra.source && typeof extra.source === 'object') value.source = { url: text(extra.source.url, 2000), via: text(extra.source.via, 20) };
+    return { value };
+}
+
+/**
+ * The encrypted secret of an account: undefined keeps the stored one, null removes it, otherwise
+ * { ciphertext, iv } in base64. The server cannot decrypt it, so only the shape and size are checked.
+ */
+function normalizeSecret(secret) {
+    if (secret === undefined) return { secret: undefined };
+    if (secret === null) return { secret: null };
+    const base64 = /^[A-Za-z0-9+/]+={0,2}$/;
+    const ciphertext = typeof secret?.ciphertext === 'string' ? secret.ciphertext : '';
+    const iv = typeof secret?.iv === 'string' ? secret.iv : '';
+    if (!base64.test(ciphertext) || !base64.test(iv) || iv.length > 32 || ciphertext.length > MAX_SECRET_LENGTH) return { error: 'Érvénytelen titkosított adat.' };
+    return { secret: { ciphertext, iv } };
+}
+
 function normalizeItemInput(body, type) {
     const title = optionalText(body.title, MAX_TITLE_LENGTH);
     if ((type === 'command' || type === 'task') && !title) return { error: 'A cím megadása kötelező.' };
-    const extra = body.extra === undefined ? {} : body.extra;
+    if (type === 'account' && !title) return { error: 'A név megadása kötelező.' };
+    let extra = body.extra === undefined ? {} : body.extra;
     if (!extra || typeof extra !== 'object' || Array.isArray(extra)) return { error: 'Érvénytelen kiegészítő adat.' };
+    let secret;
+    if (type === 'account') {
+        const account = normalizeAccountExtra(extra);
+        if (account.error) return { error: account.error };
+        extra = account.value;
+        const checked = normalizeSecret(body.secret);
+        if (checked.error) return { error: checked.error };
+        secret = checked.secret;
+    }
     if (JSON.stringify(extra).length > MAX_EXTRA_LENGTH) return { error: 'Túl nagy kiegészítő adat.' };
     const color = optionalText(body.color, 20);
     if (color && !/^[a-z0-9#-]{1,20}$/i.test(color)) return { error: 'Érvénytelen szín.' };
@@ -161,8 +200,9 @@ function normalizeItemInput(body, type) {
         starred: Boolean(body.starred),
         position,
         extra,
-        fragments,
-        tags: body.tags
+        fragments: type === 'account' ? [] : fragments,
+        tags: body.tags,
+        secret
     };
     if (type === 'note' && !value.title && !value.body && !extra.checklist) return { error: 'Üres jegyzet nem menthető.' };
     if (type === 'task') {
@@ -261,7 +301,8 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                          LEFT JOIN bookmarks b ON l.target_type = 'bookmark' AND b.id = l.target_id AND b.trashed = FALSE AND i.owner_user_id = ${viewer}
                          WHERE l.item_id = i.id AND l.origin = 'inline' AND (li.id IS NOT NULL OR b.id IS NOT NULL)), '[]') AS inline_links,
                (SELECT COUNT(*) FROM items s WHERE s.parent_item_id = i.id AND s.trashed = FALSE)::int AS subtask_count,
-               (SELECT COUNT(*) FROM items s WHERE s.parent_item_id = i.id AND s.trashed = FALSE AND s.status = 'done')::int AS subtask_done_count
+               (SELECT COUNT(*) FROM items s WHERE s.parent_item_id = i.id AND s.trashed = FALSE AND s.status = 'done')::int AS subtask_done_count,
+               (i.type = 'account' AND EXISTS (SELECT 1 FROM item_secrets sec WHERE sec.item_id = i.id)) AS has_secret
         FROM items i
         ${shareAccess.viewerJoinSql(viewer)}
         LEFT JOIN categories c ON c.id = v.category_id`;
@@ -297,6 +338,20 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
             );
             await db.query('INSERT INTO item_tags (item_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [itemId, tag.rows[0].id]);
         }
+    }
+
+    /** Stores, replaces or removes an account's encrypted secret (undefined leaves it as it is). */
+    async function saveSecret(db, itemId, secret) {
+        if (secret === undefined) return;
+        if (secret === null) {
+            await db.query('DELETE FROM item_secrets WHERE item_id = $1', [itemId]);
+            return;
+        }
+        await db.query(
+            `INSERT INTO item_secrets (item_id, ciphertext, iv, updated_at) VALUES ($1, $2, $3, NOW())
+             ON CONFLICT (item_id) DO UPDATE SET ciphertext = EXCLUDED.ciphertext, iv = EXCLUDED.iv, updated_at = NOW()`,
+            [itemId, secret.ciphertext, secret.iv]
+        );
     }
 
     /** Checks that the parent is the user's own top-level task and that this task has no subtasks itself. */
@@ -515,9 +570,22 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                 }).join('\n\n---\n\n');
                 return res.type('text/markdown').attachment(`cloudmark-${type}.md`).send(markdown + '\n');
             }
+            // Fiókoknál a titok titkosítva kerül a fájlba, a becsomagolt széfkulccsal együtt: csak a mesterjelszó nyitja.
+            const secrets = new Map();
+            let vault = null;
+            if (type === 'account') {
+                const found = await pool.query(
+                    'SELECT s.item_id, s.ciphertext, s.iv FROM item_secrets s JOIN items i ON i.id = s.item_id WHERE i.owner_user_id = $1',
+                    [req.user.id]
+                );
+                found.rows.forEach(row => secrets.set(String(row.item_id), { ciphertext: row.ciphertext, iv: row.iv }));
+                const vaultRow = (await pool.query('SELECT kdf, kdf_iterations, salt, wrapped_key, wrapped_iv FROM user_vaults WHERE user_id = $1', [req.user.id])).rows[0];
+                if (vaultRow) vault = { kdf: vaultRow.kdf, iterations: vaultRow.kdf_iterations, salt: vaultRow.salt, wrappedKey: vaultRow.wrapped_key, wrappedIv: vaultRow.wrapped_iv };
+            }
             const payload = {
                 exportedAt: new Date().toISOString(),
                 type,
+                ...(vault ? { vault } : {}),
                 items: rows.map(item => ({
                     title: item.title,
                     description: item.description,
@@ -530,6 +598,7 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                     extra: item.extra,
                     tags: item.tags,
                     fragments: item.fragments.map(({ label, language, content }) => ({ label, language, content })),
+                    ...(type === 'account' ? { secret: secrets.get(String(item.id)) || null } : {}),
                     ...(type === 'task' ? {
                         ref: String(item.id),
                         parentRef: item.parent_item_id ? String(item.parent_item_id) : null,
@@ -605,6 +674,7 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                     );
                     await replaceFragments(client, inserted.rows[0].id, value.fragments);
                     await replaceItemTags(client, inserted.rows[0].id, req.user.id, value.tags);
+                    if (type === 'account') await saveSecret(client, inserted.rows[0].id, value.secret);
                     if (value.task) await saveTaskFields(client, inserted.rows[0].id, value.task, req.user);
                     if (ref) refs.set(ref, inserted.rows[0].id);
                     count += 1;
@@ -663,6 +733,7 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                 await replaceFragments(client, inserted.rows[0].id, value.fragments);
                 await replaceItemTags(client, inserted.rows[0].id, owner.id, value.tags);
                 await syncInlineLinks(client, inserted.rows[0].id, value.body, req.user);
+                if (type === 'account') await saveSecret(client, inserted.rows[0].id, value.secret);
                 if (value.task) {
                     const taskError = await saveTaskFields(client, inserted.rows[0].id, value.task, owner);
                     if (taskError) throw new ItemInputError(taskError);
@@ -742,6 +813,7 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                     await replaceFragments(client, id, value.fragments);
                     await replaceItemTags(client, id, req.user.id, value.tags);
                     await syncInlineLinks(client, id, value.body, req.user);
+                    if (type === 'account') await saveSecret(client, id, value.secret);
                     if (value.task) {
                         const taskError = await saveTaskFields(client, id, value.task, req.user);
                         if (taskError) throw new ItemInputError(taskError);

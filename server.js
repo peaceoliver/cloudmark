@@ -17,6 +17,7 @@ const { registerNotificationRoutes, DIGEST_TIME_PATTERN, QUIET_HOURS_PATTERN } =
 const { registerAiRoutes } = require('./routes/ai');
 const { registerShareRoutes } = require('./routes/shares');
 const { registerLiveRoutes } = require('./routes/live');
+const { registerVaultRoutes } = require('./routes/vault');
 const shareAccess = require('./routes/share-access');
 const { fetchPublicText } = require('./routes/safe-fetch');
 const taskDates = require('./public/js/task-parser');
@@ -350,6 +351,8 @@ async function initDatabase() {
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '009_ai.sql'), 'utf8'));
         // Elemek megosztása más felhasználókkal (e-mail cím alapján) és az ismerősök listája.
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '012_sharing.sql'), 'utf8'));
+        // Fiókok (jelszókezelő): 'account' elemtípus, a böngészőben titkosított titkok és a széfkulcs.
+        await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '013_accounts.sql'), 'utf8'));
         // Minden public tábla zárva a Supabase REST API (anon/authenticated) elől: RLS szabályok nélkül.
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '010_row_level_security.sql'), 'utf8'));
         // Belső hivatkozások ([[ link): az item_links sorok kézi vagy szövegbeli eredetet kapnak (origin).
@@ -1220,7 +1223,10 @@ app.get('/api/admin/backup/export', requireAdmin, async (req, res) => {
             pool.query('SELECT * FROM item_reminders ORDER BY id'),
             pool.query('SELECT * FROM item_links ORDER BY item_id, origin, target_type, target_id'),
             pool.query('SELECT * FROM shares ORDER BY id'),
-            pool.query('SELECT * FROM contacts ORDER BY user_id, contact_user_id')
+            pool.query('SELECT * FROM contacts ORDER BY user_id, contact_user_id'),
+            // A fiókok titkai és a széfkulcs csak titkosítva vannak meg: a mentésből is csak a mesterjelszó nyitja.
+            pool.query('SELECT * FROM user_vaults ORDER BY user_id'),
+            pool.query('SELECT * FROM item_secrets ORDER BY item_id')
         ]);
         const payload = {
             exportedAt: new Date().toISOString(),
@@ -1240,7 +1246,9 @@ app.get('/api/admin/backup/export', requireAdmin, async (req, res) => {
                 item_reminders: tables[11].rows,
                 item_links: tables[12].rows,
                 shares: tables[13].rows,
-                contacts: tables[14].rows
+                contacts: tables[14].rows,
+                user_vaults: tables[15].rows,
+                item_secrets: tables[16].rows
             }
         };
         res.type('application/json').attachment('cloudmark-backup.json').send(JSON.stringify(payload, null, 2));
@@ -1256,7 +1264,7 @@ app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
         const data = payload.data || {};
         if (!data || typeof data !== 'object') return res.status(400).json({ error: 'Érvénytelen mentési csomag.' });
 
-        const tables = ['users', 'teams', 'settings_app', 'settings_user', 'tags', 'categories', 'bookmarks', 'bookmark_tags', 'items', 'item_fragments', 'item_tags', 'item_reminders', 'item_links', 'shares', 'contacts'];
+        const tables = ['users', 'teams', 'settings_app', 'settings_user', 'tags', 'categories', 'bookmarks', 'bookmark_tags', 'items', 'item_fragments', 'item_tags', 'item_reminders', 'item_links', 'shares', 'contacts', 'user_vaults', 'item_secrets'];
         for (const table of tables) {
             const rows = Array.isArray(data[table]) ? data[table] : [];
             if (!rows.length) continue;
@@ -1462,6 +1470,33 @@ app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
                         `INSERT INTO contacts (user_id, contact_user_id, auto_accept, created_at) VALUES ($1, $2, $3, $4)
                          ON CONFLICT (user_id, contact_user_id) DO UPDATE SET auto_accept = EXCLUDED.auto_accept`,
                         [row.user_id, row.contact_user_id, Boolean(row.auto_accept), row.created_at || new Date()]
+                    );
+                }
+                continue;
+            }
+            if (table === 'user_vaults') {
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO user_vaults (user_id, kdf, kdf_iterations, salt, wrapped_key, wrapped_iv, recovery_salt, recovery_wrapped_key, recovery_wrapped_iv, key_check, created_at, updated_at)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                         ON CONFLICT (user_id) DO UPDATE SET kdf = EXCLUDED.kdf, kdf_iterations = EXCLUDED.kdf_iterations, salt = EXCLUDED.salt,
+                           wrapped_key = EXCLUDED.wrapped_key, wrapped_iv = EXCLUDED.wrapped_iv, recovery_salt = EXCLUDED.recovery_salt,
+                           recovery_wrapped_key = EXCLUDED.recovery_wrapped_key, recovery_wrapped_iv = EXCLUDED.recovery_wrapped_iv,
+                           key_check = EXCLUDED.key_check, updated_at = EXCLUDED.updated_at`,
+                        [row.user_id, row.kdf || 'pbkdf2-sha256', row.kdf_iterations, row.salt, row.wrapped_key, row.wrapped_iv,
+                            row.recovery_salt || null, row.recovery_wrapped_key || null, row.recovery_wrapped_iv || null, row.key_check,
+                            row.created_at || new Date(), row.updated_at || new Date()]
+                    );
+                }
+                continue;
+            }
+            if (table === 'item_secrets') {
+                for (const row of rows) {
+                    await pool.query(
+                        `INSERT INTO item_secrets (item_id, ciphertext, iv, key_version, updated_at) VALUES ($1, $2, $3, $4, $5)
+                         ON CONFLICT (item_id) DO UPDATE SET ciphertext = EXCLUDED.ciphertext, iv = EXCLUDED.iv,
+                           key_version = EXCLUDED.key_version, updated_at = EXCLUDED.updated_at`,
+                        [row.item_id, row.ciphertext, row.iv, row.key_version || 1, row.updated_at || new Date()]
                     );
                 }
             }
@@ -2393,7 +2428,10 @@ const VIEW_PREF_OPTIONS = {
     noteView: ['grid', 'compact', 'list', 'kanban'],
     taskSort: ['due', 'priority', 'newest', 'abc'],
     taskView: ['list', 'compact'],
-    startView: ['last', 'notes', 'tasks', 'bookmarks', 'commands']
+    accountSort: ['abc', 'newest', 'used'],
+    accountView: ['list', 'compact', 'grid'],
+    startView: ['last', 'notes', 'tasks', 'bookmarks', 'commands', 'accounts'],
+    vaultAutoLock: ['5', '15', '60', 'never']
 };
 
 /** Saves one supported UI preference for the authenticated user. */
@@ -2463,6 +2501,8 @@ app.put('/api/admin/app-config', requireAdmin, async (req, res) => {
 // Parancsok / jegyzetek API (a catch-all előtt kell regisztrálni)
 const itemHelpers = registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normalizeTags });
 registerSearchRoutes(app, { pool, requireAuth });
+// Fiókok széfje: a böngészőben titkosított széfkulcs és a fiókok titkai (a szerver nem tudja megfejteni).
+registerVaultRoutes(app, { pool, requireAuth, recordAuditEvent, passwordLimiter });
 const taskActions = registerTaskRoutes(app, { pool, requireAuth, recordAuditEvent, ...itemHelpers });
 // A push szolgáltatók egy elérhetőséget kérnek a küldőtől; alapból az app címe.
 const push = createPushService({ pool, getSubject: () => (getPublicBaseUrl().startsWith('https://') ? getPublicBaseUrl() : null) });

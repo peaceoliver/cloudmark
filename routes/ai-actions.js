@@ -440,6 +440,59 @@ function validateNoteTasks(raw, input, context) {
     return { tasks };
 }
 
+// ---------- fiók ----------
+
+// Ugyanaz a lista, mint a routes/items.js LOGIN_METHODS-ában.
+const ACCOUNT_LOGIN_METHODS = ['password', 'google', 'github', 'microsoft', 'apple', 'facebook', 'sso', 'ssh', 'other'];
+
+function accountFillMode(input) {
+    return cleanText(input.title, 300) || cleanText(input.url, 2000) ? 'fromText' : null;
+}
+
+/**
+ * Suggests the plain fields of an account from its name and address. The form never sends the user name,
+ * e-mail, password or secret note, and this prompt has no place for them either.
+ */
+function buildAccountFill(input, context) {
+    const page = context.page || {};
+    const system = `You fill in the fields of a saved login ("fiók") in CloudMark, a personal account list with a Hungarian interface.
+It lists websites and home devices or self-hosted services (router, Raspberry Pi, Docker/Portainer, Jellyfin, Sonarr/Radarr…).
+Field rules:
+- title: a short name for the site or service, e.g. "GitHub", "Jellyfin (otthoni szerver)"; at most 60 characters, no trailing period.
+- description: one or two Hungarian sentences (at most 300 characters) about what the account is for; for a self-hosted service you may add its usual default port. Never write passwords or user names.
+- loginMethod: how one signs in: "password" (own password), "google", "github", "microsoft", "apple", "facebook", "sso" (other single sign-on), "ssh" (SSH key), or "other". Use "password" when unsure.
+- tags: 1 to 5 short lower-case tags; reuse tags from the existing tag list when they fit.
+- category: exactly one name from the category list, or "" when none fits.
+- newCategory: when category is "" and a new category would clearly help, a short name for it; otherwise "".
+${FORM_RULE}`;
+    const user = `${categoryList(context)}
+
+${tagList(context)}
+
+<form>
+<title>${cleanText(input.title, 300)}</title>
+<url>${cleanText(input.url, 2000)}</url>
+<description>${cleanText(input.description, 1000)}</description>
+<page_title>${cleanText(page.title, 300)}</page_title>
+<page_description>${cleanText(page.description, 1000)}</page_description>
+<site_name>${cleanText(page.siteName, 120)}</site_name>
+</form>`;
+    const schema = objectSchema({ title: { type: 'string' }, description: { type: 'string' }, loginMethod: { type: 'string' }, tags: stringArray, category: { type: 'string' }, newCategory: { type: 'string' } });
+    return { mode: 'fromText', system, user, schema, schemaName: 'account_fill' };
+}
+
+function validateAccountFill(raw, input, context) {
+    const data = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+    const loginMethod = cleanText(data.loginMethod, 20).toLowerCase();
+    return {
+        title: cleanText(data.title, 80),
+        description: cleanText(data.description, 500),
+        loginMethod: ACCOUNT_LOGIN_METHODS.includes(loginMethod) ? loginMethod : '',
+        tags: cleanTags(data.tags),
+        ...matchCategory(data, context)
+    };
+}
+
 const ACTIONS = {
     'command.fill': { build: buildCommandFill, validate: validateCommandFill, kind: 'command', needsInput: commandFillMode },
     'bookmark.fill': { build: buildBookmarkFill, validate: validateBookmarkFill, kind: 'bookmark', needsInput: bookmarkFillMode, fetchPage: true },
@@ -448,6 +501,7 @@ const ACTIONS = {
     'task.subtasks': { build: buildTaskSubtasks, validate: validateTaskSubtasks, kind: null, needsInput: taskFillMode },
     'note.fill': { build: buildNoteFill, validate: validateNoteFill, kind: 'note', needsInput: noteMode },
     'note.summary': { build: buildNoteSummary, validate: validateNoteSummary, kind: null, needsInput: input => (noteText(input) ? 'fromText' : null) },
+    'account.fill': { build: buildAccountFill, validate: validateAccountFill, kind: 'account', needsInput: accountFillMode, fetchPage: true },
     'note.tasks': { build: buildNoteTasks, validate: validateNoteTasks, kind: null, needsInput: input => (noteText(input) ? 'fromText' : null), needsToday: true }
 };
 

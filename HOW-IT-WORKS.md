@@ -40,13 +40,13 @@ Rendezési lehetőségek:
 
 Egy könyvjelző lehet aktív, kedvenc, későbbi olvasásra jelölt, ellenőrzésre váró, archivált vagy kukába helyezett. A kijelölt könyvjelzők csoportosan is módosíthatók vagy más kategóriába mozgathatók.
 
-## Nézetek: Jegyzetek, Feladatok, Könyvjelzők, Kódtár
+## Nézetek: Jegyzetek, Feladatok, Könyvjelzők, Kódtár, Fiókok
 
-Bejelentkezés után a főoldal tetején lehet váltani a négy nézet között, ebben a sorrendben: Jegyzetek, Feladatok, Könyvjelzők, Kódtár (a régi Parancsok; gyorsbillentyű: Alt+1 … Alt+4, a fülek sorrendjében). Első belépéskor a Jegyzetek nyílik meg. A választott nézet frissítés után is megmarad, hacsak a Beállításokban nincs megadva egy fix induló nézet („Induláskor megnyíló nézet”, `startView`). Mindegyik nézetben a `/` billentyű a keresőbe ugrik.
+Bejelentkezés után a főoldal tetején lehet váltani az öt nézet között, ebben a sorrendben: Jegyzetek, Feladatok, Könyvjelzők, Kódtár (a régi Parancsok), Fiókok (gyorsbillentyű: Alt+1 … Alt+5, a fülek sorrendjében). Első belépéskor a Jegyzetek nyílik meg. A választott nézet frissítés után is megmarad, hacsak a Beállításokban nincs megadva egy fix induló nézet („Induláskor megnyíló nézet”, `startView`). Mindegyik nézetben a `/` billentyű a keresőbe ugrik.
 
-Mind a négy nézet teteje ugyanúgy épül fel: legfelül az egyforma „+ Új …” sáv (Könyvjelzők és Kódtár: a sáv alatt lenyíló űrlap; egy meglévő kódrészlet szerkesztése ablakban nyílik, Jegyzetek: a szerkesztő közvetlenül a sáv alatt nyílik meg, Feladatok: gyors beírás), alatta a kategóriák (Feladatoknál a projektek), alatta a keresés, végül egy sorban a rendezés, az állapotok (pl. Aktív / Kedvencek / Kuka) és a nézetváltó, a sor végén a ⋮ menüvel.
+Mind az öt nézet teteje ugyanúgy épül fel: legfelül az egyforma „+ Új …” sáv (Könyvjelzők és Kódtár: a sáv alatt lenyíló űrlap; egy meglévő kódrészlet szerkesztése ablakban nyílik, Jegyzetek: a szerkesztő közvetlenül a sáv alatt nyílik meg, Feladatok: gyors beírás), alatta a kategóriák (Feladatoknál a projektek), alatta a keresés, végül egy sorban a rendezés, az állapotok (pl. Aktív / Kedvencek / Kuka) és a nézetváltó, a sor végén a ⋮ menüvel.
 
-- **⋮ menü:** mind a négy nézetben ugyanott van, a sor végén: kategóriák kezelése (Feladatoknál projektek), az adott nézet importja és exportja, a végén **Beállítások…**, amely a közös Beállítások ablakot az adott nézet fülén nyitja meg.
+- **⋮ menü:** mind az öt nézetben ugyanott van, a sor végén: kategóriák kezelése (Feladatoknál projektek), az adott nézet importja és exportja, a végén **Beállítások…**, amely a közös Beállítások ablakot az adott nézet fülén nyitja meg.
 - **Nézetváltó:** a Kódtárban Normál / Kompakt / Lista, Jegyzeteknél ezen felül Kanban, Feladatoknál Lista / Kompakt. Kompakt kódrészletnél csak a kód első sora látszik; lista nézetben a sorra kattintva nyílik ki a kód. Kompakt feladatnál a dátum/projekt sor rejtve van.
 - **Rendezés:** Kódtár: legújabb, ABC, leggyakrabban másolt. Jegyzetek: utoljára módosított, legújabb, ABC. Feladatok: határidő, prioritás, legújabb, ABC (a csoportokon, pl. Ma / Holnap, belül).
 - **Kártyák:** mind a négy nézetben a kategória (Feladatoknál a projekt) kék címkeként a cím alatt, bal oldalt látszik, a címkék pedig `#címke` formában, kék szöveggel a kártya alján (a Kódtár mintájára). Kompakt jegyzetnél és kompakt feladatnál a címkék rejtve vannak.
@@ -56,8 +56,8 @@ Mind a négy nézet teteje ugyanúgy épül fel: legfelül az egyforma „+ Új 
 
 Telefonon (640px-nél keskenyebb képernyőn) a nézetek kevesebb helyet foglalnak, hogy a tartalom rögtön látsszon. Gépen semmi nem változik.
 
-- **Fejléc:** logó, keresés (Ctrl+K), csengő és ⋮. A téma váltása és a kilépés a ⋮ menübe került.
-- **Fülek alul:** a négy nézet (Jegyzetek, Feladatok, Könyvjelzők, Kódtár) a képernyő alján van, ikonnal és felirattal; a Feladatoknál a számláló is látszik.
+- **Fejléc:** logó, keresés (Ctrl+K), csengő és ⋮. A téma váltása és a kilépés a ⋮ menübe került; adminnál az Admin panel és a Beállítások gomb csak ikonként látszik.
+- **Fülek alul:** az öt nézet (Jegyzetek, Feladatok, Könyvjelzők, Kódtár, Fiókok) a képernyő alján van, ikonnal és felirattal; a Feladatoknál a számláló is látszik.
 - **Kereső + Szűrők:** felül egy sorban a kereső és a **Szűrők** gomb. A gomb alulról felcsúszó lapot nyit, rajta a nézet összes szűrője és beállítása: kategóriák (Feladatoknál projektek), címkék, állapotok (pl. Archívum, Kuka), rendezés, nézetváltó, valamint a ⋮ menü pontjai (kategóriák kezelése, import/export, Beállítások…). Az **Alaphelyzet** mindent visszaállít, a **Kész** bezárja a lapot (lefelé húzva vagy mellé koppintva is bezárul).
 - **Aktív szűrők:** a kiválasztott kategória, címke vagy állapot chipként látszik a kereső alatt, a × törli. A Szűrők gombon a szám mutatja, hány szűrő aktív.
 - **Feladatok:** az okos listák (Ma, Következő 7 nap, Beérkezett …) kint maradnak egy vízszintesen görgethető sorban.
@@ -89,13 +89,14 @@ Bármelyik weboldal egy kattintással menthető, átváltás nélkül.
 
 ### Beállítások
 
-Egy közös ablak hat füllel; a fejléc ⋮ menüjéből (Általános fül) vagy bármelyik nézet ⋮ menüjéből (az adott nézet füle) nyílik.
+Egy közös ablak hét füllel; a fejléc ⋮ menüjéből (Általános fül) vagy bármelyik nézet ⋮ menüjéből (az adott nézet füle) nyílik.
 
 - **Általános:** téma, induláskor megnyíló nézet, a **Mentés CloudMarkba** (Clipper) gomb, értesítések (e-mail, napi összefoglaló, telefonos értesítés eszközönként, csendes időszak, teszt értesítés), jelszócsere. Az értesítési kapcsolók azonnal mentődnek; a csengő panel alján egy link vezet ide.
 - **Jegyzetek, Feladatok, Kódtár:** alapértelmezett rendezés és nézet.
+- **Fiókok:** rendezés, nézet, automatikus zárolás tétlenség után (5 perc, 15 perc, 1 óra, soha), mesterjelszó módosítása, új helyreállító kulcs, elfelejtett mesterjelszó, széf törlése.
 - **AI:** saját AI kulcsok (Gemini, Claude, OpenAI-kompatibilis) az AI kitöltéshez, modellválasztás, kapcsolat tesztelése.
 - **Könyvjelzők:** nézet, rendezés, weboldal címsor és kép olvasása, az export tartalma és az import célkategóriája (a Clipper gombra itt csak egy utalás van, az Általános fülön található).
-- A fejléc ⋮ menüjében csak az általános dolgok maradtak: Beállítások, Team, alkalmazás telepítése, Info. Az **Info** egy rövid ismertető mind a négy nézetről, a keresőről, a menükről és a gyorsbillentyűkről.
+- A fejléc ⋮ menüjében csak az általános dolgok maradtak: Beállítások, Team, alkalmazás telepítése, Info. Az **Info** egy rövid ismertető mind az öt nézetről, a keresőről, a menükről és a gyorsbillentyűkről.
 
 ### Kódtár (régen Parancsok)
 
@@ -110,6 +111,18 @@ Kódrészletek egy helyen: parancssorok, SQL, konfiguráció, kód. A massCode �
 - Kedvencek, kuka, rendezés (legújabb, ABC, leggyakrabban másolt), kategóriák alapnyelvvel. A leírás többsoros: mire való, honnan van, mire kell figyelni.
 - Import / export JSON-ban, export Markdownban (⋮ menü). Új kódrészlet: `N`.
 - **AI kitöltés** (ha van aktív AI kulcs): bemásolt kódból kitölti a címet (amire keresnél), a leírást (mire való, buktatók), a címkéket (témák), a kategóriát (munkaterület), a nyelvet és több fülnél a fül nevét; vagy a címbe / leírásba írt célból megírja a kódot is, és a címet, leírást rendes szövegre javítja. Javasolhat egy további fület (pl. PowerShell változat; ilyenkor az első fül is nevet kap, pl. „Bash”) és új kategóriát. A javaslat kiemelve kerül a mezőkbe (Elfogadom / Visszavonom), alapból csak az üres mezőkbe; menteni a Mentés gomb ment.
+
+### Fiókok (jelszókezelő)
+
+Melyik oldalon milyen felhasználónévvel vagy melyik külső fiókkal (Google, GitHub, Microsoft, Apple, Facebook, céges SSO, SSH kulcs) regisztráltál, és az otthoni eszközök belépési adatai. Részletes útmutató: `tutorials/accounts.md`.
+
+- **Titkosítás a böngészőben:** a jelszót és a titkos megjegyzést a böngésző titkosítja (AES-GCM) egy véletlen széfkulccsal; a széfkulcsot a mesterjelszóból számolt kulcs (PBKDF2-SHA256, 600 000 kör) zárja. A szerver csak a titkosított adatot tárolja (`item_secrets`, `user_vaults`), a mesterjelszót sosem kapja meg. A név, a cím, a felhasználónév, a belépési mód, a kategória és a címkék olvashatók (ezekben lehet keresni).
+- **Helyreállító kulcs:** a széf létrehozásakor egyszer látszik (`XXXX-XXXX-…`), letölthető. Ezzel új mesterjelszó állítható be. Ha a mesterjelszó és a helyreállító kulcs is elveszett, a széf a belépési jelszóval törölhető: a jelszavak elvesznek, a fiókok többi adata megmarad.
+- **Zárolás:** oldalfrissítés után és beállítható tétlenség (alapból 15 perc) után a széf zárolt; a Feloldás gomb kéri a mesterjelszót. A mesterjelszót csak egy feloldott széf tudja megváltoztatni, egy ellopott munkamenet nem.
+- **Kártyák:** cím, felhasználónév (vagy a külső fiók), jelszó egy-egy sorban másolás gombbal; a jelszó 👁 gombbal látszik. Másolás után a vágólap 30 másodperc múlva törlődik. Állapotok: Aktív, Kedvencek, Archívum, Kuka; nézetek: Lista, Kompakt, Rács; rendezés: ABC, legújabb, leggyakrabban használt.
+- **Űrlap:** jelszógenerátor (hossz, nagybetűk, számok, jelek) és erősségjelző. Az ✨ AI kitöltés a név, a cím és a leírás alapján javasol (név, leírás, belépési mód, kategória, címkék); a felhasználónevet és a jelszót nem kapja meg.
+- **Import / export:** CSV a Chrome / Edge, Firefox, Bitwarden és a saját formátumból (a jelszavak a böngészőben titkosítódnak); export titkosított JSON-ba vagy, a mesterjelszó újbóli megadása után, titkosítatlan CSV-be.
+- A fiókok nem oszthatók meg. A Ctrl+K keresőben megjelennek (Enter: felhasználónév másolása, Shift+Enter: jelszó másolása), `@fiók` szóval szűrhetők.
 
 ### AI kitöltés saját kulccsal
 

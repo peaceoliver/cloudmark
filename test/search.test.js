@@ -21,8 +21,8 @@ test('likePattern escapes wildcards', () => {
 
 test('parseTypes keeps known types only', () => {
     assert.deepStrictEqual(parseTypes('note,foo,bookmark'), ['note', 'bookmark']);
-    assert.deepStrictEqual(parseTypes(''), ['note', 'task', 'command', 'bookmark']);
-    assert.deepStrictEqual(parseTypes('foo'), ['note', 'task', 'command', 'bookmark']);
+    assert.deepStrictEqual(parseTypes(''), ['note', 'task', 'command', 'bookmark', 'account']);
+    assert.deepStrictEqual(parseTypes('foo'), ['note', 'task', 'command', 'bookmark', 'account']);
 });
 
 test('foldText strips Hungarian accents', () => {

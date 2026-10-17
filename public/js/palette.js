@@ -20,9 +20,10 @@
         { kind: 'note', label: 'Jegyzetek', icon: 'fa-note-sticky' },
         { kind: 'task', label: 'Feladatok', icon: 'fa-list-check' },
         { kind: 'bookmark', label: 'Könyvjelzők', icon: 'fa-bookmark' },
-        { kind: 'command', label: 'Kódtár', icon: 'fa-code' }
+        { kind: 'command', label: 'Kódtár', icon: 'fa-code' },
+        { kind: 'account', label: 'Fiókok', icon: 'fa-key' }
     ];
-    const KIND_LABEL = { note: 'jegyzet', task: 'feladat', bookmark: 'könyvjelző', command: 'kódrészlet' };
+    const KIND_LABEL = { note: 'jegyzet', task: 'feladat', bookmark: 'könyvjelző', command: 'kódrészlet', account: 'fiók' };
 
     let entries = [];
     let active = 0;
@@ -88,6 +89,9 @@
                 return;
             }
             await copyCommand(result);
+        } else if (result.kind === 'account') {
+            // Enter: felhasználónév, Shift+Enter: jelszó (zárolt széfnél előbb a feloldó ablak jön).
+            await window.CloudMark.accounts.copyById(result.id, edit ? 'password' : 'username');
         }
     }
 
@@ -147,6 +151,11 @@
         if (title) { title.value = text; title.focus(); }
     }
 
+    async function createAccount(text) {
+        views().showView('accounts');
+        await window.CloudMark.accounts.openEditor(null, { title: text });
+    }
+
     /** Creation entries; `raw` is the whole input (the task quick-add understands #címke and @projekt), the rest get the free text only. */
     function createEntries(raw, text = raw) {
         const quoted = text ? `: „${text}”` : '';
@@ -155,7 +164,8 @@
             { group: 'Létrehozás', icon: 'fa-plus', label: `Új jegyzet${quoted}`, run: () => createNote(text) },
             { group: 'Létrehozás', icon: 'fa-plus', label: `Új feladat${quotedRaw}`, hint: raw ? 'dátum, !1, #címke, @projekt is mehet' : '', run: () => createTask(raw) },
             { group: 'Létrehozás', icon: 'fa-plus', label: text && looksLikeUrl(text) ? `Új könyvjelző: ${text}` : 'Új könyvjelző', run: () => createBookmark(text) },
-            { group: 'Létrehozás', icon: 'fa-plus', label: `Új kódrészlet${quoted}`, run: () => createCommand(text) }
+            { group: 'Létrehozás', icon: 'fa-plus', label: `Új kódrészlet${quoted}`, run: () => createCommand(text) },
+            { group: 'Létrehozás', icon: 'fa-plus', label: `Új fiók${quoted}`, run: () => createAccount(text) }
         ];
     }
 
@@ -165,6 +175,8 @@
             { label: 'Feladatok megnyitása', icon: 'fa-list-check', run: () => views().showView('tasks') },
             { label: 'Könyvjelzők megnyitása', icon: 'fa-bookmark', run: () => views().showView('bookmarks') },
             { label: 'Kódtár megnyitása', icon: 'fa-code', run: () => views().showView('commands') },
+            { label: 'Fiókok megnyitása', icon: 'fa-key', run: () => views().showView('accounts') },
+            { label: 'Széf zárolása', icon: 'fa-lock', run: () => window.CloudMark.accounts?.lock() },
             { label: 'Beállítások', icon: 'fa-gear', run: () => openUserSettings() },
             { label: 'Téma váltása (világos / sötét)', icon: 'fa-circle-half-stroke', run: () => document.getElementById('themeToggle')?.click() },
             ...createEntries('').map(entry => ({ ...entry, group: undefined }))
@@ -184,7 +196,7 @@
             meta,
             code: result.kind === 'command',
             muted: done || result.archived,
-            enterHint: { note: 'megnyitás', task: 'megnyitás', bookmark: 'weboldal', command: 'másolás' }[result.kind],
+            enterHint: { note: 'megnyitás', task: 'megnyitás', bookmark: 'weboldal', command: 'másolás', account: 'felhasználónév' }[result.kind],
             run: edit => openResult(result, edit)
         };
     }
