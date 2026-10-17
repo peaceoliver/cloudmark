@@ -2898,8 +2898,8 @@ button.inline-link:hover, button.inline-link:focus-visible { background: var(--a
 .share-item-title { margin: -0.75rem 0 1rem; color: var(--text-secondary); font-size: 0.9rem; overflow-wrap: anywhere; }
 .share-form label { display: block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.88rem; }
 .share-form-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.share-form-row input { flex: 1 1 14rem; min-width: 0; }
-.share-form-row select { flex: 0 0 auto; }
+.share-form-row input { flex: 1 1 14rem; width: auto; min-width: 0; }
+.share-form-row select { flex: 0 0 auto; width: auto; }
 .share-contacts { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.6rem; }
 .share-contacts-label { color: var(--text-secondary); font-size: 0.8rem; }
 .share-contacts .category-chip { padding: 0.3rem 0.7rem; font-size: 0.8rem; }

@@ -51,6 +51,8 @@ routes/ai.js            AI kitöltés: users' own keys (encrypted) + POST /api/a
 routes/ai-actions.js    per-action prompt, JSON schema and server-side validation of the answer
 routes/ai-providers.js  Gemini (@google/genai), Anthropic (@anthropic-ai/sdk), OpenAI-compatible (fetch)
 routes/safe-fetch.js    fetch a user-given URL safely (no private / metadata addresses), used by bookmark metadata
+routes/shares.js        sharing: /api/shares (create, permission, revoke/leave, accept/decline), /api/contacts
+routes/share-access.js  who may see / edit an item (owner or accepted share), SQL helpers used by every item query
 migrations/NNN_*.sql    schema changes, run on every server start
 public/index.html       the whole single-page UI (all four views are in this file)
 public/css/styles.css   one stylesheet, themed with CSS variables
@@ -68,6 +70,8 @@ tutorials/*.md          Hungarian user guides, one per feature (index: tutorials
   archived, trashed, position, use_count, extra (jsonb). Task-only columns (status, priority, due_at,
   recurrence_rule, parent_item_id …) must be NULL for other types (check constraint `items_task_fields`).
 - `item_fragments` (code tabs of a command), `item_tags` (→ `tags`), `item_reminders`, `item_links`.
+- `shares` (one row per item or bookmark + recipient e-mail; `permission` view/edit, `status` pending/accepted/declined,
+  the recipient's own category/pin/star/archive in `recipient_*`) and `contacts` (who auto-accepts whose shares).
 - `categories.kind` separates categories per type (`bookmark`, `command`, `note`, `task`; tasks call them
   "projektek" in the UI). Names are unique per owner + kind.
 - A new content type should become a new `items.type` value (extend the check constraint in a migration),
@@ -215,6 +219,22 @@ redraw after sign-in.
   textareas, `textHtml()` / `pillsHtml()` render pills, `[data-inline-open]` buttons open targets (document capture
   listener), `loadBacklinks(box, id)` fills a „Hivatkoznak rá” box from `GET /api/items/:id/backlinks`.
   To add `[[` to another editor: `attach` it and render the saved text with `textHtml`.
+
+### Sharing
+
+- An item is visible to its owner and to users with an **accepted** share on it (or, for a subtask, on its parent).
+  Every query that returns items must use `routes/share-access.js`: `viewerJoinSql(viewer)` (joins `sh` and the
+  viewer's state `v`), `visibleSql(viewer)` in WHERE, `shareColumnsSql(viewer)` in SELECT and `presentItem(row)` on
+  the result; filter and sort on `v.archived`, `v.pinned`, `v.category_id`, not on `i.*`. Single-item checks use
+  `itemAccess(db, id, userId)` → `access` = `owner` / `edit` / `view`.
+- Only the owner deletes, re-shares, sets tags, reminders and links. An `edit` recipient changes content and task
+  fields (saved as the owner's row); category, pin, star and archive are personal (`shares.recipient_*`). A
+  recipient's delete / trash removes their share instead. Shared saves send `expectedUpdatedAt`; a newer row gives 409
+  with the fresh item.
+- The share endpoint answers the same for registered and unknown addresses (don't leak who has an account).
+  Notifications `share_invite` / `share_info` carry `share_id`; the bell renders Elfogadom / Elutasítom.
+- Front end: `CloudMark.share` (`public/js/share-ui.js`): `open(item, { onChange, onLeft })`, `badgeHtml(item)`,
+  `isOwn(item)`, `leave(item)`. Views show the badge in `.card-meta` and a "Megosztva velem" state filter.
 
 ### Notes kanban
 
