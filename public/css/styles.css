@@ -257,17 +257,20 @@ header {
     position: fixed;
     inset: 0;
     background: rgba(10, 12, 20, 0.35);
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.25s ease;
+    transition: opacity 0.25s ease, visibility 0s linear 0.25s;
     z-index: 199;
 }
 
 .menu-backdrop.open {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    transition: opacity 0.25s ease, visibility 0s;
 }
 
 .menu-panel {
@@ -282,19 +285,22 @@ header {
     border: 1px solid var(--border-color);
     border-radius: 18px;
     box-shadow: 0 20px 45px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.12);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    backdrop-filter: saturate(180%) blur(20px);
     opacity: 0;
+    visibility: hidden;
     transform: translateY(-8px) scale(0.98);
     pointer-events: none;
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
     z-index: 200;
 }
 
 .menu-panel.open {
     opacity: 1;
+    visibility: visible;
     transform: translateY(0) scale(1);
     pointer-events: auto;
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s;
 }
 
 .menu-panel-header {
@@ -1150,6 +1156,9 @@ input:focus, select:focus {
 }
 
 /* Modal Windows */
+/* A zárt ablakok láthatatlanok (visibility: hidden) és elmosás nélküliek: az oldalon 16 ablak van,
+   átlátszó, de rajzolt teljes képernyős rétegként Androidos Chrome-on elfogyott a GPU-memória,
+   és a képernyőnek csak egy része jelent meg. */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -1157,19 +1166,23 @@ input:focus, select:focus {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 2100;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.2s ease, visibility 0s linear 0.2s;
 }
 
 .modal-overlay.active {
     opacity: 1;
+    visibility: visible;
     pointer-events: all;
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    transition: opacity 0.2s ease, visibility 0s;
 }
 
 .modal {
