@@ -2879,3 +2879,56 @@ button.inline-link:hover, button.inline-link:focus-visible { background: var(--a
 .link-ac-item small { color: var(--text-secondary); }
 .link-ac-item.is-active, .link-ac-item:hover { background: var(--bg-card-hover); }
 .link-ac-hint { padding: 0.5rem 0.6rem; color: var(--text-secondary); font-size: 0.82rem; }
+
+/* ---------- Megosztás (share-ui.js) ---------- */
+.share-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.15rem 0.5rem; border-radius: 999px;
+    border: 1px solid var(--border-color); background: var(--bg-card);
+    color: var(--text-secondary); font-size: 0.72rem; font-weight: 600; white-space: nowrap;
+}
+.share-badge i { color: var(--accent); }
+.share-badge.is-own { padding: 0.1rem 0.45rem; }
+.share-editor-note {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem;
+    margin-bottom: 0.6rem; color: var(--text-secondary); font-size: 0.82rem;
+}
+.note-editor.is-readonly .note-editor-title, .note-editor.is-readonly .note-editor-body { cursor: default; }
+.share-modal { max-width: 560px; }
+.share-item-title { margin: -0.75rem 0 1rem; color: var(--text-secondary); font-size: 0.9rem; overflow-wrap: anywhere; }
+.share-form label { display: block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.88rem; }
+.share-form-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.share-form-row input { flex: 1 1 14rem; min-width: 0; }
+.share-form-row select { flex: 0 0 auto; }
+.share-contacts { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.6rem; }
+.share-contacts-label { color: var(--text-secondary); font-size: 0.8rem; }
+.share-contacts .category-chip { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+.share-hint { margin: 0.6rem 0 0; color: var(--text-secondary); font-size: 0.8rem; line-height: 1.45; }
+.share-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.share-row {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.5rem 0.6rem; border: 1px solid var(--border-color); border-radius: 10px;
+}
+.share-person { display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0; }
+.share-person > i { color: var(--accent); }
+.share-person > span { display: flex; flex-direction: column; min-width: 0; }
+.share-person strong, .share-person small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.share-person small { color: var(--text-secondary); font-size: 0.75rem; }
+.share-pending {
+    flex: 0 0 auto; padding: 0.1rem 0.45rem; border-radius: 999px;
+    border: 1px solid var(--warning); color: var(--warning); font-size: 0.7rem; font-weight: 600;
+}
+.share-row select { flex: 0 0 auto; max-width: 9.5rem; }
+.share-empty { color: var(--text-secondary); font-size: 0.88rem; padding: 0.4rem 0; }
+.share-received p { margin: 0 0 0.6rem; line-height: 1.5; }
+.share-received i { color: var(--accent); }
+.share-received .btn { margin-top: 0.6rem; }
+.share-close { width: 100%; margin-top: 1.25rem; }
+.bell-invite { flex-wrap: wrap; cursor: default; }
+.bell-invite-actions { display: flex; gap: 0.5rem; width: 100%; padding-left: 1.6rem; }
+.bell-invite-actions .btn { padding: 0.35rem 0.8rem; font-size: 0.82rem; }
+@media (max-width: 640px) {
+    .share-row { flex-wrap: wrap; }
+    .share-person { flex-basis: 100%; }
+    .share-row select { flex: 1; max-width: none; }
+}

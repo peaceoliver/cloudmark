@@ -5,13 +5,18 @@ async function requestJson(url, options = {}) {
     const response = await fetch(url, options);
     if (!response.ok) {
         let message = `API error: ${response.status}`;
+        let body = null;
         try {
-            const body = await response.json();
+            body = await response.json();
             if (body.error) message = body.error;
         } catch (err) {
             // Keep the status-based fallback for non-JSON error responses.
         }
-        throw new Error(message);
+        // A státusz és a válasz is a hibán marad (pl. 409-nél a szerver a friss elemet is visszaküldi).
+        const error = new Error(message);
+        error.status = response.status;
+        error.body = body;
+        throw error;
     }
     return response.json();
 }
@@ -482,6 +487,31 @@ apiNamespace.api = {
     },
     aiFill(action, input) {
         return requestJson('/api/ai/fill', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, input }) });
+    },
+
+    /** Megosztás: kivel van megosztva egy elem (tulajdonosnak), vagy ki osztotta meg (címzettnek). */
+    getShares(itemId) {
+        return requestJson(`/api/shares?itemId=${encodeURIComponent(itemId)}`);
+    },
+    /** Shares an item: `{ email }` or `{ contactUserId }`, plus permission 'view' or 'edit'. */
+    shareItem(itemId, recipient, permission) {
+        return requestJson('/api/shares', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId, ...recipient, permission }) });
+    },
+    updateShare(id, permission) {
+        return requestJson(`/api/shares/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permission }) });
+    },
+    /** The owner revokes a share, or the recipient removes the item from their list. */
+    deleteShare(id) {
+        return requestJson(`/api/shares/${id}`, { method: 'DELETE' });
+    },
+    acceptShare(id) {
+        return requestJson(`/api/shares/${id}/accept`, { method: 'POST' });
+    },
+    declineShare(id) {
+        return requestJson(`/api/shares/${id}/decline`, { method: 'POST' });
+    },
+    getContacts() {
+        return requestJson('/api/contacts');
     }
 };
 

@@ -2,6 +2,7 @@
 (function () {
     const taskApi = window.CloudMark.api;
     const parser = window.CloudMark.taskParser;
+    const share = window.CloudMark.share;
     const listBox = document.getElementById('taskList');
     if (!listBox || !parser) return;
 
@@ -23,6 +24,7 @@
         all: 'Nincs nyitott feladat. Vegyél fel egyet fent!',
         done: 'Még nincs elvégzett feladat.',
         trash: 'A kuka üres.',
+        shared: 'Nincs nyitott feladat, amit megosztottak veled.',
         project: 'Ebben a projektben nincs nyitott feladat.'
     };
     const REMINDER_PRESETS = [
@@ -253,6 +255,7 @@
         if (view === 'today') return ['overdue', 'today'].includes(bucketOf(item));
         if (view === 'upcoming') return ['tomorrow', 'week'].includes(bucketOf(item));
         if (view === 'inbox') return !item.category_id && !item.parent_item_id;
+        if (view === 'shared') return !share.isOwn(item);
         if (view === 'project') return String(item.category_id) === String(state.project);
         return true;
     }
@@ -286,6 +289,8 @@
             if (parent) parts.push(`<span class="task-meta-item task-parent-hint"><i class="fa-solid fa-turn-up fa-rotate-90"></i> ${esc(parent.title)}</span>`);
         }
         const project = item.category_id && state.view !== 'project' ? projectName(item.category_id) : '';
+        const badge = share.badgeHtml(item);
+        if (badge) parts.unshift(badge);
         if (project) parts.unshift(`<span class="card-category task-project-name">${esc(project)}</span>`);
         const tags = item.tags.length ? `<div class="card-tags task-tags">${item.tags.map(tag => `#${esc(tag)}`).join(' ')}</div>` : '';
         return (parts.length ? `<div class="task-meta">${parts.join('')}</div>` : '') + tags;
@@ -302,7 +307,7 @@
         return `
             <div class="task-row ${item.priority ? `task-p${item.priority}` : ''} ${done ? 'is-done' : ''} ${sub ? 'is-sub' : ''} ${String(item.id) === String(state.selectedId) ? 'is-selected' : ''} ${item.status === 'doing' ? 'is-doing' : ''}"
                  data-task-id="${Number(item.id)}" tabindex="0" role="listitem">
-                <button type="button" class="task-check" data-action="toggle" ${trashed ? 'disabled' : ''}
+                <button type="button" class="task-check" data-action="toggle" ${trashed || item.access === 'view' ? 'disabled' : ''}
                         title="${done ? 'Visszanyitás' : 'Kész (szóköz)'}" aria-label="${done ? 'Visszanyitás' : 'Kész'}: ${esc(item.title)}" aria-pressed="${done}">
                     <i class="fa-solid fa-check"></i>
                 </button>
@@ -381,7 +386,7 @@
     }
 
     function renderCounts() {
-        ['today', 'upcoming', 'inbox', 'all'].forEach(view => {
+        ['today', 'upcoming', 'inbox', 'all', 'shared'].forEach(view => {
             const counter = viewGroup.querySelector(`[data-count="${view}"]`);
             if (!counter) return;
             const count = state.items.filter(item => matchesView(item, view)).length;
@@ -666,7 +671,18 @@
 
     function payloadOf(value) {
         const { id, ...fields } = value;
-        return { type: 'task', ...fields, fragments: [] };
+        // Megosztott feladatnál a szerver 409-cel jelzi, ha közben más módosította (a lista legfrissebb példányához mérve).
+        const current = findItem(id);
+        const shared = current && (!share.isOwn(current) || current.share_count > 0);
+        return { type: 'task', ...fields, fragments: [], ...(shared && current.updated_at ? { expectedUpdatedAt: current.updated_at } : {}) };
+    }
+
+    /** After a 409: the fresh copy goes into the list and the open panel. */
+    function applyConflict(err) {
+        if (err?.status !== 409 || !err.body?.item) return;
+        upsert(err.body.item);
+        render();
+        if (String(state.selectedId) === String(err.body.item.id)) refreshDetail();
     }
 
     function repeatOptions(rule, dueDate) {
@@ -696,30 +712,34 @@
         const isSub = Boolean(item.parent_item_id);
         const parent = isSub ? findItem(item.parent_item_id) : null;
         const trashed = Boolean(item.trashed);
+        // Megosztott feladat: csak megtekintési joggal minden mező zárva; emlékeztetőt, címkét, kapcsolatot a tulajdonos kezel.
+        const own = share.isOwn(item);
+        const locked = trashed || !(own || item.access === 'edit');
         const children = isSub ? [] : childrenOf(item);
         const projectOptions = ['<option value="">Beérkezett (nincs projekt)</option>']
             .concat(state.projects.slice().sort((a, b) => a.name.localeCompare(b.name, 'hu'))
                 .map(project => `<option value="${Number(project.id)}" ${String(project.id) === String(item.category_id) ? 'selected' : ''}>${esc(project.name)}</option>`)).join('');
         return `
             <div class="task-detail-head">
-                <button type="button" class="task-check ${item.priority ? `task-p${item.priority}` : ''}" data-detail="toggle" aria-pressed="${item.status === 'done'}" ${trashed ? 'disabled' : ''}
+                <button type="button" class="task-check ${item.priority ? `task-p${item.priority}` : ''}" data-detail="toggle" aria-pressed="${item.status === 'done'}" ${locked ? 'disabled' : ''}
                         title="${item.status === 'done' ? 'Visszanyitás' : 'Kész'}"><i class="fa-solid fa-check"></i></button>
-                <textarea class="task-detail-title" data-field="title" rows="1" maxlength="300" aria-label="Cím" ${trashed ? 'disabled' : ''}>${esc(item.title)}</textarea>
+                <textarea class="task-detail-title" data-field="title" rows="1" maxlength="300" aria-label="Cím" ${locked ? 'disabled' : ''}>${esc(item.title)}</textarea>
                 <button type="button" class="note-action" data-detail="close" title="Bezárás (Esc)" aria-label="Bezárás"><i class="fa-solid fa-xmark"></i></button>
             </div>
+            ${own ? '' : `<div class="share-editor-note">${share.badgeHtml(item)} ${item.access === 'edit' ? 'Megosztott feladat, a módosításaidat a tulajdonos is látja.' : 'Megosztott feladat, csak megtekintheted.'}</div>`}
             ${parent ? `<button type="button" class="task-detail-parent" data-open-task="${Number(parent.id)}"><i class="fa-solid fa-turn-up fa-rotate-90"></i> ${esc(parent.title)}</button>` : ''}
-            <textarea class="task-detail-body" data-field="body" rows="3" maxlength="100000" placeholder="Leírás, megjegyzés… ([[ = hivatkozás)" aria-label="Leírás" ${trashed ? 'disabled' : ''}>${esc(item.body || '')}</textarea>
+            <textarea class="task-detail-body" data-field="body" rows="3" maxlength="100000" placeholder="Leírás, megjegyzés… ([[ = hivatkozás)" aria-label="Leírás" ${locked ? 'disabled' : ''}>${esc(item.body || '')}</textarea>
             <div class="inline-link-row" data-inline-row>${links.pillsHtml(item.body, item.inline_links)}</div>
-            ${aiEnabled && !trashed ? `<div class="task-ai-tools">
+            ${aiEnabled && !locked && own ? `<div class="task-ai-tools">
                 <button type="button" class="btn btn-secondary ai-fill-btn" data-detail="ai-fill" title="Címkék, projekt és prioritás javaslata a cím és a leírás alapján"><i class="fa-solid fa-wand-magic-sparkles"></i> AI: címkék, projekt</button>
             </div>
             <div class="task-ai-slot" data-ai-slot="fill"></div>` : ''}
             <div class="task-detail-grid">
                 <label class="task-field"><span>Határidő</span>
-                    <input type="date" data-field="dueDate" value="${due ? due.date : ''}" ${trashed ? 'disabled' : ''}>
+                    <input type="date" data-field="dueDate" value="${due ? due.date : ''}" ${locked ? 'disabled' : ''}>
                 </label>
                 <label class="task-field"><span>Időpont</span>
-                    <input type="time" data-field="dueTime" value="${due?.time || ''}" ${!due || trashed ? 'disabled' : ''}>
+                    <input type="time" data-field="dueTime" value="${due?.time || ''}" ${!due || locked ? 'disabled' : ''}>
                 </label>
                 <div class="task-quick-dates">
                     <button type="button" class="btn btn-secondary" data-detail="due-today">Ma</button>
@@ -728,10 +748,10 @@
                     <button type="button" class="btn btn-secondary" data-detail="due-clear" ${due ? '' : 'disabled'}>Nincs</button>
                 </div>
                 <label class="task-field"><span>Ismétlődés</span>
-                    <select data-field="recurrenceRule" ${!due || trashed ? 'disabled' : ''}>${repeatOptions(item.recurrence_rule, due?.date)}</select>
+                    <select data-field="recurrenceRule" ${!due || locked ? 'disabled' : ''}>${repeatOptions(item.recurrence_rule, due?.date)}</select>
                 </label>
                 <label class="task-field"><span>Prioritás</span>
-                    <select data-field="priority" ${trashed ? 'disabled' : ''}>
+                    <select data-field="priority" ${locked ? 'disabled' : ''}>
                         <option value="">Nincs</option>
                         ${[1, 2, 3, 4].map(level => `<option value="${level}" ${item.priority === level ? 'selected' : ''}>${PRIORITY_LABELS[level]}</option>`).join('')}
                     </select>
@@ -740,18 +760,18 @@
                     <select data-field="categoryId" ${trashed ? 'disabled' : ''}>${projectOptions}</select>
                 </label>
                 <label class="task-field"><span>Állapot</span>
-                    <select data-field="status" ${trashed ? 'disabled' : ''}>
+                    <select data-field="status" ${locked ? 'disabled' : ''}>
                         <option value="todo" ${item.status === 'todo' ? 'selected' : ''}>Teendő</option>
                         <option value="doing" ${item.status === 'doing' ? 'selected' : ''}>Folyamatban</option>
                         <option value="done" ${item.status === 'done' ? 'selected' : ''}>Kész</option>
                     </select>
                 </label>
                 <label class="task-field task-field-wide"><span>Címkék</span>
-                    <input type="text" data-field="tags" value="${esc(item.tags.join(', '))}" placeholder="vesszővel elválasztva" ${trashed ? 'disabled' : ''}>
+                    <input type="text" data-field="tags" value="${esc(item.tags.join(', '))}" placeholder="vesszővel elválasztva" ${trashed || !own ? 'disabled' : ''} ${own ? '' : 'title="A címkéket a tulajdonos kezeli"'}>
                 </label>
             </div>
 
-            <section class="task-detail-section">
+            ${own ? `<section class="task-detail-section">
                 <h4><i class="fa-regular fa-bell"></i> Emlékeztetők</h4>
                 <div class="task-detail-list">
                     ${item.reminders.length ? item.reminders.map((reminder, index) => `
@@ -770,20 +790,20 @@
                     ${item.status === 'done' ? '' : '<button type="button" class="btn btn-secondary task-snooze" data-detail="snooze" title="Egyszeri emlékeztető 10 perc múlva"><i class="fa-regular fa-clock"></i> Szundi 10 perc</button>'}
                 </div>
                 <p class="task-detail-note">Az emlékeztető a csengő ikonnál, a telefonodon (ha bekapcsoltad) és e-mailben érkezik. Bekapcsolni a Beállítások / Általános fülön lehet.</p>`}
-            </section>
+            </section>` : '<section class="task-detail-section"><h4><i class="fa-regular fa-bell"></i> Emlékeztetők</h4><div class="task-detail-empty">Az emlékeztetőket a tulajdonos állítja be, és neki szólnak.</div></section>'}
 
             ${isSub ? '' : `<section class="task-detail-section">
                 <h4><i class="fa-solid fa-list-check"></i> Részfeladatok ${children.length ? `<span class="task-section-count">${children.filter(child => child.status === 'done').length}/${children.length}</span>` : ''}
-                    ${aiEnabled && !trashed ? '<button type="button" class="ai-link task-ai-split" data-detail="ai-subtasks" title="Részfeladatok javaslata"><i class="fa-solid fa-wand-magic-sparkles"></i> Bontsd lépésekre</button>' : ''}</h4>
+                    ${aiEnabled && !locked ? '<button type="button" class="ai-link task-ai-split" data-detail="ai-subtasks" title="Részfeladatok javaslata"><i class="fa-solid fa-wand-magic-sparkles"></i> Bontsd lépésekre</button>' : ''}</h4>
                 <div class="task-ai-slot" data-ai-slot="subtasks"></div>
                 <div class="task-detail-subtasks">
                     ${children.map(child => `
                         <div class="task-subtask ${child.status === 'done' ? 'is-done' : ''}" data-task-id="${Number(child.id)}">
-                            <button type="button" class="task-check task-check-small" data-detail="toggle-sub" aria-pressed="${child.status === 'done'}" title="${child.status === 'done' ? 'Visszanyitás' : 'Kész'}"><i class="fa-solid fa-check"></i></button>
+                            <button type="button" class="task-check task-check-small" data-detail="toggle-sub" ${locked ? 'disabled' : ''} aria-pressed="${child.status === 'done'}" title="${child.status === 'done' ? 'Visszanyitás' : 'Kész'}"><i class="fa-solid fa-check"></i></button>
                             <button type="button" class="task-subtask-title" data-open-task="${Number(child.id)}">${esc(child.title)}</button>
                         </div>`).join('')}
                 </div>
-                ${trashed ? '' : '<input type="text" class="task-detail-input" data-detail-input="subtask" maxlength="300" placeholder="+ Részfeladat hozzáadása (Enter)" aria-label="Új részfeladat">'}
+                ${locked ? '' : '<input type="text" class="task-detail-input" data-detail-input="subtask" maxlength="300" placeholder="+ Részfeladat hozzáadása (Enter)" aria-label="Új részfeladat">'}
             </section>`}
 
             <section class="task-detail-section">
@@ -794,10 +814,10 @@
                             <button type="button" class="task-link-open" data-detail="open-link" data-index="${index}">
                                 <i class="fa-solid ${linkIcon(link)}"></i> ${esc(link.title || 'Névtelen')}
                             </button>
-                            ${trashed ? '' : `<button type="button" class="note-action" data-detail="remove-link" data-index="${index}" title="Kapcsolat törlése" aria-label="Kapcsolat törlése"><i class="fa-solid fa-xmark"></i></button>`}
+                            ${trashed || !own ? '' : `<button type="button" class="note-action" data-detail="remove-link" data-index="${index}" title="Kapcsolat törlése" aria-label="Kapcsolat törlése"><i class="fa-solid fa-xmark"></i></button>`}
                         </div>`).join('') : '<div class="task-detail-empty">Nincs kapcsolt jegyzet, parancs vagy könyvjelző.</div>'}
                 </div>
-                ${trashed ? '' : `<div class="task-link-search">
+                ${trashed || !own ? '' : `<div class="task-link-search">
                     <input type="search" class="task-detail-input" data-detail-input="link" placeholder="Jegyzet, parancs vagy könyvjelző keresése…" aria-label="Kapcsolat keresése" autocomplete="off">
                     <div class="task-link-results" hidden></div>
                 </div>`}
@@ -806,9 +826,11 @@
 
             <div class="task-detail-foot">
                 <span class="note-editor-status" aria-live="polite"></span>
+                ${trashed ? '' : '<button type="button" class="btn btn-secondary" data-detail="share"><i class="fa-solid fa-user-plus"></i> Megosztás</button>'}
                 ${trashed
                     ? '<button type="button" class="btn btn-secondary" data-detail="restore"><i class="fa-solid fa-rotate-left"></i> Visszaállítás</button>'
-                    : '<button type="button" class="btn btn-danger" data-detail="trash"><i class="fa-solid fa-trash"></i> Törlés</button>'}
+                    : own ? '<button type="button" class="btn btn-danger" data-detail="trash"><i class="fa-solid fa-trash"></i> Törlés</button>'
+                    : item.share_direct ? '<button type="button" class="btn btn-danger" data-detail="leave"><i class="fa-solid fa-right-from-bracket"></i> Eltávolítás a listámból</button>' : ''}
             </div>`;
     }
 
@@ -893,6 +915,7 @@
         if (detailBox.querySelector('[data-field="title"]')) readFields();
         const snapshot = { ...draft };
         if (!snapshot.title) { setStatus('A cím nem lehet üres'); return savePromise; }
+        // A payload a láncban, az előző mentés után készül, így a legfrissebb updated_at-tel megy.
         savePromise = savePromise.then(() => taskApi.updateItem(snapshot.id, payloadOf(snapshot))).then(saved => {
             upsert(saved);
             renderCounts();
@@ -910,6 +933,7 @@
         }).catch(err => {
             setStatus('');
             notify(err.message || 'A feladat mentése nem sikerült.', 'error');
+            applyConflict(err);
             if (rerender) refreshDetail();
         });
         return savePromise;
@@ -1143,6 +1167,19 @@
             return;
         }
         if (action === 'open-link') { openLink(item.links[Number(button.dataset.index)]); return; }
+        if (action === 'share') {
+            await flushSave();
+            share.open(findItem(item.id) || item, {
+                onChange: () => { renderList(); refreshDetail(); },
+                onLeft: async () => { closeDetail(false); await reloadItems(); }
+            });
+            return;
+        }
+        if (action === 'leave') {
+            await flushSave();
+            if (await share.leave(item)) { closeDetail(false); await reloadItems(); }
+            return;
+        }
         if (action === 'trash') {
             await flushSave();
             try {

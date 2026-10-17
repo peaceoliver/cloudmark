@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261017-clipper2">
+    <link rel="stylesheet" href="/css/styles.css?v=20261017-sharing">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -389,6 +389,7 @@
                 </select>
                 <div class="bookmark-state-group commands-state-group" aria-label="Jegyzet nézetek">
                     <button type="button" class="btn btn-secondary cmd-state active" data-note-state="active"><i class="fa-regular fa-lightbulb"></i> Jegyzetek</button>
+                    <button type="button" class="btn btn-secondary cmd-state" data-note-state="shared"><i class="fa-solid fa-user-group"></i> Megosztva velem</button>
                     <button type="button" class="btn btn-secondary cmd-state" data-note-state="archived"><i class="fa-solid fa-box-archive"></i> Archívum</button>
                     <button type="button" class="btn btn-secondary cmd-state" data-note-state="trash"><i class="fa-solid fa-trash"></i> Kuka</button>
                 </div>
@@ -452,6 +453,7 @@
                     <button type="button" class="btn btn-secondary cmd-state" data-task-view="upcoming"><i class="fa-regular fa-calendar-days"></i> Következő 7 nap <span class="task-count" data-count="upcoming"></span></button>
                     <button type="button" class="btn btn-secondary cmd-state" data-task-view="inbox"><i class="fa-solid fa-inbox"></i> Beérkezett <span class="task-count" data-count="inbox"></span></button>
                     <button type="button" class="btn btn-secondary cmd-state" data-task-view="all"><i class="fa-solid fa-list-ul"></i> Mind <span class="task-count" data-count="all"></span></button>
+                    <button type="button" class="btn btn-secondary cmd-state" data-task-view="shared"><i class="fa-solid fa-user-group"></i> Megosztva velem <span class="task-count" data-count="shared"></span></button>
                     <button type="button" class="btn btn-secondary cmd-state" data-task-view="done"><i class="fa-solid fa-circle-check"></i> Kész</button>
                     <button type="button" class="btn btn-secondary cmd-state" data-task-view="trash"><i class="fa-solid fa-trash"></i> Kuka</button>
                 </div>
@@ -1062,6 +1064,16 @@
         <div class="modal note-edit-modal" id="noteEditBox"></div>
     </div>
 
+    <!-- Modal: Megosztás (share-ui.js) -->
+    <div class="modal-overlay" id="shareModal" style="z-index: 2300;">
+        <div class="modal share-modal" role="dialog" aria-labelledby="shareModalTitle">
+            <div class="modal-title" id="shareModalTitle"><i class="fa-solid fa-user-group"></i> Megosztás</div>
+            <div class="share-item-title" id="shareItemTitle"></div>
+            <div id="shareBody"></div>
+            <button type="button" class="btn btn-secondary share-close" data-share-close>Bezárás</button>
+        </div>
+    </div>
+
     <!-- Modal: Parancs kategóriák -->
     <div class="modal-overlay" id="commandCategoryModal" style="z-index: 2200;">
         <div class="modal">
@@ -1201,7 +1213,7 @@
         </div>
     </div>
     <script src="/js/config.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/api.js?v=20261017-links"></script>
+    <script src="/js/api.js?v=20261017-sharing"></script>
     <script src="/js/task-parser.js?v=20261015-tasks"></script>
     <script src="/js/notifications.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/modal.js?v=20260905k-pagesize-setting"></script>
@@ -1217,14 +1229,15 @@
     <script src="/js/bookmark-ai.js?v=20261016-ai2"></script>
     <script src="/js/inline-links.js?v=20261017-links"></script>
     <script src="/js/link-autocomplete.js?v=20261017-links"></script>
-    <script src="/js/notes-ui.js?v=20261017-links"></script>
-    <script src="/js/tasks-ui.js?v=20261017-links"></script>
-    <script src="/js/notification-center.js?v=20261016-settings"></script>
+    <script src="/js/share-ui.js?v=20261017-sharing"></script>
+    <script src="/js/notes-ui.js?v=20261017-sharing"></script>
+    <script src="/js/tasks-ui.js?v=20261017-sharing"></script>
+    <script src="/js/notification-center.js?v=20261017-sharing"></script>
     <script src="/js/clip-parse.js?v=20261017-clipper"></script>
     <script src="/js/settings-ui.js?v=20261017-clipper"></script>
     <script src="/js/palette.js?v=20261016-palette"></script>
     <script src="/js/views.js?v=20261016-ai2"></script>
     <script src="/js/mobile-ui.js?v=20261017-mobile"></script>
-    <script src="/js/pwa.js?v=20261016-cdnfix"></script>
+    <script src="/js/pwa.js?v=20261017-sharing"></script>
 </body>
 </html>
