@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS contacts (
 );
 
 -- Bell entries for shares: an invitation (with Elfogadom / Elutasítom) and plain share news.
-ALTER TABLE notifications ADD COLUMN IF NOT EXISTS share_id BIGINT REFERENCES shares(id) ON DELETE CASCADE;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS share_id BIGINT REFERENCES shares(id) ON DELETE SET NULL;
 DO $$
 DECLARE
   definition TEXT;

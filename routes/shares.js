@@ -141,13 +141,13 @@ function registerShareRoutes(app, { pool, requireAuth, recordAuditEvent, push, s
                 const status = autoAccept ? 'accepted' : 'pending';
                 share = share
                     ? (await pool.query(
-                        `UPDATE shares SET permission = $2, status = $3, recipient_user_id = $4, accepted_at = CASE WHEN $3 = 'accepted' THEN NOW() END, created_at = NOW()
+                        `UPDATE shares SET permission = $2, status = $3::varchar, recipient_user_id = $4, accepted_at = CASE WHEN $3::varchar = 'accepted' THEN NOW() END, created_at = NOW()
                          WHERE id = $1 RETURNING *`,
                         [share.id, permission, status, recipient?.id || null]
                     )).rows[0]
                     : (await pool.query(
                         `INSERT INTO shares (owner_user_id, item_id, recipient_user_id, recipient_email, permission, status, accepted_at)
-                         VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $6 = 'accepted' THEN NOW() END) RETURNING *`,
+                         VALUES ($1, $2, $3, $4, $5, $6::varchar, CASE WHEN $6::varchar = 'accepted' THEN NOW() END) RETURNING *`,
                         [req.user.id, itemId, recipient?.id || null, email, permission, status]
                     )).rows[0];
                 if (recipient) notifyKind = autoAccept ? 'share_info' : 'share_invite';
@@ -169,6 +169,7 @@ function registerShareRoutes(app, { pool, requireAuth, recordAuditEvent, push, s
             await recordAuditEvent({ userId: req.user.id, action: 'share_created', entityType: 'share', entityId: share.id, details: { itemId, permission }, req });
             res.status(201).json({ success: true, message: 'Megosztás elküldve.', shares: await listItemShares(itemId) });
         } catch (err) {
+            console.error('[SHARE] Megosztás sikertelen:', err.message || err);
             res.status(500).json({ error: 'A megosztás nem sikerült.' });
         }
     });
