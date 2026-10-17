@@ -6,7 +6,7 @@
  * adja a gyorsítótárból. Más címekre (CDN betűkészletek, ikonok) menő kéréseket nem érinti: azokat a böngésző
  * maga tölti, mert a service worker saját CSP-je (connect-src 'self') nem engedné őket.
  */
-const VERSION = '2026-10-17-sharing';
+const VERSION = '2026-10-17-sharing2';
 const APP_CACHE = `cloudmark-app-${VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const PRECACHE = [

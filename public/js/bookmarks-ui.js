@@ -256,13 +256,15 @@ function renderBookmarks() {
             'admin'
         ].filter(Boolean))
         : new Set(['demo', 'admin', 'main']);
+    const isSharedWithMe = bookmark => Boolean(bookmark.access) && bookmark.access !== 'owner';
     let visible = !currentUser
         ? bookmarks.filter(bookmark => userIds.has(String(bookmark.userId || '').toLowerCase()))
         : currentUser.isSuperuser
             ? [...bookmarks]
-            : bookmarks.filter(bookmark => userIds.has(String(bookmark.userId || '').toLowerCase()));
+            : bookmarks.filter(bookmark => isSharedWithMe(bookmark) || userIds.has(String(bookmark.userId || '').toLowerCase()));
     if (activeCategoryFilter !== 'All') visible = visible.filter(bookmark => bookmark.category === activeCategoryFilter);
     if (bookmarkStateFilter === 'starred') visible = visible.filter(bookmark => bookmark.starred);
+    else if (bookmarkStateFilter === 'shared') visible = visible.filter(bookmark => isSharedWithMe(bookmark) && !bookmark.archived);
     else if (bookmarkStateFilter === 'archived') visible = visible.filter(bookmark => bookmark.archived);
     else if (bookmarkStateFilter === 'trash') visible = visible.filter(bookmark => bookmark.trashed);
     else if (['read_later', 'to_review', 'done'].includes(bookmarkStateFilter)) visible = visible.filter(bookmark => bookmark.status === bookmarkStateFilter);
@@ -345,8 +347,11 @@ function createBookmarkCard(bookmark) {
     const title = document.createElement('a'); title.href = bookmark.url; title.target = '_blank'; title.className = 'card-title'; title.textContent = primaryTitle;
     title.onclick = event => { event.preventDefault(); trackClickAndOpen(bookmark.id, bookmark.url); };
     const titleContainer = document.createElement('div'); titleContainer.className = 'card-title-container'; titleContainer.appendChild(title);
-    const category = document.createElement('span'); category.className = 'card-category'; category.textContent = bookmark.category;
-    const meta = document.createElement('div'); meta.className = 'card-meta'; meta.appendChild(category);
+    const meta = document.createElement('div'); meta.className = 'card-meta';
+    if (bookmark.category) { const category = document.createElement('span'); category.className = 'card-category'; category.textContent = bookmark.category; meta.appendChild(category); }
+    // Megosztás jelvény: a share-ui escape-elt HTML-t ad vissza.
+    const shareBadge = window.CloudMark?.share?.badgeHtml(bookmark);
+    if (shareBadge) meta.insertAdjacentHTML('beforeend', shareBadge);
     if (bulkSelectionEnabled && !shouldShowImage) header.appendChild(selectionControl);
     header.appendChild(titleContainer);
     const url = document.createElement('div'); url.className = 'card-url'; url.textContent = bookmark.url; left.append(header, meta, url);
@@ -371,8 +376,27 @@ function createBookmarkCard(bookmark) {
     const archive = document.createElement('button'); archive.className = 'action-btn'; archive.title = bookmark.trashed || bookmark.archived ? 'Visszaállítás' : 'Archiválás'; archive.innerHTML = `<i class="fa-solid fa-box-${bookmark.archived ? 'open' : 'archive'}"></i>`; archive.onclick = () => updateBookmarkState(bookmark.id, bookmark.trashed ? { trashed: false } : { archived: !bookmark.archived });
     const preview = document.createElement('button'); preview.className = 'action-btn'; preview.title = 'Előnézet'; preview.innerHTML = '<i class="fa-solid fa-eye"></i>'; preview.onclick = () => openPreviewModal(bookmark);
     const edit = document.createElement('button'); edit.className = 'action-btn'; edit.title = 'Szerkesztés'; edit.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>'; edit.onclick = () => openEditModal(bookmark.id);
-    const share = document.createElement('button'); share.className = 'action-btn'; share.title = 'Megosztás'; share.innerHTML = '<i class="fa-solid fa-share-nodes"></i>'; share.onclick = async () => { try { const result = await api.shareBookmark(bookmark.id); await navigator.clipboard.writeText(result.url); showNotification('Megosztási hivatkozás a vágólapra másolva.', 'success'); } catch (err) { showNotification('A megosztás nem sikerült.', 'error'); } };
-    const remove = document.createElement('button'); remove.className = 'action-btn'; remove.title = bookmark.trashed ? 'Végleges törlés' : 'Kukába helyezés'; remove.innerHTML = '<i class="fa-solid fa-trash"></i>'; remove.onclick = () => bookmark.trashed ? permanentlyDeleteBookmark(bookmark.id) : deleteBookmark(bookmark.id); actions.append(star, later, review, archive, preview, edit, share, remove); if (currentUser) footer.appendChild(actions); card.append(left, footer); return card;
+    const own = !bookmark.access || bookmark.access === 'owner';
+    const share = document.createElement('button'); share.className = 'action-btn'; share.title = own ? 'Megosztás' : 'Megosztás részletei'; share.innerHTML = '<i class="fa-solid fa-share-nodes"></i>'; share.onclick = () => openBookmarkShare(bookmark);
+    const remove = document.createElement('button'); remove.className = 'action-btn';
+    if (own) { remove.title = bookmark.trashed ? 'Végleges törlés' : 'Kukába helyezés'; remove.innerHTML = '<i class="fa-solid fa-trash"></i>'; remove.onclick = () => bookmark.trashed ? permanentlyDeleteBookmark(bookmark.id) : deleteBookmark(bookmark.id); }
+    else { remove.title = 'Eltávolítás a listámból'; remove.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i>'; remove.onclick = () => leaveSharedBookmark(bookmark); }
+    // Csak megtekinthető megosztott könyvjelzőnél az olvasási állapot a tulajdonosé, ezért azok a gombok nem jelennek meg.
+    const stateButtons = bookmark.access === 'view' ? [] : [later, review];
+    actions.append(star, ...stateButtons, archive, preview, edit, share, remove); if (currentUser) footer.appendChild(actions); card.append(left, footer); return card;
+}
+
+/** Opens the Megosztás window for a bookmark (owner: who has it; recipient: who shared it). */
+function openBookmarkShare(bookmark) {
+    window.CloudMark?.share?.open(bookmark, {
+        onChange: () => renderBookmarks(),
+        onLeft: async () => { await loadBookmarksFromServer(); renderBookmarks(); }
+    });
+}
+
+/** Removes a bookmark shared with the user from their list (the owner keeps it). */
+async function leaveSharedBookmark(bookmark) {
+    if (await window.CloudMark?.share?.leave(bookmark)) { await loadBookmarksFromServer(); renderBookmarks(); }
 }
 
 /** Populates a category select while preserving a valid selection. */
@@ -470,13 +494,43 @@ async function trackClickAndOpen(id, url) {
 /** Opens the edit modal with the selected bookmark's values. */
 function openEditModal(id) {
     const bookmark = bookmarks.find(item => item.id === id); if (!bookmark) return;
+    applyEditModalAccess(bookmark);
     document.getElementById('editBmId').value = bookmark.id;
     document.getElementById('editBmTitle').value = bookmark.title;
     document.getElementById('editBmUrl').value = bookmark.url;
     const descField = document.getElementById('editBmDescription');
     if (descField) descField.value = bookmark.description || '';
     setTagInputValues('editBmTags', bookmark.tags || []);
-    populateCategorySelect('editBmCategory', bookmark.category); openModal('editModal');
+    populateCategorySelect('editBmCategory', bookmark.category);
+    const categorySelect = document.getElementById('editBmCategory');
+    if (bookmark.access && bookmark.access !== 'owner') {
+        // A címzett a saját kategóriájába teheti, vagy kategória nélkül hagyhatja.
+        categorySelect.insertBefore(new Option('Kategória nélkül', ''), categorySelect.firstChild);
+        categorySelect.value = bookmark.category || '';
+    }
+    openModal('editModal');
+}
+
+/** Locks the edit form for a shared bookmark: view = only own category, edit = no tags; the owner gets the full form. */
+function applyEditModalAccess(bookmark) {
+    const own = !bookmark.access || bookmark.access === 'owner';
+    const viewOnly = bookmark.access === 'view';
+    const form = document.getElementById('editBookmarkForm');
+    form.classList.toggle('is-shared-bookmark', !own);
+    ['editBmTitle', 'editBmUrl', 'editBmDescription'].forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) field.readOnly = viewOnly;
+    });
+    document.getElementById('editBmCategory').required = own;
+    const tagInput = form.querySelector('[data-tag-input="editBmTags"]');
+    if (tagInput) tagInput.classList.toggle('is-readonly', !own);
+    const note = document.getElementById('editBmShareNote');
+    if (note) {
+        note.hidden = own;
+        note.textContent = own ? '' : `Megosztotta: ${bookmark.shared_by || 'ismeretlen'}. ${viewOnly
+            ? 'Csak megtekintheted, a kategóriát magadnak állíthatod.'
+            : 'Szerkesztheted, a módosításaidat a tulajdonos is látja. A címkéket csak ő állíthatja.'}`;
+    }
 }
 
 document.getElementById('bookmarkForm').addEventListener('submit', async event => {

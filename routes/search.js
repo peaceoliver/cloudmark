@@ -87,19 +87,21 @@ function registerSearchRoutes(app, { pool, requireAuth }) {
                     [req.user.id, contains, prefix, itemTypes, limit]
                 ) : { rows: [] },
                 types.includes('bookmark') ? pool.query(
-                    `SELECT b.id, b.title, b.url, b.description, b.category, b.created_at,
+                    // A megosztott könyvjelzők is (elfogadott megosztás), a címzett saját kategóriájával.
+                    `SELECT b.id, b.title, b.url, b.description, (bsh.id IS NOT NULL) AS shared,
+                            CASE WHEN bsh.id IS NULL THEN b.category ELSE bshc.name END AS category, b.created_at,
                             COALESCE(array_agg(t.name ORDER BY t.name) FILTER (WHERE t.name IS NOT NULL), '{}') AS tags,
                             MIN(CASE WHEN ${fold('b.title')} LIKE $3 ESCAPE '\\' THEN 0 WHEN ${fold('b.title')} LIKE $2 ESCAPE '\\' THEN 1 ELSE 2 END) AS rank
-                     FROM bookmarks b
+                     FROM bookmarks b ${shareAccess.bookmarkJoinSql('$5')}
                      LEFT JOIN bookmark_tags bt ON bt.bookmark_id = b.id
                      LEFT JOIN tags t ON t.id = bt.tag_id
-                     WHERE LOWER(CAST(b.user_id AS TEXT)) = ANY($1) AND b.trashed = FALSE
-                     GROUP BY b.id
+                     WHERE (LOWER(CAST(b.user_id AS TEXT)) = ANY($1) OR bsh.id IS NOT NULL) AND b.trashed = FALSE
+                     GROUP BY b.id, bsh.id, bshc.id
                      HAVING BOOL_OR(${fold('b.title')} LIKE $2 ESCAPE '\\' OR ${fold('b.url')} LIKE $2 ESCAPE '\\' OR ${fold('b.description')} LIKE $2 ESCAPE '\\'
                                     OR ${fold('b.category')} LIKE $2 ESCAPE '\\' OR COALESCE(${fold('t.name')} LIKE $2 ESCAPE '\\', FALSE))
-                     ORDER BY rank, b.archived, b.created_at DESC
+                     ORDER BY rank, CASE WHEN bsh.id IS NULL THEN b.archived ELSE bsh.recipient_archived END, b.created_at DESC
                      LIMIT $4`,
-                    [[String(req.user.username || '').toLowerCase(), String(req.user.id)], contains, prefix, limit]
+                    [[String(req.user.username || '').toLowerCase(), String(req.user.id)], contains, prefix, limit, req.user.id]
                 ) : { rows: [] }
             ]);
             const results = [
@@ -126,7 +128,8 @@ function registerSearchRoutes(app, { pool, requireAuth }) {
                     snippet: row.url,
                     url: row.url,
                     category: row.category || null,
-                    tags: row.tags
+                    tags: row.tags,
+                    shared: Boolean(row.shared)
                 }))
             ];
             res.json({ results });

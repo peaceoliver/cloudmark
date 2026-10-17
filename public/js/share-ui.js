@@ -11,7 +11,7 @@
     if (!modal || !body) return;
 
     const PERMISSION_LABELS = { view: 'Megtekintheti', edit: 'Szerkesztheti' };
-    const TYPE_LABELS = { note: 'jegyzet', task: 'feladat', command: 'parancs' };
+    const TYPE_LABELS = { note: 'jegyzet', task: 'feladat', command: 'parancs', bookmark: 'könyvjelző' };
     let current = null;
 
     function esc(value) {
@@ -23,8 +23,13 @@
     }
 
     function itemTitle(item) {
-        const text = String(item.title || item.body || '').replace(/\s+/g, ' ').trim();
+        const text = String(item.title || item.body || item.url || '').replace(/\s+/g, ' ').trim();
         return text ? (text.length > 80 ? `${text.slice(0, 80)}…` : text) : `Névtelen ${TYPE_LABELS[item.type] || 'elem'}`;
+    }
+
+    /** What the share endpoints take for an item: its id, or `{ bookmarkId }` for a bookmark. */
+    function target(item) {
+        return item.type === 'bookmark' ? { bookmarkId: item.id } : item.id;
     }
 
     /** Whether the signed-in user owns the item (items loaded before sharing existed count as own). */
@@ -75,7 +80,12 @@
                         <select data-share-permission aria-label="Jogosultság">${permissionOptions(share.permission)}</select>
                         <button type="button" class="btn-icon" data-share-remove title="Megosztás visszavonása" aria-label="Megosztás visszavonása"><i class="fa-solid fa-xmark"></i></button>
                     </div>`).join('') : '<div class="share-empty">Még senkivel nincs megosztva.</div>'}
-            </div>`;
+            </div>
+            ${current?.item?.type === 'bookmark' ? `
+                <div class="share-public">
+                    <span class="share-hint">Bárki megnyithatja, akinek elküldöd a linket, fiók nélkül is.</span>
+                    <button type="button" class="btn btn-secondary" data-share-public><i class="fa-solid fa-link"></i> Nyilvános link másolása</button>
+                </div>` : ''}`;
     }
 
     function recipientHtml(info) {
@@ -95,7 +105,7 @@
         subtitle.textContent = itemTitle(item);
         body.innerHTML = '<div class="share-empty">Betöltés…</div>';
         try {
-            const info = await shareApi.getShares(item.id);
+            const info = await shareApi.getShares(target(item));
             if (!current || current.item !== item) return;
             current.info = info;
             if (info.access !== 'owner') {
@@ -122,7 +132,7 @@
         const button = body.querySelector('[data-share-form] button[type="submit"]');
         if (button) button.disabled = true;
         try {
-            const result = await shareApi.shareItem(current.item.id, recipient, permission);
+            const result = await shareApi.shareItem(target(current.item), recipient, permission);
             applyShares(result.shares);
             notify(result.message || 'Megosztás elküldve.', 'success');
             body.querySelector('#shareEmail')?.focus();
@@ -140,6 +150,16 @@
     });
 
     body.addEventListener('click', async event => {
+        if (event.target.closest('[data-share-public]')) {
+            try {
+                const result = await shareApi.shareBookmark(current.item.id);
+                await navigator.clipboard.writeText(result.url);
+                notify('Nyilvános link a vágólapra másolva.', 'success');
+            } catch (err) {
+                notify('A link másolása nem sikerült.', 'error');
+            }
+            return;
+        }
         const contact = event.target.closest('[data-share-contact]');
         if (contact) { share({ contactUserId: Number(contact.dataset.shareContact) }); return; }
         const remove = event.target.closest('[data-share-remove]');
@@ -207,7 +227,9 @@
     async function leave(item) {
         if (!confirm('Ezt az elemet megosztották veled. Kiveszed a listádból? A tulajdonosnál megmarad.')) return false;
         try {
-            await shareApi.trashItem(item.id);
+            // A szerver a címzett törlését a megosztásból való kilépésként kezeli.
+            if (item.type === 'bookmark') await shareApi.deleteBookmark(item.id);
+            else await shareApi.trashItem(item.id);
             notify('Eltávolítva a listádból.', 'success');
             return true;
         } catch (err) {
@@ -216,5 +238,59 @@
         }
     }
 
-    window.CloudMark.share = { open, leave, badgeHtml, isOwn };
+    /**
+     * Settings → Általános: the user's contacts with an „automatikusan elfogadom” switch and a remove button.
+     * Saved on change; contacts are added by sharing (and accepting) items, not by hand.
+     */
+    async function renderContacts(box) {
+        if (!box) return;
+        box.innerHTML = '<div class="share-empty">Betöltés…</div>';
+        let contacts;
+        try {
+            contacts = await shareApi.getContacts();
+        } catch (err) {
+            box.innerHTML = `<div class="share-empty">${esc(err.message || 'Az ismerősök betöltése nem sikerült.')}</div>`;
+            return;
+        }
+        box.innerHTML = `
+            <p class="share-hint">Akivel megosztottál valamit, vagy akinek a megosztását elfogadtad, ide kerül. Ha bekapcsolod az automatikus elfogadást, az ő megosztásai kérdés nélkül megjelennek a listádban.</p>
+            ${contacts.length ? `<div class="share-list">${contacts.map(contact => `
+                <div class="share-row" data-contact-id="${Number(contact.userId)}">
+                    <span class="share-person">
+                        <i class="fa-solid fa-user" aria-hidden="true"></i>
+                        <span><strong>${esc(contact.username)}</strong>${contact.email ? `<small>${esc(contact.email)}</small>` : ''}</span>
+                    </span>
+                    <label class="share-auto-accept"><input type="checkbox" data-contact-auto ${contact.autoAccept ? 'checked' : ''}> Automatikusan elfogadom</label>
+                    <button type="button" class="btn-icon" data-contact-remove title="Törlés az ismerősök közül" aria-label="Törlés az ismerősök közül"><i class="fa-solid fa-xmark"></i></button>
+                </div>`).join('')}</div>` : '<div class="share-empty">Még nincs ismerősöd. Ha megosztasz valamit valakivel, itt megjelenik.</div>'}`;
+    }
+
+    document.addEventListener('change', async event => {
+        const toggle = event.target.closest('#shareContactSettings [data-contact-auto]');
+        if (!toggle) return;
+        const id = toggle.closest('[data-contact-id]').dataset.contactId;
+        try {
+            await shareApi.updateContact(id, toggle.checked);
+            notify(toggle.checked ? 'Az ő megosztásai automatikusan bekerülnek.' : 'Az ő megosztásait ezután el kell fogadnod.', 'success');
+        } catch (err) {
+            toggle.checked = !toggle.checked;
+            notify(err.message || 'A mentés nem sikerült.', 'error');
+        }
+    });
+
+    document.addEventListener('click', async event => {
+        const remove = event.target.closest('#shareContactSettings [data-contact-remove]');
+        if (!remove) return;
+        const row = remove.closest('[data-contact-id]');
+        if (!confirm('Törlöd az ismerősök közül? A meglévő megosztások megmaradnak, de a következőt el kell fogadnod.')) return;
+        try {
+            await shareApi.deleteContact(row.dataset.contactId);
+            row.remove();
+            notify('Ismerős törölve.', 'success');
+        } catch (err) {
+            notify(err.message || 'A törlés nem sikerült.', 'error');
+        }
+    });
+
+    window.CloudMark.share = { open, leave, badgeHtml, isOwn, renderContacts };
 })();

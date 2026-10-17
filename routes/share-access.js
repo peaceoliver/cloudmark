@@ -94,6 +94,61 @@ function isStaleSave(currentUpdatedAt, expected) {
     return new Date(currentUpdatedAt).getTime() > expectedTime;
 }
 
+/**
+ * Bookmarks: joins the viewer's accepted share of bookmark `b` as `bsh` and its personal category as `bshc`.
+ * The owner never has a share on their own bookmark, so `bsh.id IS NULL` means "own (or admin view)".
+ * `viewer` is a SQL parameter placeholder holding the user id.
+ */
+function bookmarkJoinSql(viewer) {
+    return `
+        LEFT JOIN shares bsh ON bsh.bookmark_id = b.id AND bsh.recipient_user_id = ${viewer} AND bsh.status = 'accepted'
+        LEFT JOIN categories bshc ON bshc.id = bsh.recipient_category_id`;
+}
+
+/** Extra bookmark columns (needs bookmarkJoinSql): access, badge data and the viewer's category / star / archive. */
+function bookmarkColumnsSql() {
+    return `CASE WHEN bsh.id IS NULL THEN 'owner' ELSE bsh.permission END AS access,
+            bsh.id AS share_id,
+            CASE WHEN bsh.id IS NULL THEN NULL ELSE (SELECT u.username FROM users u WHERE u.id = bsh.owner_user_id) END AS shared_by,
+            CASE WHEN bsh.id IS NULL
+                 THEN (SELECT COUNT(*) FROM shares s2 WHERE s2.bookmark_id = b.id AND s2.status <> 'declined')::int ELSE 0 END AS share_count,
+            CASE WHEN bsh.id IS NULL THEN b.category ELSE bshc.name END AS v_category,
+            CASE WHEN bsh.id IS NULL THEN b.archived ELSE bsh.recipient_archived END AS v_archived,
+            CASE WHEN bsh.id IS NULL THEN b.starred ELSE bsh.recipient_starred END AS v_starred`;
+}
+
+/** Replaces a bookmark row's own category / archive / star with the viewer's (from bookmarkColumnsSql). */
+function presentBookmark(row) {
+    if (!row) return row;
+    const { v_category, v_archived, v_starred, ...bookmark } = row;
+    return { ...bookmark, category: v_category, archived: v_archived, starred: v_starred };
+}
+
+/** Whether bookmark row `row` (with its text `user_id`) belongs to `user` ({ id, username }). */
+function ownsBookmark(row, user) {
+    const owner = String(row?.user_id ?? '').toLowerCase();
+    return Boolean(owner) && (owner === String(user.username || '').toLowerCase() || owner === String(user.id));
+}
+
+/**
+ * What the user may do with a bookmark: { id, user_id, trashed, access, share_id } with access 'owner', 'edit' or 'view';
+ * null when they cannot see it. Administrators keep their old reach (every bookmark counts as theirs).
+ */
+async function bookmarkAccess(db, bookmarkId, user) {
+    const result = await db.query(
+        `SELECT b.id, b.user_id, b.trashed, b.title, b.url, bsh.id AS share_id, bsh.permission
+         FROM bookmarks b
+         LEFT JOIN shares bsh ON bsh.bookmark_id = b.id AND bsh.recipient_user_id = $2 AND bsh.status = 'accepted'
+         WHERE b.id = $1`,
+        [bookmarkId, user.id]
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    if (ownsBookmark(row, user) || user.role === 'admin') return { ...row, access: 'owner' };
+    if (row.share_id && !row.trashed) return { ...row, access: row.permission };
+    return null;
+}
+
 module.exports = {
     SHARE_PERMISSIONS,
     normalizeEmail,
@@ -104,5 +159,10 @@ module.exports = {
     shareColumnsSql,
     presentItem,
     itemAccess,
-    isStaleSave
+    isStaleSave,
+    bookmarkJoinSql,
+    bookmarkColumnsSql,
+    presentBookmark,
+    ownsBookmark,
+    bookmarkAccess
 };

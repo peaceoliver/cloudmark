@@ -53,3 +53,34 @@ test('itemLabel shortens and falls back to the type', () => {
     assert.equal(itemLabel({ type: 'task', title: '' }), 'Névtelen feladat');
     assert.equal(itemLabel({ type: 'note', title: 'x'.repeat(90) }).length, 81);
 });
+
+const { presentBookmark, ownsBookmark } = require('../routes/share-access');
+const { buildInviteEmail, parseTarget } = require('../routes/shares');
+
+test('parseTarget picks a bookmark or an item id', () => {
+    assert.deepEqual(parseTarget({ bookmarkId: '4' }), { column: 'bookmark_id', id: 4 });
+    assert.deepEqual(parseTarget({ itemId: 9 }), { column: 'item_id', id: 9 });
+    assert.equal(parseTarget({ itemId: 'x' }), null);
+    assert.equal(parseTarget(undefined), null);
+});
+
+test('presentBookmark shows the viewer category, star and archive', () => {
+    assert.deepEqual(presentBookmark({ id: 1, category: 'Anna', starred: false, archived: false, v_category: null, v_starred: true, v_archived: true }),
+        { id: 1, category: null, starred: true, archived: true });
+});
+
+test('ownsBookmark matches the text user_id by name or id', () => {
+    const user = { id: 7, username: 'Anna' };
+    assert.equal(ownsBookmark({ user_id: 'anna' }, user), true);
+    assert.equal(ownsBookmark({ user_id: '7' }, user), true);
+    assert.equal(ownsBookmark({ user_id: 'bela' }, user), false);
+    assert.equal(ownsBookmark({ user_id: null }, user), false);
+});
+
+test('invite e-mail escapes the sender and the title', () => {
+    const mail = buildInviteEmail({ senderName: 'anna<b>', item: { type: 'bookmark', title: '<script>', url: 'https://x.hu' }, registerUrl: 'https://app/?register=1&email=a%40b.hu' });
+    assert.match(mail.subject, /egy könyvjelzőt/);
+    assert.ok(!mail.html.includes('<script>') && !mail.html.includes('anna<b>'));
+    assert.match(mail.html, /register=1&amp;email=a%40b\.hu/);
+    assert.match(mail.text, /https:\/\/app\/\?register=1&email=a%40b\.hu/);
+});

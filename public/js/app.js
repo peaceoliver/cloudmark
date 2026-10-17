@@ -59,7 +59,10 @@ async function loadBookmarksFromServer() {
             ,tags: Array.isArray(row.tags) ? row.tags : [],
             archived: Boolean(row.archived), trashed: Boolean(row.trashed),
             starred: Boolean(row.starred), status: row.status || 'inbox',
-            normalizedUrl: row.normalized_url || row.url
+            normalizedUrl: row.normalized_url || row.url,
+            // Megosztás: a share-ui.js ugyanazokat a mezőneveket várja, mint az items soroknál.
+            type: 'bookmark', access: row.access || 'owner', shared_by: row.shared_by || null,
+            share_count: Number(row.share_count || 0), share_id: row.share_id || null
         })) : [];
     } catch (err) { console.error('Failed to fetch bookmarks:', err); bookmarks = []; }
 }
@@ -175,6 +178,18 @@ async function initApp() {
     renderBookmarks();
     renderManageCategoriesList();
     checkIncomingBookmarklet();
+    openInviteRegistration();
+}
+
+/** A megosztási meghívó e-mail linkje (`/?register=1&email=`): kijelentkezve megnyitja a regisztrációt kitöltött e-mail címmel. */
+function openInviteRegistration() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('register') !== '1' || currentUser) return;
+    if (typeof isRegisterMode !== 'undefined' && !isRegisterMode) toggleAuthMode({ preventDefault() {} });
+    const email = document.getElementById('authEmail');
+    if (email && params.get('email')) email.value = params.get('email').slice(0, 255);
+    openModal('authModal');
+    history.replaceState({}, document.title, location.pathname);
 }
 
 async function loadSharedBookmark(token) {

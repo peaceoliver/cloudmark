@@ -1,6 +1,9 @@
 /* Parancstár: parancskártyák, másológombok, szerkesztő és kategóriák. Az adat a /api/items végpontokról jön. */
 (function () {
     const commandApi = window.CloudMark.api;
+    const share = window.CloudMark.share;
+    /** Whether the user owns the command (not shared with them). */
+    const isOwn = item => !share || share.isOwn(item);
     const COPY_FEEDBACK_MS = 1500;
 
     /*
@@ -190,6 +193,7 @@
             if (state.filter === 'trash') { if (!item.trashed) return false; }
             else if (item.trashed || item.archived) return false;
             if (state.filter === 'starred' && !item.starred) return false;
+            if (state.filter === 'shared' && isOwn(item)) return false;
             if (state.category === 'inbox' && item.category_id !== null) return false;
             if (categoryIds && !(item.category_id !== null && categoryIds.has(Number(item.category_id)))) return false;
             if (!query) return true;
@@ -238,8 +242,11 @@
             <button type="button" class="action-btn" data-action="restore" title="Visszaállítás"><i class="fa-solid fa-rotate-left"></i></button>
             <button type="button" class="action-btn" data-action="delete" title="Végleges törlés"><i class="fa-solid fa-trash-can"></i></button>` : `
             <button type="button" class="action-btn ${item.starred ? 'is-starred' : ''}" data-action="star" title="${item.starred ? 'Kedvenc eltávolítása' : 'Kedvencnek jelölés'}"><i class="${item.starred ? 'fa-solid' : 'fa-regular'} fa-star"></i></button>
-            <button type="button" class="action-btn" data-action="edit" title="Szerkesztés"><i class="fa-solid fa-pen"></i></button>
-            <button type="button" class="action-btn" data-action="trash" title="Kukába"><i class="fa-solid fa-trash"></i></button>`;
+            <button type="button" class="action-btn" data-action="edit" title="${item.access === 'view' ? 'Részletek' : 'Szerkesztés'}"><i class="fa-solid fa-pen"></i></button>
+            <button type="button" class="action-btn" data-action="share" title="${isOwn(item) ? 'Megosztás' : 'Megosztás részletei'}"><i class="fa-solid fa-share-nodes"></i></button>
+            ${isOwn(item)
+                ? '<button type="button" class="action-btn" data-action="trash" title="Kukába"><i class="fa-solid fa-trash"></i></button>'
+                : (item.share_direct ? '<button type="button" class="action-btn" data-action="leave" title="Eltávolítás a listámból"><i class="fa-solid fa-right-from-bracket"></i></button>' : '')}`;
         return `
             <article class="card command-card ${state.openIds.has(item.id) ? 'is-open' : ''}" data-item-id="${Number(item.id)}">
                 <div>
@@ -253,6 +260,7 @@
                     <div class="card-meta command-card-meta">
                         <span class="card-category">${esc(item.category_name || 'Inbox')}</span>
                         ${fragment.language && fragments.length === 1 ? `<span class="command-lang">${esc(fragment.language)}</span>` : ''}
+                        ${share?.badgeHtml(item) || ''}
                     </div>
                     ${item.description ? `<p class="command-desc">${esc(item.description)}</p>` : ''}
                 </div>
@@ -272,6 +280,10 @@
         grid.classList.add(`view-${state.view}`);
         prefs.markSwitcher(viewSwitcher, state.view);
         const list = visibleItems();
+        if (state.filter === 'shared' && !list.length) {
+            grid.innerHTML = '<div class="empty-state">Még senki nem osztott meg veled parancsot. Ha valaki megoszt, a csengőnél fogadhatod el.</div>';
+            return;
+        }
         if (!state.items.length) {
             grid.innerHTML = '<div class="empty-state">Még nincs parancsod. Hozz létre egyet az „Új parancs” gombbal, vagy importáld a meglévő listádat (⋮ → Import).</div>';
             return;
@@ -324,6 +336,12 @@
         commandApi.markItemUsed(item.id).then(result => { item.use_count = result.use_count; }).catch(() => {});
     }
 
+    /** Drops an item from the list (the recipient left the share). */
+    function forget(item) {
+        state.items = state.items.filter(entry => entry.id !== item.id);
+        render();
+    }
+
     async function changeState(item, patch, message) {
         try {
             upsertItem(await commandApi.setItemState(item.id, patch));
@@ -365,6 +383,8 @@
         }
         if (action === 'star') return changeState(item, { starred: !item.starred });
         if (action === 'edit') return openEditor(item);
+        if (action === 'share') return share?.open(item, { onChange: () => render(), onLeft: forget });
+        if (action === 'leave') { if (await share?.leave(item)) forget(item); return; }
         if (action === 'trash') return changeState(item, { trashed: true }, 'Parancs a kukába helyezve.');
         if (action === 'restore') return changeState(item, { trashed: false }, 'Parancs visszaállítva.');
         if (action === 'delete') {
@@ -586,6 +606,7 @@
         renderFragmentRows(item && item.fragments.length ? item.fragments : [{ content: '', language: defaultLanguageFor(categoryId) }]);
         resetAi();
         refreshAiRow();
+        applyEditorAccess(item);
         if (item) {
             // Meglévő parancs: a szerkesztő ablakban nyílik.
             newPanel.hidden = true;
@@ -601,6 +622,25 @@
         newButton.setAttribute('aria-expanded', 'true');
         newPanel.scrollIntoView({ block: 'nearest' });
         document.getElementById('cmdTitle').focus({ preventScroll: true });
+    }
+
+    /**
+     * Shared command: a viewer may only pick their own category, an editor everything but tags.
+     * Called after the form is filled; for an own (or new) command it unlocks everything again.
+     */
+    function applyEditorAccess(item) {
+        const own = !item || isOwn(item);
+        const viewOnly = item?.access === 'view';
+        editForm.classList.toggle('is-shared-item', !own);
+        editForm.classList.toggle('is-view-only', viewOnly);
+        editForm.querySelectorAll('#cmdTitle, #cmdDescription, .fragment-row input, .fragment-row textarea').forEach(field => { field.readOnly = viewOnly; });
+        editForm.querySelector('[data-tag-input="cmdTags"]')?.classList.toggle('is-readonly', !own);
+        const note = document.getElementById('cmdShareNote');
+        note.hidden = own;
+        note.textContent = own ? '' : `Megosztotta: ${item.shared_by || 'ismeretlen'}. ${viewOnly
+            ? 'Csak megtekintheted, a kategóriát magadnak állíthatod.'
+            : 'Szerkesztheted, a módosításaidat a tulajdonos is látja. A címkéket csak ő állíthatja.'}`;
+        if (!own) aiRow.hidden = true;
     }
 
     categorySelect.addEventListener('change', () => {
@@ -858,6 +898,8 @@
             position: editing ? editing.position : null,
             extra: editing ? editing.extra : {}
         };
+        // Megosztott parancsnál a szerver 409-cel jelzi, ha közben más módosította.
+        if (editing && !isOwn(editing)) payload.expectedUpdatedAt = editing.updated_at;
         try {
             const saved = editing ? await commandApi.updateItem(editing.id, payload) : await commandApi.createItem(payload);
             upsertItem(saved);
@@ -867,6 +909,12 @@
             render();
             notify(wasEditing ? 'Parancs mentve.' : 'Parancs létrehozva.', 'success');
         } catch (err) {
+            if (err.status === 409 && err.body?.item) {
+                // Valaki közben módosította: a friss változatot mutatjuk, a felhasználó újra elvégezheti a módosítást.
+                upsertItem(err.body.item);
+                render();
+                openEditor(findItem(err.body.item.id));
+            }
             notify(err.message || 'A mentés nem sikerült.', 'error');
         }
     });
@@ -941,7 +989,9 @@
         /** Opens a command's editor by id (used by links from tasks). */
         async openById(id) {
             await load();
-            const item = findItem(id);
+            let item = findItem(id);
+            // Frissen elfogadott megosztás még nincs a betöltött listában.
+            if (!item) { await load(true); item = findItem(id); }
             if (item) openEditor(item);
         },
         focusSearch: () => searchInput.focus(),
