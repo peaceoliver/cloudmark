@@ -11,11 +11,10 @@ Weboldalak mentése kategóriákba, címkékkel, kereséssel.
 
 Ha bekapcsoltad a Beállítások → Könyvjelzők fülön, a CloudMark beolvassa az oldal címét és képét is.
 
-## Gyorsmentő gomb a böngészőben
+## Mentés bármelyik oldalról
 
-1. Nyisd meg a ⋮ → **Beállítások…** → Könyvjelzők fület.
-2. Húzd a **+ Mentés CloudMarkba** gombot a böngésző könyvjelzősávjára.
-3. Bármelyik oldalon rákattintva a CloudMark előkészíti az új könyvjelzőt az oldal címével és URL-jével.
+A **Mentés CloudMarkba** gombbal (Beállítások → Általános) bármelyik weboldalt elmentheted könyvjelzőként,
+Androidon a Megosztás menüből is. Lásd [clipper.md](clipper.md).
 
 ## Tippek
 

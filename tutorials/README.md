@@ -9,7 +9,8 @@ itt az áll, hogyan kell használni az egyes részeket.
 | [notes.md](notes.md) | Jegyzetek írása, listák, kategóriák, kanban |
 | [tasks.md](tasks.md) | Feladatok gyors felvétele, projektek, emlékeztetők |
 | [internal-links.md](internal-links.md) | Belső hivatkozások: `[[` link jegyzetek, feladatok, parancsok, könyvjelzők között |
-| [bookmarks.md](bookmarks.md) | Könyvjelzők mentése, gyorsmentő, import/export |
+| [bookmarks.md](bookmarks.md) | Könyvjelzők mentése, import/export |
+| [clipper.md](clipper.md) | Mentés CloudMarkba: weboldal, kijelölt szöveg vagy feladat egy kattintással, Android Megosztás menü |
 | [commands.md](commands.md) | Parancskönyvtár, másolás, fülek |
 | [ai-assist.md](ai-assist.md) | AI kitöltés saját API kulccsal (Gemini, Claude, OpenAI-kompatibilis): parancsok, könyvjelzők, feladatok, jegyzetek |
 | [notifications.md](notifications.md) | Értesítések: csengő, telefon, e-mail, napi összefoglaló |
