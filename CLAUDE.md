@@ -204,6 +204,18 @@ redraw after sign-in.
 - Parsing and request bodies are in `public/js/clip-parse.js` (Node + browser, `test/clip.test.js`). It saves through the normal
   `POST /api/bookmarks` / `POST /api/items`; notes and tasks keep the source in `extra.source = { url, via: 'clip' }`.
 
+### Internal links (`[[`)
+
+- Tokens `[[jegyzet:12|Cím]]` (`feladat`, `parancs`, `könyvjelző`) live in the body text; the id counts, the label is a
+  fallback. Parsing is shared in `public/js/inline-links.js` (`CloudMark.linkParser`, tests in `test/inline-links.test.js`).
+- On every item create/update the server rebuilds `item_links` rows with `origin = 'inline'` from the body
+  (`syncInlineLinks` in `routes/items.js`, own targets only, others skipped). Task "Kapcsolt elemek" are `origin = 'manual'`
+  and their save only replaces manual rows. Items return `links` (manual) and `inline_links` (current titles of inline targets).
+- UI: `public/js/link-autocomplete.js` (`CloudMark.inlineLinks`): `attach(root, selector, self)` adds the `[[` search to
+  textareas, `textHtml()` / `pillsHtml()` render pills, `[data-inline-open]` buttons open targets (document capture
+  listener), `loadBacklinks(box, id)` fills a „Hivatkoznak rá” box from `GET /api/items/:id/backlinks`.
+  To add `[[` to another editor: `attach` it and render the saved text with `textHtml`.
+
 ### Notes kanban
 
 - `noteView = 'kanban'` renders `.notes-kanban` with one `.kanban-column[data-kanban-column]` per note
