@@ -231,10 +231,18 @@ redraw after sign-in.
   fields (saved as the owner's row); category, pin, star and archive are personal (`shares.recipient_*`). A
   recipient's delete / trash removes their share instead. Shared saves send `expectedUpdatedAt`; a newer row gives 409
   with the fresh item.
-- The share endpoint answers the same for registered and unknown addresses (don't leak who has an account).
+- Bookmarks (own table, text `user_id`) use the same `shares` rows via `bookmark_id`: `bookmarkJoinSql` / `bookmarkColumnsSql`
+  / `presentBookmark` / `bookmarkAccess` in `share-access.js`. A recipient's category is one of their own bookmark categories
+  (`recipient_category_id`); edit permission changes title, URL, description and status, never tags.
+- The share endpoint answers the same for registered and unknown addresses (don't leak who has an account). An unknown
+  address gets one invite e-mail a day (`/?register=1&email=`); `claimPendingShares` hands those shares over when the
+  e-mail is confirmed (verify link or admin verify), never on unverified registration.
+- Contacts (Settings → Általános, `#shareContactSettings`, `CloudMark.share.renderContacts`) are created by sharing and
+  accepting; there is no manual add (it would reveal who has an account).
   Notifications `share_invite` / `share_info` carry `share_id`; the bell renders Elfogadom / Elutasítom.
 - Front end: `CloudMark.share` (`public/js/share-ui.js`): `open(item, { onChange, onLeft })`, `badgeHtml(item)`,
-  `isOwn(item)`, `leave(item)`. Views show the badge in `.card-meta` and a "Megosztva velem" state filter.
+  `isOwn(item)`, `leave(item)`. Views show the badge in `.card-meta` and a "Megosztva velem" state filter
+  (`shared` in notes, tasks, bookmarks and commands).
 
 ### Notes kanban
 

@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261017-sharing">
+    <link rel="stylesheet" href="/css/styles.css?v=20261017-sharing2">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -231,6 +231,7 @@
         <div class="bookmark-state-group auth-only" aria-label="Könyvjelző állapotok">
             <button class="btn btn-secondary state-filter active" onclick="setBookmarkStateFilter('active')">Aktív</button>
             <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('starred')">★ Kedvencek</button>
+            <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('shared')">Megosztva velem</button>
             <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('read_later')">Olvasás később</button>
             <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('to_review')">Ellenőrzésre</button>
             <button class="btn btn-secondary state-filter" onclick="setBookmarkStateFilter('archived')">Archivált</button>
@@ -330,6 +331,7 @@
                 <div class="bookmark-state-group commands-state-group" aria-label="Parancs nézetek">
                     <button type="button" class="btn btn-secondary cmd-state active" data-cmd-state="active">Aktív</button>
                     <button type="button" class="btn btn-secondary cmd-state" data-cmd-state="starred">★ Kedvencek</button>
+                    <button type="button" class="btn btn-secondary cmd-state" data-cmd-state="shared">Megosztva velem</button>
                     <button type="button" class="btn btn-secondary cmd-state" data-cmd-state="trash">Kuka</button>
                 </div>
                 <div class="item-toolbar-end">
@@ -579,6 +581,8 @@
                     </div>
                     <div class="section-divider"><i class="fa-regular fa-bell"></i> Értesítések</div>
                     <div class="bell-settings settings-notifications" id="bellSettings"></div>
+                    <div class="section-divider"><i class="fa-solid fa-user-group"></i> Megosztás: ismerősök</div>
+                    <div class="share-contact-settings" id="shareContactSettings"></div>
                     <div class="section-divider"><i class="fa-solid fa-key"></i> Jelszó módosítása</div>
                     <div class="form-control">
                         <label for="currentPassword">Jelenlegi jelszó</label>
@@ -814,7 +818,7 @@
                 <i class="fa-solid fa-users-rectangle"></i> Csapatok kezelése
             </div>
             <p style="margin: -0.5rem 0 1rem; color: var(--text-secondary); font-size: 0.85rem;">
-                A csapat (team) tagjai közösen látják és szerkeszthetik egymás könyvjelzőit. A <strong>tulajdonos</strong> hozhatja létre/törölheti a csapatot és adhatja át a tulajdonjogot, a <strong>csapat admin</strong> tagokat vehet fel/távolíthat el, a <strong>tag</strong> csak a megosztott könyvjelzőket használja.
+                Itt csapatokat hozhatsz létre és tagokat vehetsz fel. A csapattagság egyelőre nem oszt meg semmit: elemet a kártyák <strong>Megosztás</strong> gombjával tudsz megosztani másokkal (e-mail cím vagy ismerős alapján). A <strong>tulajdonos</strong> hozhatja létre/törölheti a csapatot és adhatja át a tulajdonjogot, a <strong>csapat admin</strong> tagokat vehet fel/távolíthat el.
             </p>
 
             <div style="display: flex; flex-direction: column; gap: 1.25rem;">
@@ -1004,6 +1008,7 @@
         <div class="modal command-edit-modal">
             <div class="modal-title"><i class="fa-solid fa-terminal"></i> <span id="commandEditTitle">Új parancs</span></div>
             <form id="commandEditForm" class="modal-form" style="display:flex; flex-direction:column; gap:1rem;">
+                <p class="share-editor-note" id="cmdShareNote" hidden></p>
                 <input type="hidden" id="cmdId">
                 <div class="ai-fill-row" id="cmdAiRow" hidden>
                     <button type="button" class="btn btn-secondary ai-fill-btn" id="cmdAiFillBtn" title="AI kitöltés (Ctrl+Enter)"><i class="fa-solid fa-wand-magic-sparkles"></i> <span>AI kitöltés</span></button>
@@ -1102,6 +1107,7 @@
                 <i class="fa-solid fa-pen-to-square"></i> Könyvjelző Szerkesztése
             </div>
             <form id="editBookmarkForm" class="modal-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                <p class="share-editor-note" id="editBmShareNote" hidden></p>
                 <input type="hidden" id="editBmId">
                 <div class="ai-fill-row" id="editBmAiRow" hidden>
                     <button type="button" class="btn btn-secondary ai-fill-btn" id="editBmAiFillBtn" title="AI kitöltés (Ctrl+Enter)"><i class="fa-solid fa-wand-magic-sparkles"></i> <span>AI kitöltés</span></button>
@@ -1216,28 +1222,28 @@
         </div>
     </div>
     <script src="/js/config.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/api.js?v=20261017-sharing"></script>
+    <script src="/js/api.js?v=20261017-sharing2"></script>
     <script src="/js/task-parser.js?v=20261015-tasks"></script>
     <script src="/js/notifications.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/modal.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/categories-ui.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/bookmarks-ui.js?v=20261016-cards"></script>
+    <script src="/js/bookmarks-ui.js?v=20261017-sharing2"></script>
     <script src="/js/enterprise.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/auth.js?v=20261016-ai"></script>
-    <script src="/js/app.js?v=20261016-settings"></script>
+    <script src="/js/app.js?v=20261017-sharing2"></script>
     <script src="/js/view-prefs.js?v=20261016-settings"></script>
     <script src="/js/main-menu.js?v=20261016-settings"></script>
     <script src="/js/ai-ui.js?v=20261016-ai2"></script>
-    <script src="/js/commands-ui.js?v=20261016-langlist"></script>
+    <script src="/js/share-ui.js?v=20261017-sharing2"></script>
+    <script src="/js/commands-ui.js?v=20261017-sharing2"></script>
     <script src="/js/bookmark-ai.js?v=20261016-ai2"></script>
     <script src="/js/inline-links.js?v=20261017-links"></script>
     <script src="/js/link-autocomplete.js?v=20261017-links"></script>
-    <script src="/js/share-ui.js?v=20261017-sharing"></script>
     <script src="/js/notes-ui.js?v=20261017-sharing"></script>
     <script src="/js/tasks-ui.js?v=20261017-sharing"></script>
-    <script src="/js/notification-center.js?v=20261017-sharing"></script>
+    <script src="/js/notification-center.js?v=20261017-sharing2"></script>
     <script src="/js/clip-parse.js?v=20261017-clipper"></script>
-    <script src="/js/settings-ui.js?v=20261017-clipper"></script>
+    <script src="/js/settings-ui.js?v=20261017-sharing2"></script>
     <script src="/js/palette.js?v=20261016-palette"></script>
     <script src="/js/views.js?v=20261016-ai2"></script>
     <script src="/js/mobile-ui.js?v=20261017-mobile"></script>

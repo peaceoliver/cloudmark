@@ -15,6 +15,7 @@
             button.setAttribute('aria-selected', String(active));
         });
         modal.querySelectorAll('[data-settings-pane]').forEach(pane => { pane.hidden = pane.dataset.settingsPane !== tab; });
+        if (tab === 'general') window.CloudMark.share?.renderContacts(document.getElementById('shareContactSettings'));
     }
 
     modal.querySelector('.settings-tabs').addEventListener('click', event => {

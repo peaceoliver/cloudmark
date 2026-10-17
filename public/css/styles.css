@@ -2932,3 +2932,16 @@ button.inline-link:hover, button.inline-link:focus-visible { background: var(--a
     .share-person { flex-basis: 100%; }
     .share-row select { flex: 1; max-width: none; }
 }
+
+/* Megosztás 2: könyvjelzők, parancsok, ismerősök */
+.share-public { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); }
+.share-public .share-hint { margin: 0; flex: 1 1 14rem; }
+.share-auto-accept { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--text-secondary); font-size: 0.8rem; white-space: nowrap; cursor: pointer; }
+.share-contact-settings .share-hint { margin: 0 0 0.6rem; }
+.tag-input.is-readonly { pointer-events: none; opacity: 0.6; }
+.is-shared-item .ai-fill-row, .is-shared-bookmark .ai-fill-row,
+.is-view-only .fragment-remove, .is-view-only #cmdAddFragmentBtn { display: none !important; }
+@media (max-width: 640px) {
+    .share-contact-settings .share-row { flex-wrap: wrap; }
+    .share-auto-accept { white-space: normal; }
+}

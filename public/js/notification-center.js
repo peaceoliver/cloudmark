@@ -68,7 +68,7 @@
         }).join('') : '<div class="bell-empty">Nincs értesítésed. Az emlékeztetők, a napi összefoglaló és a megosztások itt jelennek meg.</div>';
     }
 
-    const SHARE_VIEWS = { note: 'notes', task: 'tasks', command: 'commands' };
+    const SHARE_VIEWS = { note: 'notes', task: 'tasks', command: 'commands', bookmark: 'bookmarks' };
 
     /** Shows a shared item in its own view (after accepting, or when its notification is clicked). */
     async function openSharedItem(type, id, item = null) {
@@ -83,6 +83,11 @@
         } else if (type === 'task') {
             await cloudMark.tasks?.reload?.();
             await cloudMark.tasks?.openById?.(id);
+        } else if (type === 'bookmark') {
+            // A könyvjelzők a régi globális függvényekkel töltődnek: újratöltés, Megosztva velem szűrő, és a kártyához görget.
+            if (typeof loadBookmarksFromServer === 'function') await loadBookmarksFromServer();
+            if (typeof window.setBookmarkStateFilter === 'function') window.setBookmarkStateFilter('shared');
+            document.querySelector(`[data-bookmark-id="${Number(id)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
         } else {
             await cloudMark.commands?.openById?.(id);
         }
@@ -99,6 +104,7 @@
                 notify('Elfogadva, megjelent a listádban.', 'success');
                 await refresh();
                 if (result.item) await openSharedItem(result.item.type, result.item.id, result.item);
+                else if (result.bookmarkId) await openSharedItem('bookmark', result.bookmarkId);
             } else {
                 await notifyApi.declineShare(shareId);
                 if (entry) entry.share_status = 'declined';

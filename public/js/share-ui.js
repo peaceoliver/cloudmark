@@ -238,5 +238,59 @@
         }
     }
 
-    window.CloudMark.share = { open, leave, badgeHtml, isOwn };
+    /**
+     * Settings → Általános: the user's contacts with an „automatikusan elfogadom” switch and a remove button.
+     * Saved on change; contacts are added by sharing (and accepting) items, not by hand.
+     */
+    async function renderContacts(box) {
+        if (!box) return;
+        box.innerHTML = '<div class="share-empty">Betöltés…</div>';
+        let contacts;
+        try {
+            contacts = await shareApi.getContacts();
+        } catch (err) {
+            box.innerHTML = `<div class="share-empty">${esc(err.message || 'Az ismerősök betöltése nem sikerült.')}</div>`;
+            return;
+        }
+        box.innerHTML = `
+            <p class="share-hint">Akivel megosztottál valamit, vagy akinek a megosztását elfogadtad, ide kerül. Ha bekapcsolod az automatikus elfogadást, az ő megosztásai kérdés nélkül megjelennek a listádban.</p>
+            ${contacts.length ? `<div class="share-list">${contacts.map(contact => `
+                <div class="share-row" data-contact-id="${Number(contact.userId)}">
+                    <span class="share-person">
+                        <i class="fa-solid fa-user" aria-hidden="true"></i>
+                        <span><strong>${esc(contact.username)}</strong>${contact.email ? `<small>${esc(contact.email)}</small>` : ''}</span>
+                    </span>
+                    <label class="share-auto-accept"><input type="checkbox" data-contact-auto ${contact.autoAccept ? 'checked' : ''}> Automatikusan elfogadom</label>
+                    <button type="button" class="btn-icon" data-contact-remove title="Törlés az ismerősök közül" aria-label="Törlés az ismerősök közül"><i class="fa-solid fa-xmark"></i></button>
+                </div>`).join('')}</div>` : '<div class="share-empty">Még nincs ismerősöd. Ha megosztasz valamit valakivel, itt megjelenik.</div>'}`;
+    }
+
+    document.addEventListener('change', async event => {
+        const toggle = event.target.closest('#shareContactSettings [data-contact-auto]');
+        if (!toggle) return;
+        const id = toggle.closest('[data-contact-id]').dataset.contactId;
+        try {
+            await shareApi.updateContact(id, toggle.checked);
+            notify(toggle.checked ? 'Az ő megosztásai automatikusan bekerülnek.' : 'Az ő megosztásait ezután el kell fogadnod.', 'success');
+        } catch (err) {
+            toggle.checked = !toggle.checked;
+            notify(err.message || 'A mentés nem sikerült.', 'error');
+        }
+    });
+
+    document.addEventListener('click', async event => {
+        const remove = event.target.closest('#shareContactSettings [data-contact-remove]');
+        if (!remove) return;
+        const row = remove.closest('[data-contact-id]');
+        if (!confirm('Törlöd az ismerősök közül? A meglévő megosztások megmaradnak, de a következőt el kell fogadnod.')) return;
+        try {
+            await shareApi.deleteContact(row.dataset.contactId);
+            row.remove();
+            notify('Ismerős törölve.', 'success');
+        } catch (err) {
+            notify(err.message || 'A törlés nem sikerült.', 'error');
+        }
+    });
+
+    window.CloudMark.share = { open, leave, badgeHtml, isOwn, renderContacts };
 })();
