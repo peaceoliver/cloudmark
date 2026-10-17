@@ -21,6 +21,7 @@ Google Keep-szerű gyors jegyzetek és jelölőnégyzetes listák, kategóriákb
 
 ## Tippek
 
+- Más felhasználóval a **Megosztás** gombbal oszthatod meg; a veled megosztottakat a **Megosztva velem** gomb mutatja (lásd [sharing.md](sharing.md)).
 - Egy másik jegyzetre, feladatra, parancsra vagy könyvjelzőre `[[` beírásával hivatkozhatsz (lásd [internal-links.md](internal-links.md)).
 - Telefonon a szűrők, a rendezés és a nézet a kereső melletti **Szűrők** gombbal nyílnak, újat a jobb alsó **+** gombbal veszel fel (lásd [mobile.md](mobile.md)).
 - **AI:** saját AI kulccsal a szerkesztő ✨ gombja címet, címkéket, kategóriát, összefoglalót javasol, és teendőket szed ki. Lásd [ai-assist.md](ai-assist.md).

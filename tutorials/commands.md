@@ -19,6 +19,7 @@ Ha megadtál AI kulcsot, az **✨ AI kitöltés** gomb kitölti a mezőket a bem
 
 ## Tippek
 
+- Más felhasználóval a **Megosztás** gombbal oszthatod meg; a veled megosztottakat a **Megosztva velem** gomb mutatja (lásd [sharing.md](sharing.md)).
 - Telefonon a szűrők, a rendezés és a nézet a kereső melletti **Szűrők** gombbal nyílnak, újat a jobb alsó **+** gombbal veszel fel (lásd [mobile.md](mobile.md)).
 - Egy meglévő parancs szerkesztése ablakban nyílik.
 - Kategóriánként alapnyelv állítható be.

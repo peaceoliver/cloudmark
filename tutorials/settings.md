@@ -10,7 +10,7 @@ Egy közös ablak hat füllel: Általános, Jegyzetek, Feladatok, Könyvjelzők,
 ## Mit hol találsz
 
 - **Általános:** téma, induláskor megnyíló nézet, a **Mentés CloudMarkba** (Clipper) gomb (lásd [clipper.md](clipper.md)),
-  értesítések (lásd [notifications.md](notifications.md)), jelszócsere.
+  értesítések (lásd [notifications.md](notifications.md)), megosztási ismerősök (lásd [sharing.md](sharing.md)), jelszócsere.
 - **Jegyzetek, Feladatok, Parancsok:** alapértelmezett rendezés és nézet.
 - **AI:** saját AI kulcsok az AI kitöltéshez (lásd [ai-assist.md](ai-assist.md)). Itt a gombok azonnal mentenek, nem kell a Mentés.
 - **Könyvjelzők:** nézet, rendezés, weboldal címsor és kép olvasása, export tartalma, import célkategóriája.

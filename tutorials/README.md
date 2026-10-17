@@ -13,6 +13,7 @@ itt az áll, hogyan kell használni az egyes részeket.
 | [clipper.md](clipper.md) | Mentés CloudMarkba: weboldal, kijelölt szöveg vagy feladat egy kattintással, Android Megosztás menü |
 | [commands.md](commands.md) | Parancskönyvtár, másolás, fülek |
 | [ai-assist.md](ai-assist.md) | AI kitöltés saját API kulccsal (Gemini, Claude, OpenAI-kompatibilis): parancsok, könyvjelzők, feladatok, jegyzetek |
+| [sharing.md](sharing.md) | Megosztás más felhasználókkal: jegyzetek, feladatok, könyvjelzők, parancsok, ismerősök |
 | [notifications.md](notifications.md) | Értesítések: csengő, telefon, e-mail, napi összefoglaló |
 | [settings.md](settings.md) | A közös Beállítások ablak |
 | [install-app.md](install-app.md) | Telepítés telefonra és gépre |
