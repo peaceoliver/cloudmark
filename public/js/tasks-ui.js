@@ -57,6 +57,9 @@
     const viewGroup = document.getElementById('taskViewGroup');
     const projectsBar = document.getElementById('taskProjectsBar');
     const detailBox = document.getElementById('taskDetail');
+    const links = window.CloudMark.inlineLinks;
+    // [[ beírására felugró kereső a feladat leírásában.
+    links.attach(detailBox, '.task-detail-body', () => (draft ? { kind: 'task', id: draft.id } : null));
     const toast = document.getElementById('taskToast');
     const moreButton = document.getElementById('taskMoreBtn');
     const sortSelect = document.getElementById('taskSortSelect');
@@ -705,7 +708,8 @@
                 <button type="button" class="note-action" data-detail="close" title="Bezárás (Esc)" aria-label="Bezárás"><i class="fa-solid fa-xmark"></i></button>
             </div>
             ${parent ? `<button type="button" class="task-detail-parent" data-open-task="${Number(parent.id)}"><i class="fa-solid fa-turn-up fa-rotate-90"></i> ${esc(parent.title)}</button>` : ''}
-            <textarea class="task-detail-body" data-field="body" rows="3" maxlength="100000" placeholder="Leírás, megjegyzés…" aria-label="Leírás" ${trashed ? 'disabled' : ''}>${esc(item.body || '')}</textarea>
+            <textarea class="task-detail-body" data-field="body" rows="3" maxlength="100000" placeholder="Leírás, megjegyzés… ([[ = hivatkozás)" aria-label="Leírás" ${trashed ? 'disabled' : ''}>${esc(item.body || '')}</textarea>
+            <div class="inline-link-row" data-inline-row>${links.pillsHtml(item.body, item.inline_links)}</div>
             ${aiEnabled && !trashed ? `<div class="task-ai-tools">
                 <button type="button" class="btn btn-secondary ai-fill-btn" data-detail="ai-fill" title="Címkék, projekt és prioritás javaslata a cím és a leírás alapján"><i class="fa-solid fa-wand-magic-sparkles"></i> AI: címkék, projekt</button>
             </div>
@@ -797,6 +801,7 @@
                     <input type="search" class="task-detail-input" data-detail-input="link" placeholder="Jegyzet, parancs vagy könyvjelző keresése…" aria-label="Kapcsolat keresése" autocomplete="off">
                     <div class="task-link-results" hidden></div>
                 </div>`}
+                <div class="inline-backlinks" data-backlinks hidden></div>
             </section>
 
             <div class="task-detail-foot">
@@ -819,6 +824,7 @@
         state.selectedId = item.id;
         draft = draftFrom(item);
         detailBox.innerHTML = detailHtml(item);
+        links.loadBacklinks(detailBox.querySelector('[data-backlinks]'), item.id);
         detailBox.hidden = false;
         document.getElementById('tasksView').classList.add('has-detail');
         listBox.querySelectorAll('.task-row').forEach(row => row.classList.toggle('is-selected', row.dataset.taskId === String(item.id)));
@@ -833,11 +839,13 @@
         const scroll = detailBox.scrollTop;
         draft = draftFrom(item);
         detailBox.innerHTML = detailHtml(item);
+        links.loadBacklinks(detailBox.querySelector('[data-backlinks]'), item.id);
         detailBox.scrollTop = scroll;
         autoGrow(detailBox.querySelector('.task-detail-title'));
     }
 
     function closeDetail(save = true) {
+        links.close();
         if (save) flushSave();
         state.selectedId = null;
         draft = null;
@@ -893,7 +901,11 @@
             refreshBadge();
             if (String(state.selectedId) === String(saved.id)) {
                 if (rerender) refreshDetail();
-                else setStatus('Mentve');
+                else {
+                    setStatus('Mentve');
+                    const row = detailBox.querySelector('[data-inline-row]');
+                    if (row) row.innerHTML = links.pillsHtml(saved.body, saved.inline_links);
+                }
             }
         }).catch(err => {
             setStatus('');
@@ -958,19 +970,8 @@
     }
 
     async function openLink(link) {
-        if (link.targetType === 'bookmark') {
-            if (link.url && /^https?:\/\//i.test(link.url)) window.open(link.url, '_blank', 'noopener');
-            return;
-        }
         if (link.itemType === 'task') { openDetail(link.targetId); return; }
-        const views = window.CloudMark.views;
-        if (link.itemType === 'note') {
-            views?.showView('notes');
-            window.CloudMark.notes?.openById?.(link.targetId);
-        } else if (link.itemType === 'command') {
-            views?.showView('commands');
-            window.CloudMark.commands?.openById?.(link.targetId);
-        }
+        links.open(link.targetType === 'bookmark' ? 'bookmark' : link.itemType, link.targetId, link.url);
     }
 
     // ---------- AI a részletes panelben: javaslatkártya, semmi nem változik Elfogadom előtt ----------
