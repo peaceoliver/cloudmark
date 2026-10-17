@@ -21,6 +21,11 @@ outside the repo in the project's shared folder (`cloudmark-plan/*.md`).
   any follow-up the work uncovered as a new task.
 - **Every feature has a user guide** in `tutorials/` (Hungarian, step by step, see `tutorials/README.md`).
   A PR that adds or changes a feature creates or updates its tutorial in the same PR.
+- **Every feature gets AI kitöltés on its inputs.** A new feature, or a new or changed form (create/edit
+  dialogs, composers, quick-add), offers the ✨ AI button for its text inputs, built on the existing
+  infrastructure (see *AI kitöltés* below: an action in `ACTIONS` + tests, `CloudMark.ai` on the front end,
+  suggestions only, nothing saved without Elfogadom). The plan names which fields AI fills; skip a form only
+  if the owner agrees (e.g. password or URL-only fields).
 - Don't rotate the VAPID keys (every device would have to subscribe again).
 
 ## Stack and hosting
