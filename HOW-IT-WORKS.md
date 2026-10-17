@@ -117,6 +117,16 @@ Google Keep-szerű jegyzetek.
 - A Jegyzetek ⋮ menüjében: új kategória, import (JSON) és export (JSON, Markdown).
 - **AI segítség** (ha van AI kulcsod): a szerkesztő alsó sávjában a ✨ gomb menüje: **Cím, címkék, kategória** (javaslatkártya pipákkal, új kategóriát is javasolhat), **Összefoglaló** (2–4 mondat, a „Beszúrás az elejére” gombbal kerül a jegyzetbe; listás jegyzetnél nem érhető el) és **Teendők kiszedése** (a kipipált teendőkből feladat lesz, a jegyzethez kapcsolva; mentett jegyzetnél). A jegyzet szövegét az AI nem írja át. Első használatkor egy figyelmeztetés jelzi, hogy a jegyzet szövege elmegy az AI szolgáltatóhoz.
 
+### Belső hivatkozások ([[ link)
+
+Jegyzetek és feladatok egymásra (és parancsokra, könyvjelzőkre) mutathatnak, mint egy wikiben.
+
+- A jegyzet szövegébe vagy a feladat leírásába `[[`-t írva a kurzor alatt felugrik a közös kereső (ugyanaz, mint a Ctrl+K). Gépelésre szűkül, `↑`/`↓` + `Enter` (vagy `Tab`, koppintás) választ, `Esc` bezárja. Ha nincs találat, a lista végén „Új jegyzet: „…”” létrehozza az üres jegyzetet és be is linkeli.
+- A szövegbe ez kerül: `[[jegyzet:123|Kazán szervizelés]]` (típusok: jegyzet, feladat, parancs, könyvjelző). Az azonosító számít, a cím csak tartalék felirat, ezért átnevezéskor sem törik el.
+- A jegyzetkártyán a link kék, kattintható pill, mindig a cél **mostani** címével. Feladatnál a leírás alatt látszanak a pillek. Kattintásra megnyílik a cél: jegyzet a szerkesztőben, feladat a panelen, parancs a szerkesztőben, könyvjelző új lapon. Törölt vagy kukában lévő célnál a pill áthúzott.
+- **Hivatkoznak rá:** a jegyzet szerkesztő alján és a feladat panel Kapcsolt elemek része alatt látszik, mely elemek linkelnek ide (szövegben vagy a Kapcsolt elemek között).
+- A szövegbeli linkek az `item_links` táblába is bekerülnek (`origin = 'inline'`), mentéskor a szerver újraszámolja őket; a feladat „Kapcsolt elemek” része a kézi (`manual`) kapcsolatokat mutatja, és mentéskor csak azokat írja felül. Más felhasználó elemére vagy nem létező elemre mutató link nem kerül be (a kártyán „nem található”).
+
 ### Feladatok
 
 Teendők határidővel, ismétlődéssel és részfeladatokkal. A fülön lévő szám a mai és a lejárt feladatok számát mutatja.

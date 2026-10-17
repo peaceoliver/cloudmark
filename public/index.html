@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261017-mobile">
+    <link rel="stylesheet" href="/css/styles.css?v=20261017-clipper2">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -568,6 +568,13 @@
                             <option value="commands">Parancsok</option>
                         </select>
                     </div>
+                    <div class="section-divider"><i class="fa-solid fa-scissors"></i> Mentés CloudMarkba (Clipper)</div>
+                    <div class="bookmarklet-banner clipper-banner">
+                        <div class="bookmarklet-info">
+                            <p>Húzd a gombot a böngésződ könyvjelzősávjára. Bármelyik oldalon rákattintva kis ablakban mentheted az oldalt könyvjelzőként, a kijelölt szöveget jegyzetként, vagy feladatot készíthetsz belőle. Androidon a telepített CloudMark a Megosztás menüben is megjelenik.</p>
+                        </div>
+                        <a href="/clip" id="clipperBookmarklet" class="bookmarklet-link" draggable="true"><i class="fa-solid fa-scissors"></i> Mentés CloudMarkba</a>
+                    </div>
                     <div class="section-divider"><i class="fa-regular fa-bell"></i> Értesítések</div>
                     <div class="bell-settings settings-notifications" id="bellSettings"></div>
                     <div class="section-divider"><i class="fa-solid fa-key"></i> Jelszó módosítása</div>
@@ -669,16 +676,7 @@
                         </select>
                     </div>
                     <small class="settings-hint">Az importot és az exportot a Könyvjelzők ⋮ menüjében indíthatod.</small>
-                    <div class="section-divider"><i class="fa-solid fa-bolt"></i> Gyors könyvjelzőzés</div>
-                    <div class="bookmarklet-banner">
-                                    <div class="bookmarklet-info">
-                                        <p>Húzd ki a gombot a böngésződ Könyvjelzők sávjára. Bármelyik oldalon jársz, 1 kattintással ide mentheted!</p>
-                                    </div>
-                                    <a href="javascript:(function(){var t=encodeURIComponent(document.title);var u=encodeURIComponent(window.location.href);window.open(`https://cloudmark.onrender.com/bookmark?url=${u}&title=${t}`,%27_blank%27);})();"
-                                       class="bookmarklet-link" onclick="event.preventDefault(); alert('Húzd ezt a gombot a böngésződ könyvjelző sávjára!')">
-                                        <i class="fa-solid fa-plus-circle"></i> + Mentés CloudMarkba
-                                    </a>
-                    </div>
+                    <small class="settings-hint">A „Mentés CloudMarkba” gomb (Clipper) az Általános fülön van.</small>
                 </div>
                 <div class="settings-pane" data-settings-pane="commands" role="tabpanel" hidden>
                     <div class="form-control">
@@ -1176,6 +1174,9 @@
                 <h3><i class="fa-solid fa-list-check"></i> Feladatok</h3>
                 <p>Egy sorban felvehető, pl. <code>holnap 9-kor számla befizetése !1 #pénzügy @Otthon</code>: dátum, idő, ismétlés, prioritás (<code>!1</code>–<code>!4</code>), címke és projekt. Részfeladatok, emlékeztetők, és kapcsolat jegyzethez, parancshoz vagy könyvjelzőhöz. Az esedékes feladatokról a csengő, telefonos értesítés és e-mail szól.</p>
 
+                <h3><i class="fa-solid fa-link"></i> Belső hivatkozások ([[)</h3>
+                <p>Jegyzet szövegében vagy feladat leírásában írd be: <code>[[</code>, majd kezdd el gépelni egy jegyzet, feladat, parancs vagy könyvjelző nevét, és válaszd ki a listából (<kbd>↑</kbd>/<kbd>↓</kbd>, <kbd>Enter</kbd>). Ha nincs ilyen, új jegyzetet is létrehozhatsz belőle. A kártyán a link kék, kattintható, mindig az elem mostani címével; a megnyitott elem alján a „Hivatkoznak rá” mutatja, honnan linkeltek ide.</p>
+
                 <h3><i class="fa-solid fa-bookmark"></i> Könyvjelzők</h3>
                 <p>Weboldalak kategóriákba és címkékkel. Az oldal címe és képe automatikusan beolvasható. Állapotok: kedvenc, később elolvasandó, ellenőrzésre, archivált, kuka. A „Mentés CloudMarkba” gyorsmentő gombot a Beállítások → Könyvjelzők fülön találod.</p>
 
@@ -1192,7 +1193,7 @@
                 <p><kbd>Ctrl</kbd>+<kbd>K</kbd> keresés mindenhol · <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>4</kbd> nézetváltás · <kbd>/</kbd> keresés az aktuális nézetben · <kbd>N</kbd> új jegyzet, feladat vagy parancs · <kbd>Esc</kbd> bezárás.</p>
 
                 <h3><i class="fa-solid fa-mobile-screen"></i> Telefonon</h3>
-                <p>A CloudMark alkalmazásként telepíthető (fejléc ⋮ menü → Telepítés; iPhone-on Safari → Megosztás → Hozzáadás a Főképernyőhöz), így értesítést is kaphatsz. Telefonon a nézetek alul váltanak, a szűrők, a rendezés és a nézet a kereső melletti <strong>Szűrők</strong> gombbal nyílnak, újat pedig a jobb alsó <strong>+</strong> gombbal veszel fel.</p>
+                <p>A CloudMark alkalmazásként telepíthető (fejléc ⋮ menü → Telepítés; iPhone-on Safari → Megosztás → Hozzáadás a Főképernyőhöz), így értesítést is kaphatsz. Telefonon a nézetek alul váltanak, a szűrők, a rendezés és a nézet a kereső melletti <strong>Szűrők</strong> gombbal nyílnak (a választott szűrők chipként látszanak a kereső alatt, a × törli őket), újat pedig a jobb alsó <strong>+</strong> gombbal veszel fel; Feladatoknál a gyors beírás a billentyűzet fölé csúszik fel. A téma váltása és a kilépés a fejléc <strong>⋮</strong> menüjében van.</p>
             </div>
             <div style="display:flex; justify-content:flex-end; margin-top:1rem;">
                 <button type="button" class="btn btn-danger" onclick="closeModal('infoModal')">Bezárás</button>
@@ -1200,7 +1201,7 @@
         </div>
     </div>
     <script src="/js/config.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/api.js?v=20261016-ai"></script>
+    <script src="/js/api.js?v=20261017-links"></script>
     <script src="/js/task-parser.js?v=20261015-tasks"></script>
     <script src="/js/notifications.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/modal.js?v=20260905k-pagesize-setting"></script>
@@ -1214,10 +1215,13 @@
     <script src="/js/ai-ui.js?v=20261016-ai2"></script>
     <script src="/js/commands-ui.js?v=20261016-langlist"></script>
     <script src="/js/bookmark-ai.js?v=20261016-ai2"></script>
-    <script src="/js/notes-ui.js?v=20261016-ai2"></script>
-    <script src="/js/tasks-ui.js?v=20261016-ai2"></script>
+    <script src="/js/inline-links.js?v=20261017-links"></script>
+    <script src="/js/link-autocomplete.js?v=20261017-links"></script>
+    <script src="/js/notes-ui.js?v=20261017-links"></script>
+    <script src="/js/tasks-ui.js?v=20261017-links"></script>
     <script src="/js/notification-center.js?v=20261016-settings"></script>
-    <script src="/js/settings-ui.js?v=20261016-ai"></script>
+    <script src="/js/clip-parse.js?v=20261017-clipper"></script>
+    <script src="/js/settings-ui.js?v=20261017-clipper"></script>
     <script src="/js/palette.js?v=20261016-palette"></script>
     <script src="/js/views.js?v=20261016-ai2"></script>
     <script src="/js/mobile-ui.js?v=20261017-mobile"></script>

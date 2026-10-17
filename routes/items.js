@@ -5,6 +5,7 @@
  */
 
 const taskDates = require('../public/js/task-parser');
+const linkParser = require('../public/js/inline-links');
 const shareAccess = require('./share-access');
 
 const ITEM_TYPES = ['command', 'note', 'task'];
@@ -237,6 +238,7 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
     /**
      * Item rows as `viewer` (a SQL placeholder) sees them: with fragments, tags, reminders, links, subtask counts
      * and the share columns. Map the rows through shareAccess.presentItem before returning them.
+     * Link targets are listed only when the viewer can see them; bookmark targets only for the owner.
      */
     const itemSelect = viewer => `
         SELECT i.*, c.name AS category_name, ${shareAccess.shareColumnsSql(viewer)},
@@ -251,7 +253,13 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                          FROM item_links l
                          LEFT JOIN items li ON l.target_type = 'item' AND li.id = l.target_id AND li.trashed = FALSE AND ${shareAccess.canSeeItemSql('li', viewer)}
                          LEFT JOIN bookmarks b ON l.target_type = 'bookmark' AND b.id = l.target_id AND b.trashed = FALSE AND i.owner_user_id = ${viewer}
-                         WHERE l.item_id = i.id AND (li.id IS NOT NULL OR b.id IS NOT NULL)), '[]') AS links,
+                         WHERE l.item_id = i.id AND l.origin = 'manual' AND (li.id IS NOT NULL OR b.id IS NOT NULL)), '[]') AS links,
+               COALESCE((SELECT json_agg(json_build_object('targetType', l.target_type, 'targetId', l.target_id, 'itemType', li.type,
+                                                           'title', COALESCE(li.title, b.title), 'url', b.url) ORDER BY l.created_at, l.target_type DESC, l.target_id)
+                         FROM item_links l
+                         LEFT JOIN items li ON l.target_type = 'item' AND li.id = l.target_id AND li.trashed = FALSE AND ${shareAccess.canSeeItemSql('li', viewer)}
+                         LEFT JOIN bookmarks b ON l.target_type = 'bookmark' AND b.id = l.target_id AND b.trashed = FALSE AND i.owner_user_id = ${viewer}
+                         WHERE l.item_id = i.id AND l.origin = 'inline' AND (li.id IS NOT NULL OR b.id IS NOT NULL)), '[]') AS inline_links,
                (SELECT COUNT(*) FROM items s WHERE s.parent_item_id = i.id AND s.trashed = FALSE)::int AS subtask_count,
                (SELECT COUNT(*) FROM items s WHERE s.parent_item_id = i.id AND s.trashed = FALSE AND s.status = 'done')::int AS subtask_done_count
         FROM items i
@@ -332,6 +340,37 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
     }
 
     /**
+     * Rebuilds the item's inline links ([[jegyzet:12|…]] in the body). Targets that don't exist or that the
+     * user cannot see are skipped rather than rejected, so pasted text never blocks saving; the card shows them as missing.
+     * Links still in the text are kept, so a shared item edited by someone else keeps the owner's links.
+     */
+    async function syncInlineLinks(db, itemId, body, user) {
+        const targets = linkParser.targets(body, itemId);
+        const itemIds = targets.filter(target => target.targetType === 'item').map(target => target.targetId);
+        const bookmarkIds = targets.filter(target => target.targetType === 'bookmark').map(target => target.targetId);
+        await db.query(
+            `DELETE FROM item_links WHERE item_id = $1 AND origin = 'inline'
+               AND NOT ((target_type = 'item' AND target_id = ANY($2::bigint[])) OR (target_type = 'bookmark' AND target_id = ANY($3::bigint[])))`,
+            [itemId, itemIds, bookmarkIds]
+        );
+        if (!targets.length) return;
+        if (itemIds.length) {
+            await db.query(
+                `INSERT INTO item_links (item_id, target_type, target_id, origin)
+                 SELECT $1, 'item', li.id, 'inline' FROM items li WHERE li.id = ANY($2) AND ${shareAccess.canSeeItemSql('li', '$3')} ON CONFLICT DO NOTHING`,
+                [itemId, itemIds, user.id]
+            );
+        }
+        if (bookmarkIds.length) {
+            await db.query(
+                `INSERT INTO item_links (item_id, target_type, target_id, origin)
+                 SELECT $1, 'bookmark', id, 'inline' FROM bookmarks WHERE id = ANY($2) AND (user_id = $3 OR user_id = $4) ON CONFLICT DO NOTHING`,
+                [itemId, bookmarkIds, user.username, String(user.id)]
+            );
+        }
+    }
+
+    /**
      * Writes the task columns, reminders and links of a task inside a transaction.
      * Returns an error message for invalid references, otherwise null.
      */
@@ -359,7 +398,7 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
         }
         await syncReminders(db, itemId);
         if (task.links) {
-            await db.query('DELETE FROM item_links WHERE item_id = $1', [itemId]);
+            await db.query("DELETE FROM item_links WHERE item_id = $1 AND origin = 'manual'", [itemId]);
             for (const link of task.links) {
                 await db.query('INSERT INTO item_links (item_id, target_type, target_id) VALUES ($1, $2, $3)', [itemId, link.targetType, link.targetId]);
             }
@@ -623,6 +662,7 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                 );
                 await replaceFragments(client, inserted.rows[0].id, value.fragments);
                 await replaceItemTags(client, inserted.rows[0].id, owner.id, value.tags);
+                await syncInlineLinks(client, inserted.rows[0].id, value.body, req.user);
                 if (value.task) {
                     const taskError = await saveTaskFields(client, inserted.rows[0].id, value.task, owner);
                     if (taskError) throw new ItemInputError(taskError);
@@ -634,6 +674,30 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
             res.status(201).json(item);
         } catch (err) {
             res.status(err instanceof ItemInputError ? 400 : 500).json({ error: err.message });
+        }
+    });
+
+    /** Items that link to this one (by hand or with [[…]] in their text), for the „Hivatkoznak rá” list. */
+    app.get('/api/items/:id/backlinks', requireAuth, async (req, res) => {
+        const id = parseId(req.params.id);
+        if (!id) return res.status(404).json({ error: 'Not found' });
+        try {
+            if (!(await shareAccess.itemAccess(pool, id, req.user.id))) return res.status(404).json({ error: 'Not found' });
+            const result = await pool.query(
+                `SELECT i.id, i.type, i.title, i.body, i.status, MAX(l.created_at) AS linked_at
+                 FROM item_links l JOIN items i ON i.id = l.item_id
+                 WHERE l.target_type = 'item' AND l.target_id = $1 AND i.trashed = FALSE AND ${shareAccess.canSeeItemSql('i', '$2')}
+                 GROUP BY i.id ORDER BY linked_at DESC LIMIT 100`,
+                [id, req.user.id]
+            );
+            res.json(result.rows.map(row => ({
+                id: row.id,
+                type: row.type,
+                title: row.title || String(row.body || '').trim().split('\n')[0].slice(0, 80) || 'Névtelen',
+                status: row.status
+            })));
+        } catch (err) {
+            res.status(500).json({ error: err.message });
         }
     });
 
@@ -677,6 +741,7 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                     );
                     await replaceFragments(client, id, value.fragments);
                     await replaceItemTags(client, id, req.user.id, value.tags);
+                    await syncInlineLinks(client, id, value.body, req.user);
                     if (value.task) {
                         const taskError = await saveTaskFields(client, id, value.task, req.user);
                         if (taskError) throw new ItemInputError(taskError);
@@ -690,6 +755,7 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                         [id, value.title, value.description, value.body, value.color, value.extra]
                     );
                     await replaceFragments(client, id, value.fragments);
+                    await syncInlineLinks(client, id, value.body, req.user);
                     if (value.task) {
                         const task = { ...value.task, parentItemId: access.parent_item_id, reminders: undefined, links: undefined };
                         const taskError = await saveTaskFields(client, id, task, { id: access.owner_user_id });

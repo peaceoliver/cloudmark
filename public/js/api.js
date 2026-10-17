@@ -387,6 +387,10 @@ apiNamespace.api = {
         if (limit) query.set('limit', String(limit));
         return requestJson(`/api/search?${query.toString()}`).then(result => result.results);
     },
+    /** Items that link to this one (the „Hivatkoznak rá” list). */
+    getBacklinks(id) {
+        return requestJson(`/api/items/${id}/backlinks`);
+    },
     markItemUsed(id) {
         return requestJson(`/api/items/${id}/used`, { method: 'POST' });
     },

@@ -36,6 +36,7 @@
     const newSection = document.getElementById('noteNewSection');
     const newButton = document.getElementById('noteNewBtn');
     const editBox = document.getElementById('noteEditBox');
+    const links = window.CloudMark.inlineLinks;
     if (!sections) return;
 
     function esc(value) {
@@ -263,7 +264,7 @@
                 </label>`;
             return `<div class="note-checklist">${open.map(row).join('')}${done.length ? `<div class="note-check-done-label">${done.length} kipipált elem</div>${done.map(row).join('')}` : ''}</div>`;
         }
-        return item.body ? `<div class="note-body">${esc(item.body)}</div>` : '';
+        return item.body ? `<div class="note-body">${links.textHtml(item.body, item.inline_links)}</div>` : '';
     }
 
     function paletteHtml(current) {
@@ -361,7 +362,7 @@
                 <input type="text" class="note-editor-title" maxlength="300" placeholder="Cím" value="${esc(note.title || '')}" aria-label="Cím">
                 ${checklist
                     ? `<div class="note-editor-checklist">${items}</div>`
-                    : `<textarea class="note-editor-body" rows="${composer ? 3 : 8}" placeholder="Jegyzet írása…" aria-label="Jegyzet">${esc(note.body || '')}</textarea>`}
+                    : `<textarea class="note-editor-body" rows="${composer ? 3 : 8}" placeholder="Jegyzet írása… ([[ = hivatkozás)" aria-label="Jegyzet">${esc(note.body || '')}</textarea>`}
                 <div class="note-editor-meta">
                     <label class="note-editor-category-wrap" title="Kategória">
                         <i class="fa-regular fa-folder"></i>
@@ -370,6 +371,7 @@
                     <input type="text" class="note-editor-tags" placeholder="Címkék vesszővel (pl. ötlet, munka)" value="${esc((note.tags || []).join(', '))}" aria-label="Címkék">
                 </div>
                 <div class="note-ai-slot"></div>
+                ${!composer && note.id ? '<div class="inline-backlinks" data-backlinks hidden></div>' : ''}
                 <div class="note-editor-bar">
                     <div class="note-color-menu">
                         <button type="button" class="note-action" data-editor="palette" title="Háttérszín"><i class="fa-solid fa-palette"></i></button>
@@ -741,17 +743,22 @@
         editing = { ...item };
         editBox.innerHTML = editorHtml(editing, { composer: false });
         openModal('noteEditModal');
+        links.loadBacklinks(editBox.querySelector('[data-backlinks]'), editing.id);
         setTimeout(() => (editBox.querySelector('.note-editor-body') || editBox.querySelector('.note-editor-title')).focus(), 50);
     }
 
     async function closeEditor() {
         if (!editing) return;
+        links.close();
         await flushSave();
         editing = null;
         closeModal('noteEditModal');
     }
 
     bindEditor(editBox, () => editing, next => { editing = next; }, { onChange: queueSave, onClose: closeEditor });
+    // [[ beírására felugró kereső a jegyzet szövegében (a gyors-hozzáadásban és a szerkesztő ablakban is).
+    links.attach(composerWrap, '.note-editor-body', () => null);
+    links.attach(editBox, '.note-editor-body', () => (editing?.id ? { kind: 'note', id: editing.id } : null));
     document.getElementById('noteEditModal').addEventListener('mousedown', event => {
         if (event.target.id === 'noteEditModal') closeEditor();
     });
@@ -1089,8 +1096,17 @@
         show: () => load(),
         reset,
         openComposer,
-        /** Opens a note's editor by id (used by links from tasks). */
+        /** Saves and closes the note editor window if it is open (before a link opens something else). */
+        closeEditor,
+        /** Adds a note created elsewhere (e.g. „Új jegyzet” in the [[ search) to the loaded list. */
+        remember(item) {
+            if (!state.loaded || !item || item.type !== 'note') return;
+            upsert(item);
+            render();
+        },
+        /** Opens a note's editor by id (used by links from tasks and [[ links). */
         async openById(id) {
+            if (editing && String(editing.id) !== String(id)) await closeEditor();
             await load();
             // A jegyzet közben máshol is létrejöhetett (pl. másik eszközön): ha nincs meg, újratöltjük a listát.
             if (!findItem(id)) await load(true);

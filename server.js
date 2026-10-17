@@ -347,6 +347,8 @@ async function initDatabase() {
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '012_sharing.sql'), 'utf8'));
         // Minden public tábla zárva a Supabase REST API (anon/authenticated) elől: RLS szabályok nélkül.
         await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '010_row_level_security.sql'), 'utf8'));
+        // Belső hivatkozások ([[ link): az item_links sorok kézi vagy szövegbeli eredetet kapnak (origin).
+        await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '011_inline_links.sql'), 'utf8'));
 
         client.release();
         console.log(`[OK] Supabase PostgreSQL tablak sikeresen ellenorizve / letrehozva!`);
@@ -1210,7 +1212,7 @@ app.get('/api/admin/backup/export', requireAdmin, async (req, res) => {
             pool.query('SELECT * FROM item_fragments ORDER BY item_id, position'),
             pool.query('SELECT * FROM item_tags ORDER BY item_id, tag_id'),
             pool.query('SELECT * FROM item_reminders ORDER BY id'),
-            pool.query('SELECT * FROM item_links ORDER BY item_id, target_type, target_id'),
+            pool.query('SELECT * FROM item_links ORDER BY item_id, origin, target_type, target_id'),
             pool.query('SELECT * FROM shares ORDER BY id'),
             pool.query('SELECT * FROM contacts ORDER BY user_id, contact_user_id')
         ]);
@@ -1425,9 +1427,9 @@ app.post('/api/admin/backup/import', requireAdmin, async (req, res) => {
             if (table === 'item_links') {
                 for (const row of rows) {
                     await pool.query(
-                        `INSERT INTO item_links (item_id, target_type, target_id, created_at) VALUES ($1, $2, $3, $4)
+                        `INSERT INTO item_links (item_id, target_type, target_id, origin, created_at) VALUES ($1, $2, $3, $4, $5)
                          ON CONFLICT DO NOTHING`,
-                        [row.item_id, row.target_type, row.target_id, row.created_at || new Date()]
+                        [row.item_id, row.target_type, row.target_id, row.origin === 'inline' ? 'inline' : 'manual', row.created_at || new Date()]
                     );
                 }
                 continue;
@@ -2375,6 +2377,18 @@ registerPushRoutes(app, { pool, requireAuth, recordAuditEvent, push });
 registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer: getConfiguredMailer, getPublicBaseUrl, push, taskActions });
 registerShareRoutes(app, { pool, requireAuth, recordAuditEvent, push, shareLimiter, loadItem: itemHelpers.loadItem });
 registerAiRoutes(app, { pool, requireAuth, recordAuditEvent, fetchPageMetadata: fetchBookmarkMetadata });
+
+// Clipper: a bookmarklet és a telefon Megosztás menüje ezt a kis mentő oldalt nyitja meg.
+app.get('/clip', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'clip.html'));
+});
+// A régi „Mentés CloudMarkba” gomb a /bookmark címet nyitotta meg; most az is a Clippert kapja.
+app.get('/bookmark', (req, res) => {
+    const query = new URLSearchParams();
+    ['url', 'title', 'text'].forEach(key => { if (typeof req.query[key] === 'string') query.set(key, req.query[key]); });
+    query.set('source', 'bookmarklet');
+    res.redirect(302, `/clip?${query}`);
+});
 
 // Főoldal kiszolgálása
 app.get('*', (req, res) => {
