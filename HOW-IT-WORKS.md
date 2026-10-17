@@ -85,11 +85,23 @@ Bármelyik weboldal egy kattintással menthető, átváltás nélkül.
 - **iPhone:** a webes appok nem kerülhetnek a Megosztás menübe; a gomb a Safari Kedvencek közül működik, vagy egy Parancsok (Shortcuts) művelet nyithatja meg a `/clip?url=…&title=…` címet.
 - A régi, Könyvjelzők fülről behúzott gyorsmentő gombok továbbra is működnek, ugyanide irányítanak.
 
+### Megosztás
+
+Jegyzet, feladat, könyvjelző és parancs megosztható más felhasználóval, e-mail cím alapján.
+
+- **Megnyitás:** jegyzetnél a kártya és a szerkesztő **Megosztás** gombja, feladatnál a részletes panel alja, könyvjelzőnél és parancsnál a kártya **Megosztás** gombja. Az ablakban e-mail cím vagy ismerős, jogosultság (**Megtekintheti** / **Szerkesztheti**), alatta a **Megosztva** lista (jogosultság átállítása, visszavonás ×, **Függőben**, amíg a címzett nem fogadta el). Könyvjelzőnél az ablak alján **Nyilvános link másolása** (fiók nélkül megnyitható link).
+- **Címzett:** a csengőnél **Elfogadom** / **Elutasítom**. Elfogadás után az elem a saját listájában van, a kártyán jelvény mutatja, ki osztotta meg (szem ikon: csak megtekintés); a tulajdonos kártyáján a jelvény a megosztások számát mutatja. Minden nézetben van **Megosztva velem** állapotgomb.
+- **Közös és saját:** a tartalom közös (szerkesztési joggal a címzett is módosíthatja; könyvjelzőnél cím, URL, leírás, állapot). Kategória, rögzítés, kedvenc és archívum személyes. Csak a tulajdonos törölhet, oszthat tovább, és állíthat címkét, emlékeztetőt, kapcsolt elemet. A címzett törlése vagy az **Eltávolítás a listámból** csak a saját listájából veszi ki. Megosztott feladat részfeladatai a szülővel együtt látszanak.
+- **Élő frissítés:** a megosztott elemek változásai, és a saját eszközeid közötti változások is, 1-2 másodpercen belül megjelennek minden nyitott ablakban, újratöltés nélkül; az új megosztás és a visszavonás azonnal látszik a listában és a csengőnél. Nyitott jegyzet-, feladat- vagy parancsszerkesztőben mentetlen gépelés nélkül csendben frissül a tartalom; ha épp írsz, sáv jelenik meg **Frissítés** / **Saját változat megtartása** gombokkal, és amíg nem választasz, semmi nem mentődik. Ha a szerver elaludt vagy a kapcsolat megszakadt, az app újrakapcsolódik és frissít.
+- **Ütközés:** ha két mentés pont egyszerre érkezik, a későbbi helyett „Valaki közben módosította ezt az elemet…” üzenet jön, és a legfrissebb változat töltődik be.
+- **Fiók nélküli cím:** a címzett meghívó e-mailt kap (címenként naponta legfeljebb egyet), és a megosztás akkor kerül hozzá, amikor ezzel a címmel regisztrált és megerősítette az e-mail címét. A szerver ugyanazt válaszolja létező és nem létező címre, így a megosztásból nem derül ki, kinek van fiókja. (Amíg a Resend domain nincs igazolva, a meghívó e-mail csak a tulajdonos címére megy ki.)
+- **Ismerősök:** Beállítások → Általános → „Megosztás: ismerősök”. Megosztással és elfogadással jönnek létre (kézzel nem lehet felvenni); az **Automatikusan elfogadom** kapcsolóval az ő megosztásai kérdés nélkül bekerülnek. A megosztás ablakban az ismerősök egy kattintással választhatók.
+
 ### Beállítások
 
 Egy közös ablak hat füllel; a fejléc ⋮ menüjéből (Általános fül) vagy bármelyik nézet ⋮ menüjéből (az adott nézet füle) nyílik.
 
-- **Általános:** téma, induláskor megnyíló nézet, a **Mentés CloudMarkba** (Clipper) gomb, értesítések (e-mail, napi összefoglaló, telefonos értesítés eszközönként, csendes időszak, teszt értesítés), jelszócsere. Az értesítési kapcsolók azonnal mentődnek; a csengő panel alján egy link vezet ide.
+- **Általános:** téma, induláskor megnyíló nézet, a **Mentés CloudMarkba** (Clipper) gomb, értesítések (e-mail, napi összefoglaló, telefonos értesítés eszközönként, csendes időszak, teszt értesítés), megosztási ismerősök, jelszócsere. Az értesítési kapcsolók azonnal mentődnek; a csengő panel alján egy link vezet ide.
 - **Jegyzetek, Feladatok, Parancsok:** alapértelmezett rendezés és nézet.
 - **AI:** saját AI kulcsok (Gemini, Claude, OpenAI-kompatibilis) az AI kitöltéshez, modellválasztás, kapcsolat tesztelése.
 - **Könyvjelzők:** nézet, rendezés, weboldal címsor és kép olvasása, az export tartalma és az import célkategóriája (a Clipper gombra itt csak egy utalás van, az Általános fülön található).
@@ -174,5 +186,5 @@ A CloudMark telepíthető a telefonra és a számítógépre is, ilyenkor saját
 - Saját kategóriák és címkék kezelése (Könyvjelzők ⋮ menü).
 - Könyvjelzők importálása JSON- vagy HTML-fájlból.
 - Export JSON- vagy HTML-fájlba.
-- Megosztható hivatkozás készítése egy könyvjelzőhöz.
+- Nyilvános link egy könyvjelzőhöz (a Megosztás ablak alján), és megosztás más felhasználókkal (lásd Megosztás).
 - Team funkció és adminisztrációs lehetőségek jogosultságtól függően. (Fejlesztés alatt)

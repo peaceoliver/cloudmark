@@ -23,4 +23,4 @@ Androidon a Megosztás menüből is. Lásd [clipper.md](clipper.md).
 - Állapotok: aktív, kedvenc, később olvasom, ellenőrzésre vár, archivált, kuka.
 - Több könyvjelzőt kijelölve csoportosan módosíthatod vagy áthelyezheted őket.
 - Import JSON- vagy HTML-fájlból (pl. a böngésző exportjából), export JSON-ba vagy HTML-be a ⋮ menüben.
-- Egy könyvjelzőhöz megosztható hivatkozás is készíthető.
+- A kártya **Megosztás** gombjával más felhasználóval oszthatod meg, vagy nyilvános linket másolhatsz (lásd [sharing.md](sharing.md)).
