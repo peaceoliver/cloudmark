@@ -19,6 +19,7 @@ Ha megadtál AI kulcsot, az **✨ AI kitöltés** gomb kitölti a mezőket a bem
 
 ## Tippek
 
+- Telefonon a szűrők, a rendezés és a nézet a kereső melletti **Szűrők** gombbal nyílnak, újat a jobb alsó **+** gombbal veszel fel (lásd [mobile.md](mobile.md)).
 - Egy meglévő parancs szerkesztése ablakban nyílik.
 - Kategóriánként alapnyelv állítható be.
 - A Nyelv mezőbe kattintva a teljes javaslatlista látszik (bash, powershell, cmd …); ha nem választasz újat, megmarad az előző érték. Más nyelv is beírható.

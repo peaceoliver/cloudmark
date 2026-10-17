@@ -19,6 +19,7 @@ Ha bekapcsoltad a Beállítások → Könyvjelzők fülön, a CloudMark beolvass
 
 ## Tippek
 
+- Telefonon a szűrők, a rendezés és a nézet a kereső melletti **Szűrők** gombbal nyílnak, újat a jobb alsó **+** gombbal veszel fel (lásd [mobile.md](mobile.md)).
 - **AI kitöltés:** saját AI kulccsal az űrlap tetején lévő ✨ gomb az URL-ből címet, leírást, címkéket és kategóriát javasol. Lásd [ai-assist.md](ai-assist.md).
 - Állapotok: aktív, kedvenc, később olvasom, ellenőrzésre vár, archivált, kuka.
 - Több könyvjelzőt kijelölve csoportosan módosíthatod vagy áthelyezheted őket.

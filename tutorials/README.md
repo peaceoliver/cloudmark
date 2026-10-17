@@ -14,6 +14,7 @@ itt az áll, hogyan kell használni az egyes részeket.
 | [notifications.md](notifications.md) | Értesítések: csengő, telefon, e-mail, napi összefoglaló |
 | [settings.md](settings.md) | A közös Beállítások ablak |
 | [install-app.md](install-app.md) | Telepítés telefonra és gépre |
+| [mobile.md](mobile.md) | Használat telefonon: alsó fülek, Szűrők lap, + gomb |
 
 ## Új útmutató írása (fejlesztőknek és az AI-nak)
 

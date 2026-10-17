@@ -54,7 +54,7 @@ routes/safe-fetch.js    fetch a user-given URL safely (no private / metadata add
 migrations/NNN_*.sql    schema changes, run on every server start
 public/index.html       the whole single-page UI (all four views are in this file)
 public/css/styles.css   one stylesheet, themed with CSS variables
-public/js/*.js          one IIFE per feature, exposed on window.CloudMark.<name>
+public/js/*.js          one IIFE per feature, exposed on window.CloudMark.<name> (mobile-ui.js = phone layout)
 public/sw.js            service worker (install/offline page/push), never caches /api
 test/*.test.js          node:test unit tests (`npm test`)
 tutorials/*.md          Hungarian user guides, one per feature (index: tutorials/README.md)
@@ -100,7 +100,7 @@ The signed-in main page has four views, in this tab order: **Jegyzetek, Feladato
   first time; `reset()` clears state on user change. `N` opens the view's new-item control, `/` focuses
   its search.
 - Adding a view: markup in `index.html`, a `public/js/<name>-ui.js` module, entries in `VIEWS`,
-  `SHORTCUTS`, the `show`/`reset`/`N` branches of `views.js`, and its prefs (below).
+  `SHORTCUTS`, the `show`/`reset`/`N` branches of `views.js`, its prefs (below) and its phone config in `mobile-ui.js`.
 
 ### Toolbar order (identical in every view, top to bottom)
 
@@ -116,6 +116,19 @@ The signed-in main page has four views, in this tab order: **Jegyzetek, Feladato
    view switcher (`.view-switcher` → `.view-btn[data-view-mode]`) and the **⋮** menu (`.item-more-btn`).
 
 The Bookmarks view is the reference layout; copy its markup and classes rather than inventing new ones.
+
+### Phone layout (≤640px)
+
+- `public/js/mobile-ui.js` (`window.CloudMark.mobile`) builds the phone toolbar; desktop stays untouched.
+  Per view, its `VIEWS` config lists the toolbar sections it **moves** (not copies) into a bottom sheet
+  (`.m-sheet`, opened by the "Szűrők" button next to the search), the controls that stay outside (tasks: the
+  smart-list row `#taskViewGroup`), and the filter `groups` shown as removable chips (`.m-chip`).
+- Elements it creates carry `.mobile-only` / `.m-*` classes and are hidden above 640px. Tabs (`#appTabs`) become
+  a fixed bottom bar; the "+ Új …" bar is hidden and the floating `.m-fab` opens the view's new-item control
+  (tasks: the quick-add section `.tasks-toolbar` becomes a bottom sheet above the keyboard).
+- Adding a view or a new filter bar: add it to `VIEWS` in `mobile-ui.js`, then check the sheet at 390px.
+- Never put `backdrop-filter`/`transform` on `header` itself (it would trap the `position: fixed` menu panel);
+  the glass effect is on `header::before`.
 
 ### Cards (all four views)
 

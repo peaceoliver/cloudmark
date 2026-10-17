@@ -52,6 +52,17 @@ Mind a négy nézet teteje ugyanúgy épül fel: legfelül az egyforma „+ Új 
 - **Kártyák:** mind a négy nézetben a kategória (Feladatoknál a projekt) kék címkeként a cím alatt, bal oldalt látszik, a címkék pedig `#címke` formában, kék szöveggel a kártya alján (a Parancsok mintájára). Kompakt jegyzetnél és kompakt feladatnál a címkék rejtve vannak.
 - A választott rendezés és nézet nézetenként a fiókhoz mentődik (`commandSort`, `commandView`, `noteSort`, `noteView`, `taskSort`, `taskView`), így minden eszközön ugyanaz.
 
+### Telefonos elrendezés
+
+Telefonon (640px-nél keskenyebb képernyőn) a nézetek kevesebb helyet foglalnak, hogy a tartalom rögtön látsszon. Gépen semmi nem változik.
+
+- **Fejléc:** logó, keresés (Ctrl+K), csengő és ⋮. A téma váltása és a kilépés a ⋮ menübe került.
+- **Fülek alul:** a négy nézet (Jegyzetek, Feladatok, Könyvjelzők, Parancsok) a képernyő alján van, ikonnal és felirattal; a Feladatoknál a számláló is látszik.
+- **Kereső + Szűrők:** felül egy sorban a kereső és a **Szűrők** gomb. A gomb alulról felcsúszó lapot nyit, rajta a nézet összes szűrője és beállítása: kategóriák (Feladatoknál projektek), címkék, állapotok (pl. Archívum, Kuka), rendezés, nézetváltó, valamint a ⋮ menü pontjai (kategóriák kezelése, import/export, Beállítások…). Az **Alaphelyzet** mindent visszaállít, a **Kész** bezárja a lapot (lefelé húzva vagy mellé koppintva is bezárul).
+- **Aktív szűrők:** a kiválasztott kategória, címke vagy állapot chipként látszik a kereső alatt, a × törli. A Szűrők gombon a szám mutatja, hány szűrő aktív.
+- **Feladatok:** az okos listák (Ma, Következő 7 nap, Beérkezett …) kint maradnak egy vízszintesen görgethető sorban.
+- **Lebegő + gomb:** jobb alul, a fülek fölött. Jegyzeteknél a szerkesztőt nyitja, Könyvjelzőknél és Parancsoknál az új elem űrlapját (újra koppintva bezárja), Feladatoknál alulról felcsúszik a gyors beírás a billentyűzet fölé, alatta a felismert dátummal, prioritással és projekttel.
+
 ### Keresés mindenhol (Ctrl+K)
 
 A **Ctrl+K** (Macen ⌘K) bármelyik nézetből, vagy a fejléc nagyító gombja (telefonon is) megnyit egy keresőablakot, amely egyszerre keres a jegyzetekben, feladatokban, könyvjelzőkben és parancsokban: címben, szövegben, leírásban, kategóriában, címkében és parancskódban, ékezet nélkül is (a „kazan” megtalálja a „Kazán”-t). A találatok típusonként (legfeljebb 5) csoportosítva jelennek meg, a fülek sorrendjében.
