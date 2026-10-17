@@ -55,6 +55,16 @@
         openUserSettings(opener.dataset.openSettings);
     });
 
+    // A Clipper gomb ennek az oldalnak a címére mutasson (helyben, éles szerveren egyaránt).
+    const clipper = document.getElementById('clipperBookmarklet');
+    if (clipper && window.CloudMark?.clipParse) {
+        clipper.href = window.CloudMark.clipParse.buildBookmarklet(location.origin);
+        clipper.addEventListener('click', event => {
+            event.preventDefault();
+            if (typeof showNotification === 'function') showNotification('Húzd ezt a gombot a böngésző könyvjelzősávjára, és onnan kattints rá.', 'info');
+        });
+    }
+
     window.CloudMark = window.CloudMark || {};
     window.CloudMark.settings = { showTab };
 })();

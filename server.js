@@ -2342,6 +2342,18 @@ registerPushRoutes(app, { pool, requireAuth, recordAuditEvent, push });
 registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer: getConfiguredMailer, getPublicBaseUrl, push, taskActions });
 registerAiRoutes(app, { pool, requireAuth, recordAuditEvent, fetchPageMetadata: fetchBookmarkMetadata });
 
+// Clipper: a bookmarklet és a telefon Megosztás menüje ezt a kis mentő oldalt nyitja meg.
+app.get('/clip', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'clip.html'));
+});
+// A régi „Mentés CloudMarkba” gomb a /bookmark címet nyitotta meg; most az is a Clippert kapja.
+app.get('/bookmark', (req, res) => {
+    const query = new URLSearchParams();
+    ['url', 'title', 'text'].forEach(key => { if (typeof req.query[key] === 'string') query.set(key, req.query[key]); });
+    query.set('source', 'bookmarklet');
+    res.redirect(302, `/clip?${query}`);
+});
+
 // Főoldal kiszolgálása
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

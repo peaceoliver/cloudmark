@@ -2817,6 +2817,36 @@ button.new-item-bar:focus-visible, .new-item-bar:focus-within { border-color: va
     #tasksView .task-quick-add.new-item-bar { margin-bottom: 0.5rem; }
 }
 
+/* Clipper (/clip): kis önálló mentő oldal a bookmarkletnek és a telefon Megosztás menüjének */
+.clip-body { min-height: 100vh; background: var(--bg-main); }
+.clip-page { max-width: 520px; margin: 0 auto; padding: 1rem 1rem 2rem; display: grid; gap: 0.9rem; box-sizing: border-box; }
+.clip-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.clip-subtitle { color: var(--text-secondary); font-size: 0.85rem; font-weight: 600; }
+.clip-loading { color: var(--text-secondary); text-align: center; margin: 2rem 0; }
+.clip-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 1rem; display: grid; gap: 0.85rem; }
+.clip-card[hidden], .clip-loading[hidden], .clip-check[hidden] { display: none; }
+.clip-card textarea { width: 100%; box-sizing: border-box; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color);
+    background: var(--bg-input); color: var(--text-primary); font: inherit; font-size: 0.9rem; resize: vertical; outline: none; }
+.clip-card textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.clip-types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+.clip-type { display: flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.6rem 0.4rem; border-radius: 10px;
+    border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-secondary); font: inherit; font-size: 0.85rem;
+    font-weight: 600; cursor: pointer; }
+.clip-type.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+.clip-check { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.85rem; cursor: pointer; }
+.clip-check input { width: auto; }
+.clip-hint { margin: 0; color: var(--text-secondary); font-size: 0.85rem; }
+.clip-error { margin: 0; color: var(--danger); font-size: 0.85rem; }
+.clip-error a { color: var(--accent); }
+.clip-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+.clip-done { justify-items: center; text-align: center; }
+.clip-done p { margin: 0; font-weight: 600; }
+.clip-done-icon { font-size: 2.5rem; color: var(--success); }
+@media (max-width: 400px) {
+    .clip-type { flex-direction: column; gap: 0.2rem; font-size: 0.78rem; }
+    .clip-actions .btn { flex: 1; justify-content: center; }
+}
+.clipper-banner { margin-bottom: 0.75rem; flex-wrap: wrap; }
 /* ---------- Belső hivatkozások ([[ link) ---------- */
 .inline-link {
     display: inline-flex; align-items: baseline; gap: 0.3rem; max-width: 100%;
