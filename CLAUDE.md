@@ -56,6 +56,7 @@ public/index.html       the whole single-page UI (all four views are in this fil
 public/css/styles.css   one stylesheet, themed with CSS variables
 public/js/*.js          one IIFE per feature, exposed on window.CloudMark.<name> (mobile-ui.js = phone layout)
 public/sw.js            service worker (install/offline page/push), never caches /api
+public/clip.html        Clipper page (/clip): bookmarklet + Android share target save a page/selection as bookmark, note or task
 test/*.test.js          node:test unit tests (`npm test`)
 tutorials/*.md          Hungarian user guides, one per feature (index: tutorials/README.md)
 ```
@@ -193,6 +194,15 @@ redraw after sign-in.
   markup like `#cmdAiRow` / `#cmdAiReview`, or a ✨ button and a slot for a suggestion card, and the apply logic in that view's module.
 - Fetching a URL on a user's behalf goes through `routes/safe-fetch.js` (`fetchPublicText`): public addresses only, checked in
   the socket's DNS lookup and again after each redirect.
+
+### Clipper (/clip)
+
+- `public/clip.html` + `public/js/clip.js` is a standalone page (no main header/toolbar), served by `GET /clip`; the old
+  `/bookmark?url=&title=` bookmarklet redirects there. Input comes as `?url=&title=&text=&source=`.
+- Entry points: the bookmarklet built by `clipParse.buildBookmarklet(location.origin)` (Settings → Általános, `#clipperBookmarklet`)
+  opens it in a popup (not `fetch`, so the page's CSP/CORS don't matter); `share_target` (GET) in `manifest.webmanifest` on Android.
+- Parsing and request bodies are in `public/js/clip-parse.js` (Node + browser, `test/clip.test.js`). It saves through the normal
+  `POST /api/bookmarks` / `POST /api/items`; notes and tasks keep the source in `extra.source = { url, via: 'clip' }`.
 
 ### Notes kanban
 

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="hu" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b0f19">
+    <title>Mentés CloudMarkba</title>
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/styles.css?v=20261017-clipper">
+</head>
+<body class="clip-body">
+    <main class="clip-page">
+        <div class="clip-header">
+            <span class="logo"><i class="fa-solid fa-bookmark"></i> CloudMark</span>
+            <span class="clip-subtitle">Mentés</span>
+        </div>
+
+        <p class="clip-loading" id="clipLoading"><i class="fa-solid fa-spinner fa-spin"></i> Betöltés…</p>
+
+        <form class="clip-card" id="clipLogin" hidden>
+            <p class="clip-hint">A mentéshez jelentkezz be. Utána itt folytathatod.</p>
+            <div class="form-control">
+                <label for="clipUsername">Felhasználónév</label>
+                <input type="text" id="clipUsername" autocomplete="username" required>
+            </div>
+            <div class="form-control">
+                <label for="clipPassword">Jelszó</label>
+                <input type="password" id="clipPassword" autocomplete="current-password" required>
+            </div>
+            <p class="clip-error" id="clipLoginError" role="alert" hidden></p>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Bejelentkezés</button>
+        </form>
+
+        <form class="clip-card" id="clipForm" hidden>
+            <div class="clip-types" role="tablist" aria-label="Mentés mint">
+                <button type="button" class="clip-type" data-clip-type="bookmark" role="tab"><i class="fa-solid fa-bookmark"></i> Könyvjelző</button>
+                <button type="button" class="clip-type" data-clip-type="note" role="tab"><i class="fa-regular fa-note-sticky"></i> Jegyzet</button>
+                <button type="button" class="clip-type" data-clip-type="task" role="tab"><i class="fa-regular fa-square-check"></i> Feladat</button>
+            </div>
+            <div class="form-control">
+                <label for="clipTitle">Cím</label>
+                <input type="text" id="clipTitle" maxlength="300">
+            </div>
+            <div class="form-control" data-clip-field="url">
+                <label for="clipUrl">URL</label>
+                <input type="url" id="clipUrl" maxlength="2048" placeholder="https://…">
+            </div>
+            <div class="form-control">
+                <label for="clipText" id="clipTextLabel">Szöveg</label>
+                <textarea id="clipText" rows="5"></textarea>
+            </div>
+            <div class="form-control">
+                <label for="clipCategory" id="clipCategoryLabel">Kategória</label>
+                <select id="clipCategory"></select>
+            </div>
+            <div class="form-control">
+                <label for="clipTags">Címkék</label>
+                <input type="text" id="clipTags" placeholder="pl. olvasni, munka" autocomplete="off">
+            </div>
+            <label class="clip-check" data-clip-field="readLater"><input type="checkbox" id="clipReadLater" checked> Később olvasom</label>
+            <p class="clip-error" id="clipError" role="alert" hidden></p>
+            <div class="clip-actions">
+                <button type="button" class="btn btn-secondary" id="clipCancel">Mégse</button>
+                <button type="submit" class="btn btn-primary" id="clipSave"><i class="fa-solid fa-check"></i> Mentés</button>
+            </div>
+        </form>
+
+        <div class="clip-card clip-done" id="clipDone" hidden>
+            <i class="fa-solid fa-circle-check clip-done-icon"></i>
+            <p id="clipDoneText">Mentve</p>
+            <a class="btn btn-secondary" id="clipOpenApp" href="/">Megnyitás a CloudMarkban</a>
+        </div>
+    </main>
+    <script src="/js/config.js?v=20260905k-pagesize-setting"></script>
+    <script src="/js/api.js?v=20261016-ai"></script>
+    <script src="/js/clip-parse.js?v=20261017-clipper"></script>
+    <script src="/js/clip.js?v=20261017-clipper"></script>
+</body>
+</html>
