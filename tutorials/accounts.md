@@ -14,7 +14,8 @@ adatbázis csak olvashatatlan adatot lát.
    biztos helyre. Csak ezzel tudsz új mesterjelszót beállítani, ha elfelejted.
 4. Pipáld be az „Elmentettem vagy leírtam a helyreállító kulcsot” jelölőt, majd **Kész**.
 5. Kattints az **Új fiók hozzáadása** sávra, és töltsd ki:
-   - **Név** (pl. GitHub, Router), **Cím** (URL vagy IP, pl. `192.168.1.1:9443`);
+   - **Név** (pl. GitHub, Router), **Cím** (URL vagy IP, pl. `192.168.1.1:9443`; otthoni eszköznél add meg az IP-t és a portot együtt, pl.
+     `192.168.1.10:8096`, mert a csak portból, pl. `8096`, nem lesz kattintható link);
    - **Belépés módja**: saját jelszóval, Google-, GitHub-, Microsoft-, Apple-, Facebook-fiókkal, céges SSO-val, SSH kulccsal
      vagy egyéb;
    - **Felhasználónév / e-mail**, illetve külső fióknál **Melyik fiókkal?** (pl. melyik Gmail címeddel);

@@ -112,6 +112,8 @@
     function hrefOf(url) {
         const text = String(url || '').trim();
         if (!text || /\s/.test(text)) return null;
+        // Csak port (pl. 8096): nem tudni, melyik gépen, ezért nem lesz belőle link.
+        if (/^:?\d{1,5}$/.test(text)) return null;
         if (/^https?:\/\//i.test(text)) return text;
         if (/^[a-z][a-z0-9+.-]*:/i.test(text) && !/^[\w.-]+:\d+/.test(text)) return null;
         return `http://${text}`;
