@@ -1,7 +1,7 @@
 # CloudMark – guide for AI assistants
 
 Read this before changing anything. It explains how the project is built, how to add a feature, and the
-rules that keep the four views looking and behaving the same.
+rules that keep the five views looking and behaving the same.
 
 User-facing docs: `HOW-IT-WORKS.md` (Hungarian overview of all behaviour) and `tutorials/` (Hungarian
 step-by-step guide per feature). Planning history and screenshots live
@@ -49,11 +49,12 @@ outside the repo in the project's shared folder (`cloudmark-plan/*.md`).
 
 ```
 server.js               app setup, auth, bookmarks, categories, tags, settings, admin, backup, schema bootstrap
-routes/items.js         commands + notes + tasks CRUD (shared `items` table), import/export
+routes/items.js         commands + notes + tasks + accounts CRUD (shared `items` table), import/export
 routes/tasks.js         task-only endpoints (complete, snooze, reminders)
 routes/notifications.js bell, e-mail reminders, daily digest, internal cron endpoint
 routes/push.js          Web Push subscriptions and action tokens
-routes/search.js        GET /api/search: one search across notes, tasks, bookmarks and commands
+routes/search.js        GET /api/search: one search across notes, tasks, bookmarks, commands and accounts
+routes/vault.js         Fiókok vault: /api/vault (wrapped key, create/rewrap/delete) + GET /api/items/:id/secret
 routes/ai.js            AI kitöltés: users' own keys (encrypted) + POST /api/ai/fill (suggestions only)
 routes/ai-actions.js    per-action prompt, JSON schema and server-side validation of the answer
 routes/ai-providers.js  Gemini (@google/genai), Anthropic (@anthropic-ai/sdk), OpenAI-compatible (fetch)
@@ -62,7 +63,7 @@ routes/shares.js        sharing: /api/shares (create, permission, revoke/leave, 
 routes/share-access.js  who may see / edit an item (owner or accepted share), SQL helpers used by every item query
 routes/live.js          live updates: GET /api/events (SSE) + middleware that tells everyone who sees a changed item
 migrations/NNN_*.sql    schema changes, run on every server start
-public/index.html       the whole single-page UI (all four views are in this file)
+public/index.html       the whole single-page UI (all five views are in this file)
 public/css/styles.css   one stylesheet, themed with CSS variables
 public/js/*.js          one IIFE per feature, exposed on window.CloudMark.<name> (mobile-ui.js = phone layout)
 public/js/vendor/       vendored third-party scripts (highlight.js for the Kódtár colouring), loaded from 'self' because of the CSP
@@ -75,13 +76,16 @@ tutorials/*.md          Hungarian user guides, one per feature (index: tutorials
 ## Data model
 
 - `bookmarks` keeps its own table. Everything else is a row in **`items`** with `type` = `command`,
-  `note` or `task`. Shared columns: title, description, body, category_id, color, pinned, starred,
+  `note`, `task` or `account`. Shared columns: title, description, body, category_id, color, pinned, starred,
   archived, trashed, position, use_count, extra (jsonb). Task-only columns (status, priority, due_at,
   recurrence_rule, parent_item_id …) must be NULL for other types (check constraint `items_task_fields`).
 - `item_fragments` (code tabs of a command), `item_tags` (→ `tags`), `item_reminders`, `item_links`.
 - `shares` (one row per item or bookmark + recipient e-mail; `permission` view/edit, `status` pending/accepted/declined,
   the recipient's own category/pin/star/archive in `recipient_*`) and `contacts` (who auto-accepts whose shares).
-- `categories.kind` separates categories per type (`bookmark`, `command`, `note`, `task`; tasks call them
+- Accounts: `extra` = { url, username, loginMethod, ssoAccount } (plain text, searchable); the password and secret note are one
+  AES-GCM blob in `item_secrets` (one row per item, never in item responses, only `has_secret`), encrypted in the browser with
+  the vault key from `user_vaults` (wrapped by PBKDF2 of the master password + optionally by the recovery key).
+- `categories.kind` separates categories per type (`bookmark`, `command`, `note`, `task`, `account`; tasks call them
   "projektek" in the UI). Names are unique per owner + kind.
 - A new content type should become a new `items.type` value (extend the check constraint in a migration),
   not a new table, unless it really doesn't fit.
@@ -104,10 +108,10 @@ tutorials/*.md          Hungarian user guides, one per feature (index: tutorials
 
 ## Front end: the views pattern
 
-The signed-in main page has four views, in this tab order: **Jegyzetek, Feladatok, Könyvjelzők, Kódtár**
+The signed-in main page has five views, in this tab order: **Jegyzetek, Feladatok, Könyvjelzők, Kódtár, Fiókok**
 (Kódtár = the former Parancsok: code snippets, still `items.type = 'command'` and `commands` in code; hash `#/kodtar`, the old
 `#/parancsok` still opens it via `OLD_HASHES` in `views.js`; UI calls one item a „kódrészlet”)
-(Alt+1…4 follow the order, default view = notes). `public/js/views.js` owns switching:
+(Alt+1…5 follow the order, default view = notes). `public/js/views.js` owns switching:
 
 - Each view is a `<div class="app-view" id="<name>View" data-view="<name>" hidden>` in `index.html` and a tab
   button with `data-view-tab="<name>"` in `#appTabs`.
@@ -146,7 +150,7 @@ The Bookmarks view is the reference layout; copy its markup and classes rather t
 - Never put `backdrop-filter`/`transform` on `header` itself (it would trap the `position: fixed` menu panel);
   the glass effect is on `header::before`.
 
-### Cards (all four views)
+### Cards (all views)
 
 - Category under the title, left aligned, as a blue pill: `<div class="card-meta"><span class="card-category">`.
 - Tags at the bottom of the card as `#tag` in blue text: `<div class="card-tags">`. Compact notes and compact
@@ -188,7 +192,7 @@ redraw after sign-in.
   Bookmark and note menus are toggled by `public/js/settings-ui.js` (`data-more-menu`); commands and tasks
   toggle their own.
 - **Settings** is one modal, `#userSettingsModal`, with tabs Általános, Jegyzetek, Feladatok, Könyvjelzők,
-  Parancsok, AI (`[data-settings-tab]` / `[data-settings-pane]`). Open it with `openUserSettings(tab)` (auth.js);
+  Kódtár, Fiókok, AI (`[data-settings-tab]` / `[data-settings-pane]`). Open it with `openUserSettings(tab)` (auth.js);
   without a tab it opens the current view's tab. New settings go into this modal, never a new dialog:
   per-view sort/view selects only need `data-pref="<key>"`, other keys are saved in the form's submit handler.
 - The header ⋮ menu only holds general things (Beállítások, Team, Telepítés, Info). Notification settings
@@ -207,7 +211,7 @@ redraw after sign-in.
   "Mindent újraír" is ticked. The command form (`commands-ui.js`) is the reference integration.
 - Actions: `command.fill`, `bookmark.fill` (the server adds the page's title/description via `fetchPageMetadata`),
   `task.fill`, `task.parse` (gets `today` in the user's time zone; dates are re-checked), `task.subtasks`, `note.fill`,
-  `note.summary`, `note.tasks`. `kind` picks which categories (and tags) go into the prompt; `null` sends none.
+  `note.summary`, `note.tasks`, `account.fill` (never gets the username, password or secret note). `kind` picks which categories (and tags) go into the prompt; `null` sends none.
 - Forms without autosave (commands, bookmarks: `bookmark-ai.js`) put the suggestion into the fields with `createReview`.
   Autosaving editors (task panel, notes) show `CloudMark.ai.suggestionCard()` (one checkbox per change) and change nothing
   before Elfogadom. `CloudMark.ai.run(action, input, button)` handles the spinner, the no-key case and error toasts.
@@ -274,6 +278,19 @@ redraw after sign-in.
   `applyRemote(id, item|null)` and, after a reconnect, `refreshAll()` on notes, tasks and commands; bookmarks reload the list.
   An open editor refreshes silently when nothing is unsaved, else shows `live.conflictBar()` (Frissítés / Saját változat
   megtartása) and doesn't autosave until the user picks. A new view or editor needs the same two functions.
+
+### Fiókok and the vault
+
+- `public/js/vault.js` (`CloudMark.vault`, Node + browser, tests in `test/vault.test.js`) is all the crypto: `createVault`, `unlock`,
+  `changePassword`, `newRecoveryKey`, `encryptSecret` / `decryptSecret`, `generatePassword`, `strength`. Web Crypto only; PBKDF2-SHA256
+  600k iterations wraps a random 256-bit vault key; secrets are AES-GCM with a fresh IV. The server never sees the master password,
+  the vault key or a plaintext secret; never add an endpoint or log line that would.
+- `PUT /api/vault` (rewrap) needs `authToken`, a hash derived from the unwrapped key (`key_check` stores its SHA-256), so only an
+  unlocked browser can change the master password. `DELETE /api/vault` needs the login password and removes every `item_secrets` row.
+- `public/js/accounts-ui.js` (`CloudMark.accounts`) keeps the unlocked key in memory only (auto-lock pref `vaultAutoLock`); a reload locks.
+  Item saves send `secret: { ciphertext, iv }` (undefined = keep, null = delete). Import/export: `public/js/account-csv.js`
+  (Chrome / Firefox / Bitwarden / CloudMark CSV, tests in `test/vault.test.js`).
+- Accounts cannot be shared (`POST /api/shares` → 400) and the AI never gets usernames or secrets.
 
 ### Notes kanban
 

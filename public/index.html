@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css?v=20261017-kodtar">
+    <link rel="stylesheet" href="/css/styles.css?v=20261017-accounts">
 </head>
 <body>
     <div id="notificationArea" class="notification-area" aria-live="polite"></div>
@@ -107,7 +107,7 @@
 
     <main>
 
-        <!-- Nézetváltó: jegyzetek / feladatok / könyvjelzők / parancsok (Alt+1 … Alt+4) -->
+        <!-- Nézetváltó: jegyzetek / feladatok / könyvjelzők / kódtár / fiókok (Alt+1 … Alt+5) -->
         <nav class="app-tabs" id="appTabs" aria-label="Tartalomtípus" role="tablist" hidden>
             <button type="button" class="app-tab" role="tab" data-view-tab="notes" aria-selected="false" title="Jegyzetek (Alt+1)">
                 <i class="fa-solid fa-note-sticky"></i><span>Jegyzetek</span>
@@ -120,6 +120,9 @@
             </button>
             <button type="button" class="app-tab" role="tab" data-view-tab="commands" aria-selected="false" title="Kódtár (Alt+4)">
                 <i class="fa-solid fa-code"></i><span>Kódtár</span>
+            </button>
+            <button type="button" class="app-tab" role="tab" data-view-tab="accounts" aria-selected="false" title="Fiókok (Alt+5)">
+                <i class="fa-solid fa-key"></i><span>Fiókok</span>
             </button>
         </nav>
 
@@ -493,6 +496,68 @@
             </div>
             <div class="task-toast" id="taskToast" role="status" hidden></div>
         </div>
+
+        <!-- Fiókok (jelszókezelő): a jelszavak a böngészőben titkosítódnak a mesterjelszóval -->
+        <div class="app-view" id="accountsView" data-view="accounts" hidden>
+            <section class="dashboard-section add-item-section" aria-label="Új fiók">
+                <button type="button" class="new-item-bar" id="accountNewBtn" title="Új fiók (N)" aria-expanded="false" aria-controls="accountNewPanel">
+                    <i class="fa-solid fa-plus new-item-icon" aria-hidden="true"></i>
+                    <span class="new-item-text">Új fiók hozzáadása</span>
+                    <i class="accordion-icon fa-solid fa-chevron-down" aria-hidden="true"></i>
+                </button>
+                <!-- Új fióknál ide kerül át az űrlap; meglévő fiók szerkesztésekor az ablakban marad. -->
+                <div class="control-panel command-new-panel" id="accountNewPanel" hidden></div>
+            </section>
+            <section class="dashboard-section category-section" aria-label="Fiók kategóriák">
+                <div class="category-inner-content">
+                    <div class="category-bubbles-label toolbar-label"><i class="fa-solid fa-folder"></i> Kategóriák</div>
+                    <div class="categories-bar" id="accountCategoriesBar"></div>
+                </div>
+            </section>
+            <section class="enterprise-toolbar" aria-label="Keresés a fiókokban">
+                <div class="toolbar-group">
+                    <div class="commands-search enterprise-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input id="accountSearch" type="search" placeholder="Keresés… (név, cím, felhasználónév, #címke)" autocomplete="off">
+                        <button type="button" class="btn-icon commands-search-clear" id="accountSearchClear" title="Keresés törlése" hidden><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+            </section>
+            <div class="bookmark-list-toolbar item-list-toolbar">
+                <select id="accountSortSelect" aria-label="Rendezés">
+                    <option value="abc">🔤 ABC sorrend</option>
+                    <option value="newest">🕒 Legújabb elöl</option>
+                    <option value="used">🔥 Leggyakrabban használt</option>
+                </select>
+                <div class="bookmark-state-group accounts-state-group" aria-label="Fiók nézetek">
+                    <button type="button" class="btn btn-secondary cmd-state active" data-account-state="active">Aktív</button>
+                    <button type="button" class="btn btn-secondary cmd-state" data-account-state="starred">★ Kedvencek</button>
+                    <button type="button" class="btn btn-secondary cmd-state" data-account-state="archived">Archívum</button>
+                    <button type="button" class="btn btn-secondary cmd-state" data-account-state="trash">Kuka</button>
+                </div>
+                <div class="item-toolbar-end">
+                <button type="button" class="btn btn-secondary vault-lock-btn" id="vaultLockBtn" title="Széf zárolva" aria-label="Széf zárolva"><i class="fa-solid fa-lock"></i></button>
+                <div class="view-switcher" id="accountViewSwitcher" aria-label="Megjelenítés">
+                    <button type="button" class="view-btn" data-view-mode="list" title="Lista nézet" aria-label="Lista nézet" aria-pressed="false"><i class="fa-solid fa-list"></i></button>
+                    <button type="button" class="view-btn" data-view-mode="compact" title="Kompakt" aria-label="Kompakt" aria-pressed="false"><i class="fa-solid fa-grip"></i></button>
+                    <button type="button" class="view-btn" data-view-mode="grid" title="Normál kártyák" aria-label="Normál kártyák" aria-pressed="false"><i class="fa-solid fa-border-all"></i></button>
+                </div>
+                <div class="commands-more">
+                    <button type="button" class="btn btn-secondary item-more-btn" id="accountMoreBtn" aria-haspopup="true" aria-expanded="false" title="További műveletek"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    <div class="cmd-dropdown" id="accountMoreMenu" role="menu">
+                        <button type="button" class="cmd-dropdown-item" data-account-menu="categories"><i class="fa-solid fa-folder-tree"></i> Kategóriák kezelése</button>
+                        <label class="cmd-dropdown-item"><i class="fa-solid fa-upload"></i> Import (CSV vagy JSON)<input type="file" id="accountImportInput" accept=".csv,.json,text/csv,application/json" hidden></label>
+                        <button type="button" class="cmd-dropdown-item" data-account-menu="export-json"><i class="fa-solid fa-file-shield"></i> Export (titkosított JSON)</button>
+                        <button type="button" class="cmd-dropdown-item" data-account-menu="export-csv"><i class="fa-solid fa-file-csv"></i> Export CSV (titkosítatlan)</button>
+                        <button type="button" class="cmd-dropdown-item" data-account-menu="lock"><i class="fa-solid fa-lock"></i> Széf zárolása</button>
+                        <button type="button" class="cmd-dropdown-item" data-open-settings="accounts"><i class="fa-solid fa-gear"></i> Beállítások…</button>
+                    </div>
+                </div>
+                </div>
+            </div>
+            <div class="vault-banner" id="vaultBanner" hidden></div>
+            <div class="commands-grid accounts-grid" id="accountGrid" aria-live="polite"></div>
+        </div>
     </main>
 
     <!-- Modal: Auth & Registration -->
@@ -543,7 +608,7 @@
                 <kbd>Esc</kbd>
             </div>
             <div class="palette-results" id="paletteResults" role="listbox"></div>
-            <div class="palette-footer"><span><kbd>↑</kbd><kbd>↓</kbd> lépkedés</span><span><kbd>Enter</kbd> megnyitás / másolás</span><span><kbd>Shift</kbd>+<kbd>Enter</kbd> szerkesztés</span></div>
+            <div class="palette-footer"><span><kbd>↑</kbd><kbd>↓</kbd> lépkedés</span><span><kbd>Enter</kbd> megnyitás / másolás</span><span><kbd>Shift</kbd>+<kbd>Enter</kbd> szerkesztés / jelszó</span></div>
         </div>
     </div>
 
@@ -559,6 +624,7 @@
                 <button type="button" class="settings-tab" role="tab" data-settings-tab="tasks">Feladatok</button>
                 <button type="button" class="settings-tab" role="tab" data-settings-tab="bookmarks">Könyvjelzők</button>
                 <button type="button" class="settings-tab" role="tab" data-settings-tab="commands">Kódtár</button>
+                <button type="button" class="settings-tab" role="tab" data-settings-tab="accounts">Fiókok</button>
                 <button type="button" class="settings-tab" role="tab" data-settings-tab="ai"><i class="fa-solid fa-wand-magic-sparkles"></i> AI</button>
             </div>
             <form id="userSettingsForm" class="modal-form">
@@ -579,6 +645,7 @@
                             <option value="tasks">Feladatok</option>
                             <option value="bookmarks">Könyvjelzők</option>
                             <option value="commands">Kódtár</option>
+                            <option value="accounts">Fiókok</option>
                         </select>
                     </div>
                     <div class="section-divider"><i class="fa-solid fa-scissors"></i> Mentés CloudMarkba (Clipper)</div>
@@ -710,6 +777,35 @@
                             <option value="list">Lista</option>
                         </select>
                     </div>
+                </div>
+                <div class="settings-pane" data-settings-pane="accounts" role="tabpanel" hidden>
+                    <div class="form-control">
+                        <label for="settingAccountSort">Rendezés</label>
+                        <select id="settingAccountSort" data-pref="accountSort">
+                            <option value="abc">ABC sorrend</option>
+                            <option value="newest">Legújabb elöl</option>
+                            <option value="used">Leggyakrabban használt</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label for="settingAccountView">Nézet</label>
+                        <select id="settingAccountView" data-pref="accountView">
+                            <option value="list">Lista</option>
+                            <option value="compact">Kompakt</option>
+                            <option value="grid">Normál kártyák</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label for="settingVaultAutoLock">Automatikus zárolás tétlenség után</label>
+                        <select id="settingVaultAutoLock" data-pref="vaultAutoLock">
+                            <option value="5">5 perc</option>
+                            <option value="15">15 perc</option>
+                            <option value="60">60 perc</option>
+                            <option value="never">Csak kilépéskor és újratöltéskor</option>
+                        </select>
+                    </div>
+                    <div class="section-divider"><i class="fa-solid fa-vault"></i> Széf és mesterjelszó</div>
+                    <div class="vault-settings" id="vaultSettings"></div>
                 </div>
                 <div class="settings-pane" data-settings-pane="ai" role="tabpanel" hidden>
                     <div class="section-divider"><i class="fa-solid fa-wand-magic-sparkles"></i> AI kitöltés saját kulccsal</div>
@@ -1081,6 +1177,136 @@
         <div class="modal note-edit-modal" id="noteEditBox"></div>
     </div>
 
+    <!-- Modal: Fiók szerkesztése (accounts-ui.js) -->
+    <div class="modal-overlay" id="accountEditModal">
+        <div class="modal command-edit-modal account-edit-modal">
+            <div class="modal-title"><i class="fa-solid fa-key"></i> <span id="accountEditTitle">Új fiók</span></div>
+            <form id="accountEditForm" class="modal-form account-form" autocomplete="off" style="display:flex; flex-direction:column; gap:1rem;">
+                <div class="ai-fill-row" id="accAiRow" hidden>
+                    <button type="button" class="btn btn-secondary ai-fill-btn" id="accAiFillBtn" title="AI kitöltés (Ctrl+Enter)"><i class="fa-solid fa-wand-magic-sparkles"></i> <span>AI kitöltés</span></button>
+                    <label class="ai-overwrite" title="A már kitöltött mezőket is újraírja"><input type="checkbox" id="accAiOverwrite"> Mindent újraír</label>
+                    <small class="ai-fill-hint" id="accAiHint">Írd be a nevet vagy a címet.</small>
+                </div>
+                <div class="ai-review-bar" id="accAiReview" hidden>
+                    <span class="ai-review-text"><i class="fa-solid fa-wand-magic-sparkles"></i> <span data-ai-review-text></span></span>
+                    <span class="ai-review-actions">
+                        <button type="button" class="btn btn-secondary" data-ai-review="undo"><i class="fa-solid fa-rotate-left"></i> Visszavonom</button>
+                        <button type="button" class="btn btn-primary" data-ai-review="accept"><i class="fa-solid fa-check"></i> Elfogadom</button>
+                    </span>
+                </div>
+                <div class="ai-extras" id="accAiExtras"></div>
+                <div class="command-edit-row">
+                    <div class="form-control">
+                        <label for="accTitle">Név</label>
+                        <input type="text" id="accTitle" required maxlength="300" placeholder="Pl. GitHub, Router, Jellyfin">
+                    </div>
+                    <div class="form-control">
+                        <label for="accUrl">Cím (URL vagy IP)</label>
+                        <input type="text" id="accUrl" maxlength="2000" inputmode="url" placeholder="https://github.com vagy 192.168.1.1:9443">
+                    </div>
+                </div>
+                <div class="command-edit-row">
+                    <div class="form-control">
+                        <label for="accLoginMethod">Belépés módja</label>
+                        <select id="accLoginMethod">
+                            <option value="password">Saját jelszóval</option>
+                            <option value="google">Google-fiókkal</option>
+                            <option value="github">GitHub-fiókkal</option>
+                            <option value="microsoft">Microsoft-fiókkal</option>
+                            <option value="apple">Apple ID-val</option>
+                            <option value="facebook">Facebook-fiókkal</option>
+                            <option value="sso">Más egyszeri belépéssel (SSO)</option>
+                            <option value="ssh">SSH kulccsal</option>
+                            <option value="other">Egyéb</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label for="accUsername">Felhasználónév / e-mail</label>
+                        <input type="text" id="accUsername" maxlength="300" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="pl. sanci vagy nev@example.com">
+                    </div>
+                </div>
+                <div class="form-control" id="accSsoRow" hidden>
+                    <label for="accSsoAccount">Melyik fiókkal?</label>
+                    <input type="text" id="accSsoAccount" maxlength="300" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="pl. nev@gmail.com">
+                </div>
+                <fieldset class="account-secret-box" id="accSecretBox">
+                    <legend><i class="fa-solid fa-shield-halved"></i> Titkosított adatok</legend>
+                    <div class="account-secret-locked" id="accSecretLocked" hidden>
+                        <span><i class="fa-solid fa-lock"></i> <span id="accSecretLockedText">A jelszó megadásához oldd fel a széfet.</span></span>
+                        <button type="button" class="btn btn-secondary" id="accUnlockBtn"><i class="fa-solid fa-lock-open"></i> Feloldás</button>
+                    </div>
+                    <div class="form-control" id="accPasswordRow">
+                        <label for="accPassword">Jelszó</label>
+                        <div class="account-password-input">
+                            <input type="password" id="accPassword" maxlength="1000" autocomplete="new-password" spellcheck="false" autocapitalize="off">
+                            <button type="button" class="btn-icon" id="accPasswordToggle" title="Megjelenítés" aria-label="Jelszó megjelenítése"><i class="fa-solid fa-eye"></i></button>
+                            <button type="button" class="btn-icon" id="accGenerateToggle" title="Jelszó generálása" aria-label="Jelszó generálása" aria-expanded="false"><i class="fa-solid fa-dice"></i></button>
+                        </div>
+                        <div class="password-strength" id="accStrength" aria-live="polite"></div>
+                        <div class="password-generator" id="accGenerator" hidden>
+                            <label>Hossz <input type="range" id="accGenLength" min="8" max="64" value="20"> <span id="accGenLengthValue">20</span></label>
+                            <label><input type="checkbox" id="accGenUpper" checked> A-Z</label>
+                            <label><input type="checkbox" id="accGenDigits" checked> 0-9</label>
+                            <label><input type="checkbox" id="accGenSymbols" checked> !#$</label>
+                            <button type="button" class="btn btn-secondary" id="accGenerateBtn"><i class="fa-solid fa-rotate"></i> Új jelszó</button>
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label for="accSecretNote">Titkos megjegyzés (helyreállító kódok, PIN…)</label>
+                        <textarea id="accSecretNote" rows="2" maxlength="5000" spellcheck="false"></textarea>
+                    </div>
+                </fieldset>
+                <div class="form-control">
+                    <label for="accDescription">Megjegyzés (nem titkos, kereshető)</label>
+                    <textarea id="accDescription" rows="2" maxlength="5000" placeholder="Pl. otthoni médiaszerver a Raspberry Pi-n, 8096-os port"></textarea>
+                </div>
+                <div class="command-edit-row">
+                    <div class="form-control">
+                        <label for="accCategory">Kategória</label>
+                        <select id="accCategory"></select>
+                    </div>
+                    <div class="form-control">
+                        <label>Címkék</label>
+                        <div class="tag-input" data-tag-input="accTags">
+                            <div class="tag-chips"></div>
+                            <input type="text" class="tag-entry" placeholder="Címke hozzáadása…">
+                            <div class="tag-suggestions"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                    <button type="button" class="btn btn-danger" id="accCancelBtn">Mégse</button>
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Mentés</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Fiók kategóriák -->
+    <div class="modal-overlay" id="accountCategoryModal" style="z-index: 2200;">
+        <div class="modal">
+            <div class="modal-title"><i class="fa-solid fa-folder-tree"></i> Fiók kategóriák</div>
+            <form id="accountCategoryForm" class="form-control" style="margin-bottom:1rem;">
+                <label for="accNewCategoryName">Új kategória</label>
+                <div style="display:flex; gap:0.5rem;">
+                    <input type="text" id="accNewCategoryName" required maxlength="100" placeholder="Pl. Otthoni eszközök, Fejlesztés, Bank…">
+                    <button type="submit" class="btn btn-primary">Létrehozás</button>
+                </div>
+            </form>
+            <div class="section-divider">Meglévő kategóriák</div>
+            <div id="accountCategoryList" class="command-category-list"></div>
+            <button type="button" class="btn btn-danger" style="width:100%;" data-close-modal="accountCategoryModal">Bezárás</button>
+        </div>
+    </div>
+
+    <!-- Modal: Széf (létrehozás, feloldás, helyreállítás, mesterjelszó csere) – a tartalmát az accounts-ui.js rajzolja -->
+    <div class="modal-overlay" id="vaultModal" style="z-index: 2400;">
+        <div class="modal vault-modal" role="dialog" aria-labelledby="vaultModalTitle">
+            <div class="modal-title"><i class="fa-solid fa-vault"></i> <span id="vaultModalTitle">Széf</span></div>
+            <div id="vaultModalBody"></div>
+        </div>
+    </div>
+
     <!-- Modal: Megosztás (share-ui.js) -->
     <div class="modal-overlay" id="shareModal" style="z-index: 2300;">
         <div class="modal share-modal" role="dialog" aria-labelledby="shareModalTitle">
@@ -1193,10 +1419,10 @@
         <div class="modal">
             <div class="modal-title"><i class="fa-solid fa-circle-info"></i> CloudMark – rövid ismertető</div>
             <div class="modal-form info-content" style="max-height: 60vh; overflow-y: auto;">
-                <p>A CloudMark egy helyen tartja a jegyzeteidet, feladataidat, könyvjelzőidet és kódrészleteidet (Kódtár). Bejelentkezés után a fenti fülekkel válthatsz közöttük (<kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>4</kbd>).</p>
+                <p>A CloudMark egy helyen tartja a jegyzeteidet, feladataidat, könyvjelzőidet, kódrészleteidet (Kódtár) és a fiókjaidat. Bejelentkezés után a fenti fülekkel válthatsz közöttük (<kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>5</kbd>).</p>
 
                 <h3><i class="fa-solid fa-magnifying-glass"></i> Keresés mindenhol (Ctrl+K)</h3>
-                <p>A <kbd>Ctrl</kbd>+<kbd>K</kbd> (Macen <kbd>⌘</kbd>+<kbd>K</kbd>) vagy a fejléc nagyító gombja egy keresőablakot nyit, amely egyszerre keres mind a négy helyen. <kbd>Enter</kbd>: megnyitja a jegyzetet vagy feladatot, könyvjelzőnél a weboldalt, kódrészletnél a kódot a vágólapra másolja. <kbd>Shift</kbd>+<kbd>Enter</kbd>: szerkesztés. Szűkítés: <code>#címke</code>, <code>/kategória</code>, <code>@kód</code> (vagy <code>@jegyzet</code>, <code>@feladat</code>, <code>@könyvjelző</code>), pl. <code>stop #docker @kód</code>. A lista alján új elemet is létrehozhatsz a beírt szövegből, a <kbd>&gt;</kbd> jellel kezdve pedig gyors műveletek jönnek (nézetváltás, Beállítások, téma).</p>
+                <p>A <kbd>Ctrl</kbd>+<kbd>K</kbd> (Macen <kbd>⌘</kbd>+<kbd>K</kbd>) vagy a fejléc nagyító gombja egy keresőablakot nyit, amely egyszerre keres mindenhol. <kbd>Enter</kbd>: megnyitja a jegyzetet vagy feladatot, könyvjelzőnél a weboldalt, kódrészletnél a kódot, fióknál a felhasználónevet a vágólapra másolja. <kbd>Shift</kbd>+<kbd>Enter</kbd>: szerkesztés, fióknál a jelszó másolása. Szűkítés: <code>#címke</code>, <code>/kategória</code>, <code>@kód</code> (vagy <code>@jegyzet</code>, <code>@feladat</code>, <code>@könyvjelző</code>, <code>@fiók</code>), pl. <code>stop #docker @kód</code>. A lista alján új elemet is létrehozhatsz a beírt szövegből, a <kbd>&gt;</kbd> jellel kezdve pedig gyors műveletek jönnek (nézetváltás, Beállítások, téma).</p>
 
                 <h3><i class="fa-solid fa-note-sticky"></i> Jegyzetek</h3>
                 <p>Keep-szerű jegyzetek: szöveg vagy jelölőnégyzetes lista, háttérszín, rögzítés, kategóriák és címkék. Gépelés közben automatikusan ment. Nézetek: normál, kompakt, lista és kanban, ahol a jegyzetet másik kategória oszlopába húzhatod.</p>
@@ -1216,14 +1442,17 @@
                 <h3><i class="fa-solid fa-code"></i> Kódtár</h3>
                 <p>Kódrészletek (parancsok, SQL, konfiguráció, kód) egy helyen, VS Code-szerű színezéssel és több kódfüllel (pl. bash / PowerShell). Rendezd munkaterület szerint kategóriákba (pl. shell, backend, devops, alkategóriával is), a témákat címkézd. A kereső ékezet nélkül is talál, <code>#címke</code> és <code>/kategória</code> szűkít. Az új, kategória nélküli elemek az Inboxba kerülnek: ⋮ → Kijelölés és áthelyezés. Egy kattintással másolható az egész, egy sor, Markdownként vagy kommentek nélkül.</p>
 
+                <h3><i class="fa-solid fa-key"></i> Fiókok (jelszókezelő)</h3>
+                <p>Melyik oldalon milyen felhasználónévvel vagy fiókkal (Google, GitHub…) regisztráltál, és az otthoni eszközök (router, Raspberry Pi, Portainer, Jellyfin) belépési adatai. A jelszó és a titkos megjegyzés a böngésződben titkosítódik a <strong>mesterjelszóval</strong>: a szerver sosem látja őket. Első megnyitáskor létrehozod a széfet, és kapsz egy <strong>helyreállító kulcsot</strong>: írd le vagy töltsd le, mert ha a mesterjelszót és ezt is elveszíted, a jelszavak nem állíthatók vissza. A széf tétlenség után magától zárol (Beállítások → Fiókok). A kártyán egy kattintással másolhatod a felhasználónevet és a jelszót (a vágólapról 30 másodperc múlva törlődik), a 🎲 gomb erős jelszót generál. Import Chrome, Firefox vagy Bitwarden CSV-ből a ⋮ menüben. A fiókok nem oszthatók meg. Részletes útmutató: <code>tutorials/accounts.md</code>.</p>
+
                 <h3><i class="fa-solid fa-wand-magic-sparkles"></i> AI kitöltés</h3>
-                <p>A Beállítások → AI fülön megadhatod a saját AI kulcsodat (Gemini ingyenes, Claude vagy OpenAI-kompatibilis). Ezután a ✨ gombok (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>): a kódtár űrlap a bemásolt kódból minden mezőt kitölt, vagy a címbe írt célból megírja a kódot; a könyvjelző űrlap az URL-ből címet, leírást, címkéket, kategóriát javasol; a feladatoknál kötetlen mondatból feladat lesz, a panelben címke, projekt és lépésekre bontás; a jegyzetszerkesztőben cím, címke, kategória, összefoglaló és teendők kiszedése. A javaslatot elfogadod vagy elveted; az AI semmit nem ment magától.</p>
+                <p>A Beállítások → AI fülön megadhatod a saját AI kulcsodat (Gemini ingyenes, Claude vagy OpenAI-kompatibilis). Ezután a ✨ gombok (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>): a kódtár űrlap a bemásolt kódból minden mezőt kitölt, vagy a címbe írt célból megírja a kódot; a könyvjelző űrlap az URL-ből címet, leírást, címkéket, kategóriát javasol; a feladatoknál kötetlen mondatból feladat lesz, a panelben címke, projekt és lépésekre bontás; a jegyzetszerkesztőben cím, címke, kategória, összefoglaló és teendők kiszedése; a fiók űrlapon a névből vagy címből név, megjegyzés, belépési mód, kategória és címkék (a felhasználónév és a jelszó sosem megy az AI-hoz). A javaslatot elfogadod vagy elveted; az AI semmit nem ment magától.</p>
 
                 <h3><i class="fa-solid fa-gear"></i> Menük és beállítások</h3>
-                <p>Minden nézet sorának végén ugyanaz a <strong>⋮</strong> menü: kategóriák, import/export és <strong>Beállítások…</strong>. A Beállítások ablak fülei: Általános (téma, induló nézet, értesítések, jelszó), Jegyzetek, Feladatok, Könyvjelzők, Kódtár, AI. A rendezés és a nézet a fiókhoz mentődik, így minden eszközön ugyanaz.</p>
+                <p>Minden nézet sorának végén ugyanaz a <strong>⋮</strong> menü: kategóriák, import/export és <strong>Beállítások…</strong>. A Beállítások ablak fülei: Általános (téma, induló nézet, értesítések, jelszó), Jegyzetek, Feladatok, Könyvjelzők, Kódtár, Fiókok (zárolás, mesterjelszó, helyreállító kulcs), AI. A rendezés és a nézet a fiókhoz mentődik, így minden eszközön ugyanaz.</p>
 
                 <h3><i class="fa-solid fa-keyboard"></i> Billentyűk</h3>
-                <p><kbd>Ctrl</kbd>+<kbd>K</kbd> keresés mindenhol · <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>4</kbd> nézetváltás · <kbd>/</kbd> keresés az aktuális nézetben · <kbd>N</kbd> új jegyzet, feladat vagy kódrészlet · <kbd>Esc</kbd> bezárás.</p>
+                <p><kbd>Ctrl</kbd>+<kbd>K</kbd> keresés mindenhol · <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>5</kbd> nézetváltás · <kbd>/</kbd> keresés az aktuális nézetben · <kbd>N</kbd> új jegyzet, feladat, kódrészlet vagy fiók · <kbd>Esc</kbd> bezárás.</p>
 
                 <h3><i class="fa-solid fa-mobile-screen"></i> Telefonon</h3>
                 <p>A CloudMark alkalmazásként telepíthető (fejléc ⋮ menü → Telepítés; iPhone-on Safari → Megosztás → Hozzáadás a Főképernyőhöz), így értesítést is kaphatsz. Telefonon a nézetek alul váltanak, a szűrők, a rendezés és a nézet a kereső melletti <strong>Szűrők</strong> gombbal nyílnak (a választott szűrők chipként látszanak a kereső alatt, a × törli őket), újat pedig a jobb alsó <strong>+</strong> gombbal veszel fel; Feladatoknál a gyors beírás a billentyűzet fölé csúszik fel. A téma váltása és a kilépés a fejléc <strong>⋮</strong> menüjében van.</p>
@@ -1234,9 +1463,9 @@
         </div>
     </div>
     <script src="/js/config.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/api.js?v=20261017-live"></script>
+    <script src="/js/api.js?v=20261017-accounts"></script>
     <script src="/js/task-parser.js?v=20261015-tasks"></script>
-    <script src="/js/search-query.js?v=20261017-kodtar"></script>
+    <script src="/js/search-query.js?v=20261017-accounts"></script>
     <script src="/js/vendor/highlight.min.js?v=11.11.1"></script>
     <script src="/js/code-highlight.js?v=20261017-kodtar"></script>
     <script src="/js/notifications.js?v=20260905k-pagesize-setting"></script>
@@ -1244,13 +1473,16 @@
     <script src="/js/categories-ui.js?v=20260905k-pagesize-setting"></script>
     <script src="/js/bookmarks-ui.js?v=20261017-sharing2"></script>
     <script src="/js/enterprise.js?v=20260905k-pagesize-setting"></script>
-    <script src="/js/auth.js?v=20261016-ai"></script>
+    <script src="/js/auth.js?v=20261017-accounts"></script>
     <script src="/js/app.js?v=20261017-sharing2"></script>
-    <script src="/js/view-prefs.js?v=20261016-settings"></script>
+    <script src="/js/view-prefs.js?v=20261017-accounts"></script>
     <script src="/js/main-menu.js?v=20261016-settings"></script>
     <script src="/js/ai-ui.js?v=20261017-kodtar"></script>
     <script src="/js/share-ui.js?v=20261017-kodtar"></script>
     <script src="/js/commands-ui.js?v=20261017-kodtar"></script>
+    <script src="/js/vault.js?v=20261017-accounts"></script>
+    <script src="/js/account-csv.js?v=20261017-accounts"></script>
+    <script src="/js/accounts-ui.js?v=20261017-accounts"></script>
     <script src="/js/bookmark-ai.js?v=20261016-ai2"></script>
     <script src="/js/inline-links.js?v=20261017-links"></script>
     <script src="/js/link-autocomplete.js?v=20261017-kodtar"></script>
@@ -1258,11 +1490,11 @@
     <script src="/js/tasks-ui.js?v=20261017-kodtar"></script>
     <script src="/js/notification-center.js?v=20261017-sharing2"></script>
     <script src="/js/clip-parse.js?v=20261017-clipper"></script>
-    <script src="/js/settings-ui.js?v=20261017-sharing2"></script>
-    <script src="/js/palette.js?v=20261017-kodtar"></script>
-    <script src="/js/live.js?v=20261017-live"></script>
-    <script src="/js/views.js?v=20261017-kodtar"></script>
-    <script src="/js/mobile-ui.js?v=20261017-kodtar"></script>
+    <script src="/js/settings-ui.js?v=20261017-accounts"></script>
+    <script src="/js/palette.js?v=20261017-accounts"></script>
+    <script src="/js/live.js?v=20261017-accounts"></script>
+    <script src="/js/views.js?v=20261017-accounts"></script>
+    <script src="/js/mobile-ui.js?v=20261017-accounts"></script>
     <script src="/js/pwa.js?v=20261017-sharing"></script>
 </body>
 </html>

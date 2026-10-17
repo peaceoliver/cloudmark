@@ -531,6 +531,28 @@ apiNamespace.api = {
     },
     deleteContact(userId) {
         return requestJson(`/api/contacts/${userId}`, { method: 'DELETE' });
+    },
+
+    // Fiókok széfje (vault.js titkosít; a szerver csak titkosított adatot kap és ad vissza).
+    getVault() {
+        return requestJson('/api/vault', { cache: 'no-store' });
+    },
+    createVault(record) {
+        return requestJson('/api/vault', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(record) });
+    },
+    updateVault(record) {
+        return requestJson('/api/vault', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(record) });
+    },
+    /** Deletes the vault and every saved account password; needs the login password. */
+    deleteVault(password) {
+        return requestJson('/api/vault', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+    },
+    getItemSecret(id) {
+        return requestJson(`/api/items/${id}/secret`, { cache: 'no-store' }).then(result => result.secret);
+    },
+    /** The account export as JSON (encrypted secrets + wrapped vault key). */
+    exportAccounts() {
+        return requestJson('/api/items/export?type=account&format=json', { cache: 'no-store' });
     }
 };
 

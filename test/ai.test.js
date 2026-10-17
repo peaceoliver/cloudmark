@@ -188,6 +188,22 @@ test('bookmark.fill needs a web address and maps the category', () => {
     assert.strictEqual(result.newCategory, '');
 });
 
+test('account.fill never puts secrets in the prompt and checks the login method', () => {
+    const { ACTIONS } = require('../routes/ai-actions');
+    const action = ACTIONS['account.fill'];
+    assert.strictEqual(action.needsInput({}), null);
+    assert.strictEqual(action.needsInput({ url: '192.168.1.1' }), 'fromText');
+    assert.strictEqual(action.kind, 'account');
+    const prompt = action.build({ title: 'Jellyfin', url: 'http://192.168.1.10:8096', username: 'sanci', password: 'titok123', secretNote: 'PIN 1234' }, context);
+    assert.ok(prompt.user.includes('<title>Jellyfin</title>'));
+    assert.ok(!prompt.user.includes('titok123') && !prompt.user.includes('sanci') && !prompt.user.includes('PIN 1234'));
+    assert.deepStrictEqual(prompt.schema.required, ['title', 'description', 'loginMethod', 'tags', 'category', 'newCategory']);
+    const result = action.validate({ title: 'Jellyfin', description: 'Otthoni médiaszerver.', loginMethod: 'GitHub', tags: ['media'], category: 'docker', newCategory: '' }, {}, context);
+    assert.strictEqual(result.loginMethod, 'github');
+    assert.strictEqual(result.categoryId, 7);
+    assert.strictEqual(action.validate({ loginMethod: 'jelszó' }, {}, context).loginMethod, '');
+});
+
 test('task.fill keeps only existing projects and sane priorities', () => {
     const { ACTIONS } = require('../routes/ai-actions');
     const validate = ACTIONS['task.fill'].validate;

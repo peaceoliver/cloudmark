@@ -1,5 +1,6 @@
 /*
- * Nézetenkénti megjelenítési beállítások (rendezés, nézet) a Parancsok, Jegyzetek és Feladatok nézethez.
+ * Nézetenkénti megjelenítési beállítások (rendezés, nézet) a Kódtár, Jegyzetek, Feladatok és Fiókok nézethez,
+ * valamint a fiókok széfjének automatikus zárolása (vaultAutoLock, percben).
  * Azonnal a böngészőben tárolódnak, bejelentkezve a fiókhoz is mentődnek, így minden eszközön ugyanazok.
  */
 (function () {
@@ -9,7 +10,10 @@
         noteSort: ['updated', 'newest', 'abc'],
         noteView: ['grid', 'compact', 'list', 'kanban'],
         taskSort: ['due', 'priority', 'newest', 'abc'],
-        taskView: ['list', 'compact']
+        taskView: ['list', 'compact'],
+        accountSort: ['abc', 'newest', 'used'],
+        accountView: ['list', 'compact', 'grid'],
+        vaultAutoLock: ['15', '5', '60', 'never']
     };
     // A parancsok rendezése korábban ezen a kulcson volt.
     const LEGACY_KEYS = { commandSort: 'cloudmark_command_sort' };

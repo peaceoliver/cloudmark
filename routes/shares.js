@@ -78,7 +78,7 @@ function registerShareRoutes(app, { pool, requireAuth, recordAuditEvent, push, s
     async function targetAccess(target, user) {
         if (target.column === 'item_id') {
             const access = await shareAccess.itemAccess(pool, target.id, user.id);
-            return access && { access: access.access, ownerUserId: access.owner_user_id, shareId: access.share_id, direct: access.direct };
+            return access && { access: access.access, ownerUserId: access.owner_user_id, shareId: access.share_id, direct: access.direct, type: access.type };
         }
         const access = await shareAccess.bookmarkAccess(pool, target.id, user);
         if (!access) return null;
@@ -195,6 +195,8 @@ function registerShareRoutes(app, { pool, requireAuth, recordAuditEvent, push, s
             const access = await targetAccess(target, req.user);
             if (!access) return res.status(404).json({ error: 'Not found' });
             if (access.access !== 'owner') return res.status(403).json({ error: 'Csak a tulajdonos oszthatja meg ezt az elemet.' });
+            // A fiókok titkai végpontig titkosítottak (csak a tulajdonos kulcsa nyitja), ezért nem oszthatók meg.
+            if (access.type === 'account') return res.status(400).json({ error: 'Fiókot nem lehet megosztani.' });
 
             let email = null;
             let recipient = null;

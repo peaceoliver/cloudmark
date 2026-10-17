@@ -1,12 +1,13 @@
 /*
- * Közös kereső: egyszerre keres a jegyzetekben, feladatokban, parancsokban és könyvjelzőkben.
+ * Közös kereső: egyszerre keres a jegyzetekben, feladatokban, parancsokban, könyvjelzőkben és fiókokban.
+ * Fiókoknál csak a nem titkos mezőkben (név, cím, felhasználónév); a titkosított jelszó külön táblában van.
  * A Command Palette (Ctrl+K) és a feladatok „Kapcsolt elemek” mezője használja.
  */
 const shareAccess = require('./share-access');
 
 const searchQuery = require('../public/js/search-query');
 
-const SEARCH_TYPES = ['note', 'task', 'command', 'bookmark'];
+const SEARCH_TYPES = ['note', 'task', 'command', 'bookmark', 'account'];
 const MAX_QUERY_LENGTH = 200;
 const MAX_FILTERS = 5;
 // Ékezetek nélkül is talál: „kazan” megtalálja a „Kazán”-t és fordítva (a magyar ékezetes betűk alapbetűvé válnak).
@@ -68,7 +69,9 @@ function registerSearchRoutes(app, { pool, requireAuth }) {
                                 OR ${fold('c.name')} LIKE $2 ESCAPE '\\'
                                 OR EXISTS (SELECT 1 FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = i.id AND ${fold('t.name')} LIKE $2 ESCAPE '\\')
                                 OR EXISTS (SELECT 1 FROM item_fragments f WHERE f.item_id = i.id AND ${fold('f.content')} LIKE $2 ESCAPE '\\')
-                                OR (i.extra ? 'checklist' AND ${fold("(i.extra->'checklist')::text")} LIKE $2 ESCAPE '\\'))` : 'TRUE';
+                                OR (i.extra ? 'checklist' AND ${fold("(i.extra->'checklist')::text")} LIKE $2 ESCAPE '\\')
+                                OR (i.type = 'account' AND (${fold("i.extra->>'url'")} LIKE $2 ESCAPE '\\' OR ${fold("i.extra->>'username'")} LIKE $2 ESCAPE '\\'
+                                    OR ${fold("i.extra->>'ssoAccount'")} LIKE $2 ESCAPE '\\')))` : 'TRUE';
             // Minden címke-előtagnak legyen egyező címkéje.
             const itemTags = `NOT EXISTS (SELECT 1 FROM unnest($6::text[]) AS wanted(pattern)
                                 WHERE NOT EXISTS (SELECT 1 FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = i.id AND ${fold('t.name')} LIKE wanted.pattern ESCAPE '\\'))`;
@@ -88,7 +91,7 @@ function registerSearchRoutes(app, { pool, requireAuth }) {
             const [itemRows, bookmarkRows] = await Promise.all([
                 itemTypes.length ? pool.query(
                     `WITH matches AS (
-                         SELECT i.id, i.type, i.title, i.body, i.description, i.status, v.archived, i.due_at, i.due_all_day,
+                         SELECT i.id, i.type, i.title, i.body, i.description, i.status, v.archived, i.due_at, i.due_all_day, i.extra,
                                 i.priority, i.updated_at, c.name AS category_name, sh.id IS NOT NULL AS shared,
                                 (SELECT f.content FROM item_fragments f WHERE f.item_id = i.id ORDER BY f.position LIMIT 1) AS code,
                                 (SELECT f.language FROM item_fragments f WHERE f.item_id = i.id ORDER BY f.position LIMIT 1) AS language,
@@ -132,7 +135,9 @@ function registerSearchRoutes(app, { pool, requireAuth }) {
                     kind: row.type,
                     id: Number(row.id),
                     title: row.title || snippet(row.body, '', 60) || 'Névtelen jegyzet',
-                    snippet: row.type === 'command' ? snippet(row.code, query) : snippet(row.body || row.description, query),
+                    snippet: row.type === 'command' ? snippet(row.code, query)
+                        : row.type === 'account' ? [row.extra?.username, row.extra?.url].filter(Boolean).join(' · ')
+                            : snippet(row.body || row.description, query),
                     category: row.category_name || null,
                     tags: row.tags,
                     status: row.status || null,
@@ -142,7 +147,10 @@ function registerSearchRoutes(app, { pool, requireAuth }) {
                     dueAllDay: row.due_all_day,
                     priority: row.priority,
                     code: row.type === 'command' ? row.code || '' : undefined,
-                    language: row.type === 'command' ? row.language || null : undefined
+                    language: row.type === 'command' ? row.language || null : undefined,
+                    url: row.type === 'account' ? row.extra?.url || '' : undefined,
+                    username: row.type === 'account' ? row.extra?.username || '' : undefined,
+                    loginMethod: row.type === 'account' ? row.extra?.loginMethod || 'password' : undefined
                 })),
                 ...bookmarkRows.rows.map(row => ({
                     kind: 'bookmark',

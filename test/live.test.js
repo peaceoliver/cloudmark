@@ -28,6 +28,8 @@ test('reads, use counters and clicks tell nobody', () => {
 test('imports refresh the actor’s whole list', () => {
     assert.deepEqual(changeFromRequest('POST', '/api/items/import', {}), { scope: 'items' });
     assert.deepEqual(changeFromRequest('POST', '/api/bookmarks/import', {}), { scope: 'bookmarks' });
+    assert.deepEqual(changeFromRequest('PUT', '/api/vault', {}), { scope: 'vault' });
+    assert.deepEqual(changeFromRequest('DELETE', '/api/vault', {}), { scope: 'vault' });
 });
 
 test('bookmark bulk actions name every valid id', () => {

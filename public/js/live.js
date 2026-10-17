@@ -33,6 +33,7 @@
         source.addEventListener('refresh', event => {
             const scope = readData(event).scope;
             if (scope === 'bookmarks') queue(() => { pendingBookmarks = true; });
+            else if (scope === 'vault') app().accounts?.vaultChanged?.();
             else refreshAll({ bookmarks: false });
         });
         source.onerror = () => {
@@ -82,6 +83,7 @@
         app().notes?.applyRemote?.(id, item);
         app().tasks?.applyRemote?.(id, item);
         app().commands?.applyRemote?.(id, item);
+        app().accounts?.applyRemote?.(id, item);
     }
 
     async function refreshBookmarks() {
@@ -96,6 +98,7 @@
         app().notes?.refreshAll?.();
         app().tasks?.refreshAll?.();
         app().commands?.refreshAll?.();
+        app().accounts?.refreshAll?.();
         app().inbox?.refresh();
         if (bookmarks) refreshBookmarks();
     }

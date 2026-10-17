@@ -12,6 +12,7 @@ itt az áll, hogyan kell használni az egyes részeket.
 | [bookmarks.md](bookmarks.md) | Könyvjelzők mentése, import/export |
 | [clipper.md](clipper.md) | Mentés CloudMarkba: weboldal, kijelölt szöveg vagy feladat egy kattintással, Android Megosztás menü |
 | [commands.md](commands.md) | Kódtár: kódrészletek rendezése, keresés `#címke` `/kategória` előtaggal, színezés, Inbox rendezése |
+| [accounts.md](accounts.md) | Fiókok és jelszavak: titkosított széf, mesterjelszó, helyreállító kulcs, CSV import |
 | [ai-assist.md](ai-assist.md) | AI kitöltés saját API kulccsal (Gemini, Claude, OpenAI-kompatibilis): kódtár, könyvjelzők, feladatok, jegyzetek |
 | [notifications.md](notifications.md) | Értesítések: csengő, telefon, e-mail, napi összefoglaló |
 | [settings.md](settings.md) | A közös Beállítások ablak |

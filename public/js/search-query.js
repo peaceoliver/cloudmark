@@ -2,7 +2,7 @@
  * Keresési előtagok, amit a böngésző és a szerver is használ (Command Palette, Kódtár lista, /api/search):
  * - `#címke`      csak az ilyen (így kezdődő) címkéjű elemek,
  * - `/kategória`  csak az ilyen (így kezdődő) nevű kategóriában vagy annak alkategóriájában lévők,
- * - `@kód`        csak egy típus (`@kód`, `@jegyzet`, `@feladat`, `@könyvjelző`); más szó után `@` = kategória, mint a feladatoknál a projekt.
+ * - `@kód`        csak egy típus (`@kód`, `@jegyzet`, `@feladat`, `@könyvjelző`, `@fiók`); más szó után `@` = kategória, mint a feladatoknál a projekt.
  * Minden összevetés kisbetűs és ékezetfüggetlen („kodtar” = „Kódtár”).
  */
 (function (root, factory) {
@@ -23,7 +23,8 @@
         parancs: 'command', parancsok: 'command',
         jegyzet: 'note', jegyzetek: 'note', note: 'note',
         feladat: 'task', feladatok: 'task', task: 'task',
-        konyvjelzo: 'bookmark', konyvjelzok: 'bookmark', link: 'bookmark', bookmark: 'bookmark'
+        konyvjelzo: 'bookmark', konyvjelzok: 'bookmark', link: 'bookmark', bookmark: 'bookmark',
+        fiok: 'account', fiokok: 'account', account: 'account', jelszo: 'account'
     };
 
     /** Lower-cases and strips accents character by character, so indexes stay valid on the original text. */
