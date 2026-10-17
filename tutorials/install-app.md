@@ -13,3 +13,4 @@ A CloudMark telepíthető telefonra és számítógépre is: saját ikonnal, kü
 - Hálózat nélkül is elindul; felül egy sáv jelzi, hogy nincs kapcsolat.
 - Ha új verzió érhető el, egy **Frissítés** gomb jelenik meg.
 - iPhone-on a telefonos értesítés csak a telepített appból kapcsolható be.
+- Telepítés után a telefonos felületről a [mobile.md](mobile.md) szól (alsó fülek, Szűrők lap, + gomb).
