@@ -27,6 +27,22 @@ A megosztott elem kártyáján egy kis jelvény mutatja, hány emberrel osztotta
 5. Ha nem kell tovább, a megosztás ablakban vagy a feladat panelen az **Eltávolítás a listámból** gombbal kiveheted.
    A törlés gomb is ezt csinálja: a tulajdonosnál megmarad.
 
+## Élő frissítés
+
+A változások maguktól megjelennek minden nyitott ablakban, újratöltés nélkül, általában 1-2 másodpercen belül:
+ha a másik szerkeszti a megosztott jegyzetet, feladatot, könyvjelzőt vagy parancsot, és a saját eszközeid között is
+(pl. gépen írsz, a telefonon már látszik). Az új megosztás és a visszavonás is azonnal megjelenik a listában és a
+csengőnél.
+
+Ha épp nyitva van nálad egy jegyzet, feladat vagy parancs szerkesztője, amikor a másik ment:
+
+- ha nincs nálad mentetlen gépelés, a szerkesztő csendben frissül;
+- ha éppen írsz bele, felül egy sáv jelenik meg: **Frissítés** (betölti a másik változatát, a te gépelésed elvész)
+  vagy **Saját változat megtartása** (a te szövegeden dolgozhatsz tovább, a következő mentés ezt menti el).
+  Amíg nem választasz, semmi nem mentődik.
+
+Ha a szerver közben elaludt, vagy megszakadt a kapcsolat, az app magától újrakapcsolódik és frissíti a listákat.
+
 ## Ismerősök
 
 A Beállítások → **Általános** fül **Megosztás: ismerősök** részében látod, kivel osztottál már meg valamit, vagy
@@ -40,7 +56,7 @@ a meglévő megosztások ettől megmaradnak.
   a rögzítést, a kedvencet és az archívumot mindenki magának állítja, a másiknál nem változik.
 - **Csak a tulajdonos** törölheti az elemet, oszthatja tovább, és állíthatja a címkéit, emlékeztetőit és kapcsolt elemeit.
 - Feladat megosztásakor a részfeladatai is látszanak a címzettnél.
-- Ha ketten egyszerre szerkesztitek, és közben a másik mentett, ezt az üzenetet kapod: „Valaki közben módosította
+- Ritkán előfordul, hogy két mentés pont egyszerre érkezik. Ilyenkor ezt az üzenetet kapod: „Valaki közben módosította
   ezt az elemet…”. A legfrissebb változat betöltődik, a módosításodat írd be újra.
 - **Nyilvános link** (csak könyvjelzőnél): a megosztás ablak alján a **Nyilvános link másolása** gomb olyan linket
   ad, amit bárki megnyithat, fiók nélkül is.
