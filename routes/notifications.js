@@ -317,7 +317,8 @@ function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, 
                 pool.query(
                     // Megosztásnál: a meghívó állapota (függő meghívónál Elfogadom / Elutasítom), és az elem típusa a megnyitáshoz.
                     `SELECT n.id, n.kind, n.title, n.body, n.item_id, n.created_at, n.read_at,
-                            n.share_id, s.status AS share_status, s.item_id AS share_item_id, si.type AS share_item_type,
+                            n.share_id, s.status AS share_status, COALESCE(s.item_id, s.bookmark_id) AS share_item_id,
+                            CASE WHEN s.bookmark_id IS NOT NULL THEN 'bookmark' ELSE si.type END AS share_item_type,
                             (s.recipient_user_id = n.user_id) AS share_incoming
                      FROM notifications n
                      LEFT JOIN shares s ON s.id = n.share_id

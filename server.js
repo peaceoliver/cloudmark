@@ -16,6 +16,7 @@ const { createPushService, registerPushRoutes } = require('./routes/push');
 const { registerNotificationRoutes, DIGEST_TIME_PATTERN, QUIET_HOURS_PATTERN } = require('./routes/notifications');
 const { registerAiRoutes } = require('./routes/ai');
 const { registerShareRoutes } = require('./routes/shares');
+const shareAccess = require('./routes/share-access');
 const { fetchPublicText } = require('./routes/safe-fetch');
 const taskDates = require('./public/js/task-parser');
 
@@ -1110,6 +1111,7 @@ app.put('/api/admin/users/:id/status', requireAdmin, async (req, res) => {
         );
         if (!result.rowCount) return res.status(404).json({ error: 'A felhasználó nem található.' });
         if (isActive === false) await pool.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
+        if (isVerified && result.rows[0].is_active) await claimPendingShares(result.rows[0]);
         await recordAuditEvent({ userId: req.user.id, action: 'admin_user_status_updated', entityType: 'user', entityId: userId, details: { isVerified, isActive }, req });
         res.json(result.rows[0]);
     } catch (err) {
@@ -1543,6 +1545,17 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     }
 });
 
+let shareRoutes = null;
+
+/** Hands invitations sent to the user's e-mail address before they registered over to the new account (never fails the caller). */
+async function claimPendingShares(user) {
+    try {
+        if (shareRoutes) await shareRoutes.claimPendingShares(user);
+    } catch (err) {
+        console.error('[SHARE] Függő megosztások átvétele sikertelen:', err.message || err);
+    }
+}
+
 /** Verifies an email token, activates the user, and redirects to the app. */
 app.get('/api/auth/verify-email', async (req, res) => {
     const token = String(req.query.token || '');
@@ -1552,10 +1565,11 @@ app.get('/api/auth/verify-email', async (req, res) => {
             `UPDATE users
              SET is_verified = TRUE, verification_token_hash = NULL, verification_expires_at = NULL
              WHERE verification_token_hash = $1 AND verification_expires_at > NOW()
-             RETURNING username`,
+             RETURNING id, username, email`,
             [hashVerificationToken(token)]
         );
         if (!result.rows.length) return res.status(400).send('A megerősítő link érvénytelen vagy lejárt.');
+        await claimPendingShares(result.rows[0]);
         res.redirect('/?verified=1');
     } catch (err) {
         res.status(500).send('A megerősítés nem sikerült.');
@@ -1608,8 +1622,16 @@ app.get('/api/bookmarks', async (req, res) => {
                      LEFT JOIN tags t ON t.id = bt.tag_id`;
         let params = [];
         const conditions = [];
+        let archivedColumn = 'b.archived';
 
         if (user) {
+            // A megosztott könyvjelzők is jönnek (elfogadott megosztás), a címzett saját kategóriájával, csillagával és archívumával.
+            params = [user.id];
+            query = `SELECT b.*, ${shareAccess.bookmarkColumnsSql()}, COALESCE(array_agg(t.name) FILTER (WHERE t.name IS NOT NULL), '{}') AS tags
+                     FROM bookmarks b ${shareAccess.bookmarkJoinSql('$1')}
+                     LEFT JOIN bookmark_tags bt ON bt.bookmark_id = b.id
+                     LEFT JOIN tags t ON t.id = bt.tag_id`;
+            archivedColumn = '(CASE WHEN bsh.id IS NULL THEN b.archived ELSE bsh.recipient_archived END)';
             if (user.role === 'admin') {
                 // administrators can search the complete collection
             } else {
@@ -1618,8 +1640,8 @@ app.get('/api/bookmarks', async (req, res) => {
                     String(user.id || '').toLowerCase(),
                     'demo'
                 ].filter(Boolean))];
-                conditions.push('LOWER(CAST(b.user_id AS TEXT)) = ANY($1)');
-                params = [userIds];
+                params.push(userIds);
+                conditions.push('(LOWER(CAST(b.user_id AS TEXT)) = ANY($2) OR (bsh.id IS NOT NULL AND b.trashed = FALSE))');
             }
         } else {
             conditions.push(`
@@ -1652,15 +1674,15 @@ app.get('/api/bookmarks', async (req, res) => {
             if (req.query.trash === 'true') conditions.push('b.trashed = TRUE');
             else {
                 conditions.push('b.trashed = FALSE');
-                if (req.query.archived !== 'true') conditions.push('b.archived = FALSE');
+                if (req.query.archived !== 'true') conditions.push(`${archivedColumn} = FALSE`);
             }
         }
         if (req.query.status && ['inbox', 'read_later', 'to_review', 'done'].includes(req.query.status)) conditions.push(`b.status = $${params.length + 1}`), params.push(req.query.status);
         if (conditions.length) query += ` WHERE ${conditions.join(' AND ')}`;
-        query += ' GROUP BY b.id ORDER BY b.created_at DESC';
+        query += user ? ' GROUP BY b.id, bsh.id, bshc.id ORDER BY b.created_at DESC' : ' GROUP BY b.id ORDER BY b.created_at DESC';
 
         const result = await pool.query(query, params);
-        res.json(result.rows);
+        res.json(user ? result.rows.map(shareAccess.presentBookmark) : result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1706,10 +1728,37 @@ app.post('/api/bookmarks', requireAuth, async (req, res) => {
     }
 });
 
-/** Moves a bookmark to the trash; permanent deletion is available via the trash action. */
+/** One bookmark as `user` sees it (their category / star / archive for a shared one), with tags. */
+async function loadBookmarkFor(id, user) {
+    const result = await pool.query(
+        `SELECT b.*, ${shareAccess.bookmarkColumnsSql()}, COALESCE(array_agg(t.name) FILTER (WHERE t.name IS NOT NULL), '{}') AS tags
+         FROM bookmarks b ${shareAccess.bookmarkJoinSql('$2')}
+         LEFT JOIN bookmark_tags bt ON bt.bookmark_id = b.id LEFT JOIN tags t ON t.id = bt.tag_id
+         WHERE b.id = $1 GROUP BY b.id, bsh.id, bshc.id`,
+        [id, user.id]
+    );
+    return shareAccess.presentBookmark(result.rows[0]) || null;
+}
+
+/** The recipient of a shared bookmark: their own bookmark category (by name) for the share row, or undefined when not given. */
+async function recipientBookmarkCategoryId(user, name) {
+    if (name === undefined) return undefined;
+    const value = String(name || '').trim();
+    if (!value) return null;
+    const result = await pool.query("SELECT id FROM categories WHERE owner_user_id = $1 AND kind = 'bookmark' AND name = $2 LIMIT 1", [user.id, value]);
+    return result.rows[0] ? result.rows[0].id : false;
+}
+
+/** Moves a bookmark to the trash; permanent deletion is available via the trash action. A recipient of a share leaves it instead. */
 app.delete('/api/bookmarks/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     try {
+        const access = await shareAccess.bookmarkAccess(pool, id, req.user);
+        if (access && access.access !== 'owner') {
+            await pool.query('DELETE FROM shares WHERE id = $1 AND recipient_user_id = $2', [access.share_id, req.user.id]);
+            await recordAuditEvent({ userId: req.user.id, action: 'share_left', entityType: 'share', entityId: Number(access.share_id), details: { bookmarkId: Number(id) }, req });
+            return res.json({ success: true, left: true, message: 'Eltávolítva a listádból.' });
+        }
         let result;
         if (req.user.role === 'admin') {
             result = await pool.query('UPDATE bookmarks SET trashed = TRUE, archived = FALSE WHERE id = $1 RETURNING id', [id]);
@@ -1735,6 +1784,22 @@ app.patch('/api/bookmarks/:id/state', requireAuth, async (req, res) => {
     if (starred !== undefined) { fields.push(`starred = $${values.length + 1}`); values.push(Boolean(starred)); }
     if (status !== undefined) { if (!['inbox', 'read_later', 'to_review', 'done'].includes(status)) return res.status(400).json({ error: 'Érvénytelen állapot.' }); fields.push(`status = $${values.length + 1}`); values.push(status); }
     if (!fields.length) return res.status(400).json({ error: 'Nincs módosítandó állapot.' });
+    try {
+        // Megosztott könyvjelző: a csillag és az archívum a címzetté, az olvasási állapotot csak szerkesztési joggal módosíthatja.
+        const access = await shareAccess.bookmarkAccess(pool, req.params.id, req.user);
+        if (access && access.access !== 'owner') {
+            if (trashed !== undefined) return res.status(403).json({ error: 'Megosztott könyvjelzőt csak a tulajdonos tehet a kukába.' });
+            if (status !== undefined && access.access !== 'edit') return res.status(403).json({ error: 'Ezt a könyvjelzőt csak megtekintheted.' });
+            if (archived !== undefined || starred !== undefined) {
+                await pool.query(
+                    'UPDATE shares SET recipient_archived = COALESCE($2, recipient_archived), recipient_starred = COALESCE($3, recipient_starred) WHERE id = $1',
+                    [access.share_id, archived === undefined ? null : Boolean(archived), starred === undefined ? null : Boolean(starred)]
+                );
+            }
+            if (status !== undefined) await pool.query('UPDATE bookmarks SET status = $2 WHERE id = $1', [req.params.id, status]);
+            return res.json(await loadBookmarkFor(req.params.id, req.user));
+        }
+    } catch (err) { return res.status(500).json({ error: err.message }); }
     let owner = '';
     if (req.user.role !== 'admin') {
         values.push(req.user.username, String(req.user.id));
@@ -1818,6 +1883,30 @@ app.put('/api/bookmarks/:id', requireAuth, async (req, res) => {
     const normalizedUrl = normalizeBookmarkUrl(url);
     if (!normalizedUrl) return res.status(400).json({ error: 'Érvénytelen URL.' });
     try {
+        const access = await shareAccess.bookmarkAccess(pool, id, req.user);
+        if (access && access.access !== 'owner') {
+            // Megosztott könyvjelző: a kategória és a csillag a címzetté; szerkesztési joggal a cím, URL, leírás és állapot
+            // a tulajdonos sorában változik. Címkéket csak a tulajdonos állít.
+            const categoryId = await recipientBookmarkCategoryId(req.user, category);
+            if (categoryId === false) return res.status(403).json({ error: 'Nincs jogosultságod ehhez a kategóriához.' });
+            await pool.query(
+                `UPDATE shares SET recipient_category_id = CASE WHEN $2::boolean THEN $3::int ELSE recipient_category_id END,
+                                   recipient_starred = COALESCE($4, recipient_starred)
+                 WHERE id = $1`,
+                [access.share_id, categoryId !== undefined, categoryId ?? null, starred === undefined ? null : Boolean(starred)]
+            );
+            if (access.access === 'edit') {
+                if (status !== undefined && !['inbox', 'read_later', 'to_review', 'done'].includes(status)) return res.status(400).json({ error: 'Érvénytelen állapot.' });
+                await pool.query(
+                    `UPDATE bookmarks SET title = $2, url = $3, normalized_url = $4,
+                            description = CASE WHEN $5::boolean THEN $6 ELSE description END, status = COALESCE($7, status)
+                     WHERE id = $1`,
+                    [id, resolveBookmarkTitle(title, {}, url), url, normalizedUrl, description !== undefined, String(description || '').trim() || null, status ?? null]
+                );
+                await recordAuditEvent({ userId: req.user.id, action: 'bookmark_updated', entityType: 'bookmark', entityId: Number(id), details: { shared: true, url: normalizedUrl }, req });
+            }
+            return res.json(await loadBookmarkFor(id, req.user));
+        }
         if (!(await userCanUseCategory(req.user, category))) return res.status(403).json({ error: 'Nincs jogosultságod ehhez a kategóriához.' });
         const fetchTitle = await shouldFetchWebsiteMetadataTitle(req.user.id);
         const fetchImage = await shouldFetchWebsiteMetadataImage(req.user.id);
@@ -2375,7 +2464,7 @@ const taskActions = registerTaskRoutes(app, { pool, requireAuth, recordAuditEven
 const push = createPushService({ pool, getSubject: () => (getPublicBaseUrl().startsWith('https://') ? getPublicBaseUrl() : null) });
 registerPushRoutes(app, { pool, requireAuth, recordAuditEvent, push });
 registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, getMailer: getConfiguredMailer, getPublicBaseUrl, push, taskActions });
-registerShareRoutes(app, { pool, requireAuth, recordAuditEvent, push, shareLimiter, loadItem: itemHelpers.loadItem });
+shareRoutes = registerShareRoutes(app, { pool, requireAuth, recordAuditEvent, push, shareLimiter, loadItem: itemHelpers.loadItem, getMailer: getConfiguredMailer, getPublicBaseUrl });
 registerAiRoutes(app, { pool, requireAuth, recordAuditEvent, fetchPageMetadata: fetchBookmarkMetadata });
 
 // Clipper: a bookmarklet és a telefon Megosztás menüje ezt a kis mentő oldalt nyitja meg.

@@ -1,5 +1,10 @@
 const apiNamespace = window.CloudMark || {};
 
+/** A share target: `{ itemId }` from a plain item id, or the given `{ bookmarkId }` / `{ itemId }` object. */
+function shareTarget(target) {
+    return target && typeof target === 'object' ? target : { itemId: target };
+}
+
 /** Sends an HTTP request and parses a successful JSON response. */
 async function requestJson(url, options = {}) {
     const response = await fetch(url, options);
@@ -489,13 +494,17 @@ apiNamespace.api = {
         return requestJson('/api/ai/fill', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, input }) });
     },
 
-    /** Megosztás: kivel van megosztva egy elem (tulajdonosnak), vagy ki osztotta meg (címzettnek). */
-    getShares(itemId) {
-        return requestJson(`/api/shares?itemId=${encodeURIComponent(itemId)}`);
+    /**
+     * Megosztás: kivel van megosztva egy elem (tulajdonosnak), vagy ki osztotta meg (címzettnek).
+     * `target` is an item id, or `{ bookmarkId }` for a bookmark.
+     */
+    getShares(target) {
+        const { itemId, bookmarkId } = shareTarget(target);
+        return requestJson(bookmarkId ? `/api/shares?bookmarkId=${encodeURIComponent(bookmarkId)}` : `/api/shares?itemId=${encodeURIComponent(itemId)}`);
     },
-    /** Shares an item: `{ email }` or `{ contactUserId }`, plus permission 'view' or 'edit'. */
-    shareItem(itemId, recipient, permission) {
-        return requestJson('/api/shares', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId, ...recipient, permission }) });
+    /** Shares an item or bookmark (`target` as in getShares): `{ email }` or `{ contactUserId }`, plus permission 'view' or 'edit'. */
+    shareItem(target, recipient, permission) {
+        return requestJson('/api/shares', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...shareTarget(target), ...recipient, permission }) });
     },
     updateShare(id, permission) {
         return requestJson(`/api/shares/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permission }) });
@@ -512,6 +521,12 @@ apiNamespace.api = {
     },
     getContacts() {
         return requestJson('/api/contacts');
+    },
+    updateContact(userId, autoAccept) {
+        return requestJson(`/api/contacts/${userId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ autoAccept }) });
+    },
+    deleteContact(userId) {
+        return requestJson(`/api/contacts/${userId}`, { method: 'DELETE' });
     }
 };
 
