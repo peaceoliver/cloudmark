@@ -20,7 +20,9 @@ outside the repo in the project's shared folder (`cloudmark-plan/*.md`).
 - **Every finished feature updates the TODO list** (see *TODO list* below): mark its task done, and add
   any follow-up the work uncovered as a new task.
 - **Every feature has a user guide** in `tutorials/` (Hungarian, step by step, see `tutorials/README.md`).
-  A PR that adds or changes a feature creates or updates its tutorial in the same PR.
+  A PR that adds or changes a feature creates or updates its tutorial in the same PR. The guide must also be
+  **reachable inside the app**, so a stuck user finds it without leaving CloudMark: at least a section in the
+  Info modal (`#infoModal`), and a link to the full step-by-step guide once the app shows `tutorials/`.
 - **Every feature gets AI kitöltés on its inputs.** A new feature, or a new or changed form (create/edit
   dialogs, composers, quick-add), offers the ✨ AI button for its text inputs, built on the existing
   infrastructure (see *AI kitöltés* below: an action in `ACTIONS` + tests, `CloudMark.ai` on the front end,
