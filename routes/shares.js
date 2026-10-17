@@ -6,8 +6,8 @@
 
 const shareAccess = require('./share-access');
 
-const TYPE_LABELS = { note: 'jegyzet', task: 'feladat', command: 'parancs', bookmark: 'könyvjelző' };
-const TYPE_ACCUSATIVE = { note: 'egy jegyzetet', task: 'egy feladatot', command: 'egy parancsot', bookmark: 'egy könyvjelzőt' };
+const TYPE_LABELS = { note: 'jegyzet', task: 'feladat', command: 'kódrészlet', bookmark: 'könyvjelző' };
+const TYPE_ACCUSATIVE = { note: 'egy jegyzetet', task: 'egy feladatot', command: 'egy kódrészletet', bookmark: 'egy könyvjelzőt' };
 const MAX_SHARES_PER_ITEM = 50;
 
 function parseId(value) {

@@ -8,11 +8,11 @@ itt az áll, hogyan kell használni az egyes részeket.
 | [command-palette.md](command-palette.md) | Keresés mindenhol (Ctrl+K), gyors létrehozás |
 | [notes.md](notes.md) | Jegyzetek írása, listák, kategóriák, kanban |
 | [tasks.md](tasks.md) | Feladatok gyors felvétele, projektek, emlékeztetők |
-| [internal-links.md](internal-links.md) | Belső hivatkozások: `[[` link jegyzetek, feladatok, parancsok, könyvjelzők között |
+| [internal-links.md](internal-links.md) | Belső hivatkozások: `[[` link jegyzetek, feladatok, kódrészletek, könyvjelzők között |
 | [bookmarks.md](bookmarks.md) | Könyvjelzők mentése, import/export |
 | [clipper.md](clipper.md) | Mentés CloudMarkba: weboldal, kijelölt szöveg vagy feladat egy kattintással, Android Megosztás menü |
-| [commands.md](commands.md) | Parancskönyvtár, másolás, fülek |
-| [ai-assist.md](ai-assist.md) | AI kitöltés saját API kulccsal (Gemini, Claude, OpenAI-kompatibilis): parancsok, könyvjelzők, feladatok, jegyzetek |
+| [commands.md](commands.md) | Kódtár: kódrészletek rendezése, keresés `#címke` `/kategória` előtaggal, színezés, Inbox rendezése |
+| [ai-assist.md](ai-assist.md) | AI kitöltés saját API kulccsal (Gemini, Claude, OpenAI-kompatibilis): kódtár, könyvjelzők, feladatok, jegyzetek |
 | [notifications.md](notifications.md) | Értesítések: csengő, telefon, e-mail, napi összefoglaló |
 | [settings.md](settings.md) | A közös Beállítások ablak |
 | [install-app.md](install-app.md) | Telepítés telefonra és gépre |
@@ -24,4 +24,4 @@ itt az áll, hogyan kell használni az egyes részeket.
 - Fájlnév angolul, a funkcióról (`command-palette.md`), a szöveg magyarul. Vedd fel a fenti táblázatba is.
 - Felépítés: egy mondat arról, mire jó; **Így kezdj hozzá** számozott lépésekkel; **Tippek** (gyorsbillentyűk,
   telefonos használat); szükség esetén **Gyakori kérdések**.
-- A gombokat és menüpontokat pontosan úgy írd, ahogy a felületen látszanak (pl. „Új parancs hozzáadása”, ⋮ → Beállítások…).
+- A gombokat és menüpontokat pontosan úgy írd, ahogy a felületen látszanak (pl. „Új kódrészlet hozzáadása”, ⋮ → Beállítások…).

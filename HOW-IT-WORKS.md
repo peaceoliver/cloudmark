@@ -2,7 +2,7 @@
 
 Lépésről lépésre útmutatók funkciónként: [tutorials/](tutorials/README.md).
 
-A CloudMark egy többfelhasználós könyvjelző-kezelő alkalmazás. Bejelentkezés után saját kategóriákba rendezve lehet weboldalakat menteni, keresni és kezelni, valamint parancsokat és jegyzeteket tárolni.
+A CloudMark egy többfelhasználós könyvjelző-kezelő alkalmazás. Bejelentkezés után saját kategóriákba rendezve lehet weboldalakat menteni, keresni és kezelni, valamint kódrészleteket (Kódtár), jegyzeteket és feladatokat tárolni.
 
 ## Könyvjelző mentése
 
@@ -40,16 +40,16 @@ Rendezési lehetőségek:
 
 Egy könyvjelző lehet aktív, kedvenc, későbbi olvasásra jelölt, ellenőrzésre váró, archivált vagy kukába helyezett. A kijelölt könyvjelzők csoportosan is módosíthatók vagy más kategóriába mozgathatók.
 
-## Nézetek: Könyvjelzők, Parancsok, Jegyzetek, Feladatok
+## Nézetek: Jegyzetek, Feladatok, Könyvjelzők, Kódtár
 
-Bejelentkezés után a főoldal tetején lehet váltani a négy nézet között, ebben a sorrendben: Jegyzetek, Feladatok, Könyvjelzők, Parancsok (gyorsbillentyű: Alt+1 … Alt+4, a fülek sorrendjében). Első belépéskor a Jegyzetek nyílik meg. A választott nézet frissítés után is megmarad, hacsak a Beállításokban nincs megadva egy fix induló nézet („Induláskor megnyíló nézet”, `startView`). Mindegyik nézetben a `/` billentyű a keresőbe ugrik.
+Bejelentkezés után a főoldal tetején lehet váltani a négy nézet között, ebben a sorrendben: Jegyzetek, Feladatok, Könyvjelzők, Kódtár (a régi Parancsok; gyorsbillentyű: Alt+1 … Alt+4, a fülek sorrendjében). Első belépéskor a Jegyzetek nyílik meg. A választott nézet frissítés után is megmarad, hacsak a Beállításokban nincs megadva egy fix induló nézet („Induláskor megnyíló nézet”, `startView`). Mindegyik nézetben a `/` billentyű a keresőbe ugrik.
 
-Mind a négy nézet teteje ugyanúgy épül fel: legfelül az egyforma „+ Új …” sáv (Könyvjelzők és Parancsok: a sáv alatt lenyíló űrlap; egy meglévő parancs szerkesztése ablakban nyílik, Jegyzetek: a szerkesztő közvetlenül a sáv alatt nyílik meg, Feladatok: gyors beírás), alatta a kategóriák (Feladatoknál a projektek), alatta a keresés, végül egy sorban a rendezés, az állapotok (pl. Aktív / Kedvencek / Kuka) és a nézetváltó, a sor végén a ⋮ menüvel.
+Mind a négy nézet teteje ugyanúgy épül fel: legfelül az egyforma „+ Új …” sáv (Könyvjelzők és Kódtár: a sáv alatt lenyíló űrlap; egy meglévő kódrészlet szerkesztése ablakban nyílik, Jegyzetek: a szerkesztő közvetlenül a sáv alatt nyílik meg, Feladatok: gyors beírás), alatta a kategóriák (Feladatoknál a projektek), alatta a keresés, végül egy sorban a rendezés, az állapotok (pl. Aktív / Kedvencek / Kuka) és a nézetváltó, a sor végén a ⋮ menüvel.
 
 - **⋮ menü:** mind a négy nézetben ugyanott van, a sor végén: kategóriák kezelése (Feladatoknál projektek), az adott nézet importja és exportja, a végén **Beállítások…**, amely a közös Beállítások ablakot az adott nézet fülén nyitja meg.
-- **Nézetváltó:** Parancsoknál Normál / Kompakt / Lista, Jegyzeteknél ezen felül Kanban, Feladatoknál Lista / Kompakt. Kompakt parancsnál csak a kód első sora látszik; lista nézetben a sorra kattintva nyílik ki a kód. Kompakt feladatnál a dátum/projekt sor rejtve van.
-- **Rendezés:** Parancsok: legújabb, ABC, leggyakrabban másolt. Jegyzetek: utoljára módosított, legújabb, ABC. Feladatok: határidő, prioritás, legújabb, ABC (a csoportokon, pl. Ma / Holnap, belül).
-- **Kártyák:** mind a négy nézetben a kategória (Feladatoknál a projekt) kék címkeként a cím alatt, bal oldalt látszik, a címkék pedig `#címke` formában, kék szöveggel a kártya alján (a Parancsok mintájára). Kompakt jegyzetnél és kompakt feladatnál a címkék rejtve vannak.
+- **Nézetváltó:** a Kódtárban Normál / Kompakt / Lista, Jegyzeteknél ezen felül Kanban, Feladatoknál Lista / Kompakt. Kompakt kódrészletnél csak a kód első sora látszik; lista nézetben a sorra kattintva nyílik ki a kód. Kompakt feladatnál a dátum/projekt sor rejtve van.
+- **Rendezés:** Kódtár: legújabb, ABC, leggyakrabban másolt. Jegyzetek: utoljára módosított, legújabb, ABC. Feladatok: határidő, prioritás, legújabb, ABC (a csoportokon, pl. Ma / Holnap, belül).
+- **Kártyák:** mind a négy nézetben a kategória (Feladatoknál a projekt) kék címkeként a cím alatt, bal oldalt látszik, a címkék pedig `#címke` formában, kék szöveggel a kártya alján (a Kódtár mintájára). Kompakt jegyzetnél és kompakt feladatnál a címkék rejtve vannak.
 - A választott rendezés és nézet nézetenként a fiókhoz mentődik (`commandSort`, `commandView`, `noteSort`, `noteView`, `taskSort`, `taskView`), így minden eszközön ugyanaz.
 
 ### Telefonos elrendezés
@@ -57,18 +57,20 @@ Mind a négy nézet teteje ugyanúgy épül fel: legfelül az egyforma „+ Új 
 Telefonon (640px-nél keskenyebb képernyőn) a nézetek kevesebb helyet foglalnak, hogy a tartalom rögtön látsszon. Gépen semmi nem változik.
 
 - **Fejléc:** logó, keresés (Ctrl+K), csengő és ⋮. A téma váltása és a kilépés a ⋮ menübe került.
-- **Fülek alul:** a négy nézet (Jegyzetek, Feladatok, Könyvjelzők, Parancsok) a képernyő alján van, ikonnal és felirattal; a Feladatoknál a számláló is látszik.
+- **Fülek alul:** a négy nézet (Jegyzetek, Feladatok, Könyvjelzők, Kódtár) a képernyő alján van, ikonnal és felirattal; a Feladatoknál a számláló is látszik.
 - **Kereső + Szűrők:** felül egy sorban a kereső és a **Szűrők** gomb. A gomb alulról felcsúszó lapot nyit, rajta a nézet összes szűrője és beállítása: kategóriák (Feladatoknál projektek), címkék, állapotok (pl. Archívum, Kuka), rendezés, nézetváltó, valamint a ⋮ menü pontjai (kategóriák kezelése, import/export, Beállítások…). Az **Alaphelyzet** mindent visszaállít, a **Kész** bezárja a lapot (lefelé húzva vagy mellé koppintva is bezárul).
 - **Aktív szűrők:** a kiválasztott kategória, címke vagy állapot chipként látszik a kereső alatt, a × törli. A Szűrők gombon a szám mutatja, hány szűrő aktív.
 - **Feladatok:** az okos listák (Ma, Következő 7 nap, Beérkezett …) kint maradnak egy vízszintesen görgethető sorban.
-- **Lebegő + gomb:** jobb alul, a fülek fölött. Jegyzeteknél a szerkesztőt nyitja, Könyvjelzőknél és Parancsoknál az új elem űrlapját (újra koppintva bezárja), Feladatoknál alulról felcsúszik a gyors beírás a billentyűzet fölé, alatta a felismert dátummal, prioritással és projekttel.
+- **Lebegő + gomb:** jobb alul, a fülek fölött. Jegyzeteknél a szerkesztőt nyitja, Könyvjelzőknél és a Kódtárban az új elem űrlapját (újra koppintva bezárja), Feladatoknál alulról felcsúszik a gyors beírás a billentyűzet fölé, alatta a felismert dátummal, prioritással és projekttel.
 
 ### Keresés mindenhol (Ctrl+K)
 
-A **Ctrl+K** (Macen ⌘K) bármelyik nézetből, vagy a fejléc nagyító gombja (telefonon is) megnyit egy keresőablakot, amely egyszerre keres a jegyzetekben, feladatokban, könyvjelzőkben és parancsokban: címben, szövegben, leírásban, kategóriában, címkében és parancskódban, ékezet nélkül is (a „kazan” megtalálja a „Kazán”-t). A találatok típusonként (legfeljebb 5) csoportosítva jelennek meg, a fülek sorrendjében.
+A **Ctrl+K** (Macen ⌘K) bármelyik nézetből, vagy a fejléc nagyító gombja (telefonon is) megnyit egy keresőablakot, amely egyszerre keres a jegyzetekben, feladatokban, könyvjelzőkben és a kódtárban: címben, szövegben, leírásban, kategóriában, címkében és a kódrészletek minden fülének kódjában, ékezet nélkül is (a „kazan” megtalálja a „Kazán”-t). A találatok típusonként (legfeljebb 5) csoportosítva jelennek meg, a fülek sorrendjében.
 
-- **↑/↓** lépked, **Esc** bezár, **Enter**: jegyzetnél megnyitja a szerkesztőt, feladatnál a részletes panelt, könyvjelzőnél új lapon a weboldalt, parancsnál a kódot a vágólapra másolja (és növeli a használatszámot). **Shift+Enter**: könyvjelző vagy parancs szerkesztése.
-- **Létrehozás:** a lista alján mindig ott van „Új jegyzet / feladat / könyvjelző / parancs” a beírt szöveggel. Az új feladatot a gyors beírás értelmezője dolgozza fel (pl. „holnap 9 számla !1 #pénzügy”); ha a szöveg webcím, az új könyvjelző azzal töltődik ki.
+- **Szűkítés előtagokkal:** `#docker` csak az ilyen (így kezdődő) címkéjű elemek, `/shell` csak az ilyen nevű kategóriában vagy annak alkategóriáiban lévők, `@kód` csak kódrészletek (`@jegyzet`, `@feladat`, `@könyvjelző` is megy; más szó után a `@` kategóriát jelent, mint a feladatoknál a projekt). Kombinálható szöveggel: `stop #docker @kód`. Csak szűrővel (szöveg nélkül) típusonként 10 találat jön. A csoport fejléce mutatja az aktív szűrőket.
+
+- **↑/↓** lépked, **Esc** bezár, **Enter**: jegyzetnél megnyitja a szerkesztőt, feladatnál a részletes panelt, könyvjelzőnél új lapon a weboldalt, kódrészletnél a kódot a vágólapra másolja (és növeli a használatszámot). **Shift+Enter**: könyvjelző vagy kódrészlet szerkesztése.
+- **Létrehozás:** a lista alján mindig ott van „Új jegyzet / feladat / könyvjelző / kódrészlet” a beírt szöveggel (a szűrő-előtagok nélkül; az új feladat a teljes szöveget kapja, mert ott a `#címke` és `@projekt` is jelent valamit). Az új feladatot a gyors beírás értelmezője dolgozza fel (pl. „holnap 9 számla !1 #pénzügy”); ha a szöveg webcím, az új könyvjelző azzal töltődik ki.
 - **Üres mezőnél** a legutóbb megnyitott elemek látszanak (a böngészőben tárolva).
 - **`>` előtaggal** gyors műveletek jönnek: nézetváltás, Beállítások, téma váltása, új elem.
 - A feladat „Kapcsolt elemek” keresője ugyanezt a közös keresőt használja.
@@ -90,26 +92,29 @@ Bármelyik weboldal egy kattintással menthető, átváltás nélkül.
 Egy közös ablak hat füllel; a fejléc ⋮ menüjéből (Általános fül) vagy bármelyik nézet ⋮ menüjéből (az adott nézet füle) nyílik.
 
 - **Általános:** téma, induláskor megnyíló nézet, a **Mentés CloudMarkba** (Clipper) gomb, értesítések (e-mail, napi összefoglaló, telefonos értesítés eszközönként, csendes időszak, teszt értesítés), jelszócsere. Az értesítési kapcsolók azonnal mentődnek; a csengő panel alján egy link vezet ide.
-- **Jegyzetek, Feladatok, Parancsok:** alapértelmezett rendezés és nézet.
+- **Jegyzetek, Feladatok, Kódtár:** alapértelmezett rendezés és nézet.
 - **AI:** saját AI kulcsok (Gemini, Claude, OpenAI-kompatibilis) az AI kitöltéshez, modellválasztás, kapcsolat tesztelése.
 - **Könyvjelzők:** nézet, rendezés, weboldal címsor és kép olvasása, az export tartalma és az import célkategóriája (a Clipper gombra itt csak egy utalás van, az Általános fülön található).
 - A fejléc ⋮ menüjében csak az általános dolgok maradtak: Beállítások, Team, alkalmazás telepítése, Info. Az **Info** egy rövid ismertető mind a négy nézetről, a keresőről, a menükről és a gyorsbillentyűkről.
 
-### Parancsok
+### Kódtár (régen Parancsok)
 
-Gyakran használt parancssorok tárolása, kategóriákba rendezve.
+Kódrészletek egy helyen: parancssorok, SQL, konfiguráció, kód. A massCode „egy otthon” elve szerint a kereséshez rendezve: kevés, tág kategória munkaterület szerint (pl. `frontend`, `backend`, `db`, `devops`, `shell`, alkategóriákkal, pl. `shell / git`), a témák (pl. `docker`, `regex`, `gotcha`) címkék. Az adat ugyanaz maradt (`items.type = 'command'`), a régi `#/parancsok` cím a `#/kodtar`-ra visz.
 
+- **Színezés:** a kód VS Code-szerű színekkel jelenik meg (a beépített highlight.js-sel, a fül nyelve szerint; nyelv nélkül csak biztos tippnél színez), több sornál sorszámokkal. Világos és sötét témában is.
 - **Soronkénti másolás:** minden sor mellett van egy másológomb, amely a `#` utáni kommentet levágja.
-- **Többsoros parancsnál:** „Összes másolása”, valamint a ⋮ menüben „Másolás Markdownként” és „Kommentek nélkül”.
-- **Fülek:** egy parancsnak több változata lehet (pl. CMD / PowerShell / bash), mindegyik saját nyelvvel. A kártyán egy fülnél a nyelv címke a kategória mellett látszik, több fülnél a fülek nevén. A szerkesztőben a Nyelv mezőre kattintva a teljes javaslatlista megjelenik.
-- Kedvencek, kuka, rendezés (legújabb, ABC, leggyakrabban másolt), keresés, kategóriák alapnyelvvel.
-- Import / export JSON-ban, export Markdownban (⋮ menü). Új parancs: `N`.
-- **AI kitöltés** (ha van aktív AI kulcs): bemásolt parancsból kitölti a címet, leírást, címkéket, kategóriát és nyelvet; vagy a címbe / leírásba írt célból megírja a parancsot is, és a címet, leírást rendes szövegre javítja. Javasolhat egy további fület (pl. PowerShell változat; ilyenkor a névtelen első fül a nyelvéről kap nevet, pl. „Bash”) és új kategóriát. A javaslat kiemelve kerül a mezőkbe (Elfogadom / Visszavonom), alapból csak az üres mezőkbe; menteni a Mentés gomb ment.
+- **Többsoros kódnál:** „Összes másolása”, valamint a ⋮ menüben „Másolás Markdownként” és „Kommentek nélkül”.
+- **Fülek:** egy kódrészletnek több változata lehet (pl. CMD / PowerShell / bash, vagy JS / Python), mindegyik saját nyelvvel. A kártyán egy fülnél a nyelv címke a kategória mellett látszik, több fülnél a fülek nevén. A szerkesztőben a Nyelv mezőre kattintva a teljes javaslatlista megjelenik.
+- **Keresés a listában:** ékezetfüggetlen, több szónál mindegyiknek szerepelnie kell (cím, leírás, kategória, címkék, minden fül kódja). `#címke` és `/kategória` szűkít (a szülőkategória az alkategóriák elemeit is mutatja).
+- **Inbox rendezése:** a kategória nélküli elemek az Inboxban vannak. ⋮ → **Kijelölés és áthelyezés**: a kártyákra kattintva kijelölöd őket (vagy **Mind**), kiválasztod a kategóriát, **Áthelyezés**. **Kész** vagy Esc kilép.
+- Kedvencek, kuka, rendezés (legújabb, ABC, leggyakrabban másolt), kategóriák alapnyelvvel. A leírás többsoros: mire való, honnan van, mire kell figyelni.
+- Import / export JSON-ban, export Markdownban (⋮ menü). Új kódrészlet: `N`.
+- **AI kitöltés** (ha van aktív AI kulcs): bemásolt kódból kitölti a címet (amire keresnél), a leírást (mire való, buktatók), a címkéket (témák), a kategóriát (munkaterület), a nyelvet és több fülnél a fül nevét; vagy a címbe / leírásba írt célból megírja a kódot is, és a címet, leírást rendes szövegre javítja. Javasolhat egy további fület (pl. PowerShell változat; ilyenkor az első fül is nevet kap, pl. „Bash”) és új kategóriát. A javaslat kiemelve kerül a mezőkbe (Elfogadom / Visszavonom), alapból csak az üres mezőkbe; menteni a Mentés gomb ment.
 
 ### AI kitöltés saját kulccsal
 
 - Minden felhasználó a saját kulcsát adja meg (Beállítások → AI). A kulcsot a szerver AES-256-GCM titkosítással tárolja (`AI_KEY_ENCRYPTION_SECRET`), a böngésző soha nem kapja vissza; az admin biztonsági mentésbe nem kerül bele.
-- Hol érhető el: Új parancs és parancs szerkesztése, Új könyvjelző és szerkesztése, a feladat gyors felvétele és részletes panelje, a jegyzetszerkesztő. Mindenhol csak gombnyomásra fut, és csak javasol.
+- Hol érhető el: Új kódrészlet és kódrészlet szerkesztése, Új könyvjelző és szerkesztése, a feladat gyors felvétele és részletes panelje, a jegyzetszerkesztő. Mindenhol csak gombnyomásra fut, és csak javasol.
 - Az AI-t a szerver hívja (`POST /api/ai/fill`), műveletenként rögzített JSON sémával, és a választ még egyszer ellenőrzi: csak az engedélyezett mezők, meglévő kategória vagy projekt, legfeljebb 5 címke, legfeljebb 1 új fül, valódi és nem múltbeli dátum.
 - A feladatoknál és a jegyzeteknél (amelyek automatikusan mentenek) a javaslat egy kártyán jelenik meg, soronként pipával; csak az **Elfogadom** után változik bármi.
 - Ajánlott modellek: Gemini Flash (`gemini-flash-latest`, van ingyenes szint), Claude Haiku 5.5 (`claude-haiku-5-5`). A listát a szolgáltatótól kéri le.
@@ -123,7 +128,7 @@ Google Keep-szerű jegyzetek.
 - A „Jegyzet írása…” mezőbe kattintva gyorsan új jegyzet írható. Kívülre kattintva automatikusan mentődik.
 - Szöveges jegyzet vagy jelölőnégyzetes lista. A kettő között egy gombbal lehet váltani.
 - Háttérszín, rögzítés (a rögzített jegyzetek felül), címkék, archiválás, kuka.
-- Kategóriák: a jegyzetek fölötti sorban „Összes”, „Kategória nélkül” és a saját kategóriák szűrnek, darabszámmal. Új kategória a „+” gombbal vagy a szerkesztő kategória-választójában („+ Új kategória…”) hozható létre. A kategória melletti ⋮ menüben átnevezhető vagy törölhető; törléskor a jegyzetei megmaradnak, és a „Kategória nélkül” szűrőbe kerülnek. A jegyzetkategóriák külön vannak a parancsok kategóriáitól (`categories.kind = 'note'`).
+- Kategóriák: a jegyzetek fölötti sorban „Összes”, „Kategória nélkül” és a saját kategóriák szűrnek, darabszámmal. Új kategória a „+” gombbal vagy a szerkesztő kategória-választójában („+ Új kategória…”) hozható létre. A kategória melletti ⋮ menüben átnevezhető vagy törölhető; törléskor a jegyzetei megmaradnak, és a „Kategória nélkül” szűrőbe kerülnek. A jegyzetkategóriák külön vannak a Kódtár kategóriáitól (`categories.kind = 'note'`).
 - Egy jegyzetre kattintva megnyílik a szerkesztő, ami gépelés közben automatikusan ment.
 - **Kanban nézet:** oszloponként egy kategória („Kategória nélkül” + a saját kategóriák). Egy jegyzetet másik oszlopba húzva a kategóriája megváltozik és azonnal mentődik (egérrel húzással, telefonon hosszú nyomás után húzással; a tábla széléhez érve az oszlopok továbbgördülnek). Az oszlop alján a „+ Jegyzet” abba a kategóriába nyit új jegyzetet, a sor végén „Új kategória” oszlop hozható létre. Ha fent egy kategória van kiválasztva, csak az az oszlop látszik.
 - A Jegyzetek ⋮ menüjében: új kategória, import (JSON) és export (JSON, Markdown).
@@ -131,11 +136,11 @@ Google Keep-szerű jegyzetek.
 
 ### Belső hivatkozások ([[ link)
 
-Jegyzetek és feladatok egymásra (és parancsokra, könyvjelzőkre) mutathatnak, mint egy wikiben.
+Jegyzetek és feladatok egymásra (és kódrészletekre, könyvjelzőkre) mutathatnak, mint egy wikiben.
 
 - A jegyzet szövegébe vagy a feladat leírásába `[[`-t írva a kurzor alatt felugrik a közös kereső (ugyanaz, mint a Ctrl+K). Gépelésre szűkül, `↑`/`↓` + `Enter` (vagy `Tab`, koppintás) választ, `Esc` bezárja. Ha nincs találat, a lista végén „Új jegyzet: „…”” létrehozza az üres jegyzetet és be is linkeli.
-- A szövegbe ez kerül: `[[jegyzet:123|Kazán szervizelés]]` (típusok: jegyzet, feladat, parancs, könyvjelző). Az azonosító számít, a cím csak tartalék felirat, ezért átnevezéskor sem törik el.
-- A jegyzetkártyán a link kék, kattintható pill, mindig a cél **mostani** címével. Feladatnál a leírás alatt látszanak a pillek. Kattintásra megnyílik a cél: jegyzet a szerkesztőben, feladat a panelen, parancs a szerkesztőben, könyvjelző új lapon. Törölt vagy kukában lévő célnál a pill áthúzott.
+- A szövegbe ez kerül: `[[jegyzet:123|Kazán szervizelés]]` (típusok: jegyzet, feladat, parancs = kódrészlet, könyvjelző; a `parancs` szó a régi linkek miatt maradt). Az azonosító számít, a cím csak tartalék felirat, ezért átnevezéskor sem törik el.
+- A jegyzetkártyán a link kék, kattintható pill, mindig a cél **mostani** címével. Feladatnál a leírás alatt látszanak a pillek. Kattintásra megnyílik a cél: jegyzet a szerkesztőben, feladat a panelen, kódrészlet a szerkesztőben, könyvjelző új lapon. Törölt vagy kukában lévő célnál a pill áthúzott.
 - **Hivatkoznak rá:** a jegyzet szerkesztő alján és a feladat panel Kapcsolt elemek része alatt látszik, mely elemek linkelnek ide (szövegben vagy a Kapcsolt elemek között).
 - A szövegbeli linkek az `item_links` táblába is bekerülnek (`origin = 'inline'`), mentéskor a szerver újraszámolja őket; a feladat „Kapcsolt elemek” része a kézi (`manual`) kapcsolatokat mutatja, és mentéskor csak azokat írja felül. Más felhasználó elemére vagy nem létező elemre mutató link nem kerül be (a kártyán „nem található”).
 
@@ -151,7 +156,7 @@ Teendők határidővel, ismétlődéssel és részfeladatokkal. A fülön lévő
 - **AI gyors felvétel** (ha van AI kulcsod): a sor végi ✨ gomb (`Ctrl`+`Enter`) egy kötetlen mondatból (pl. „jövő kedden fel kéne hívni a könyvelőt a számlák miatt, fontos”) rendes címet, határidőt, prioritást, címkéket és projektet készít. Az eredmény az előnézeti sorban látszik („AI”), Enterrel mentődik, „Elvetem”-mel vagy a szöveg átírásával eltűnik.
 - **Okos listák:** Ma (a lejártakkal együtt), Következő 7 nap, Beérkezett (projekt nélküliek), Mind, Kész, Kuka.
 - **Projektek:** a listák alatt, a ⋮ menüben átnevezhetők és törölhetők.
-- **Részletek:** egy feladatra kattintva jobb oldalt megnyílik a panel, ami automatikusan ment. Itt állítható a határidő és időpont, az ismétlődés, a prioritás, a projekt, az állapot, az emlékeztetők, a részfeladatok és a kapcsolt jegyzetek, parancsok, könyvjelzők. AI kulccsal az **AI: címkék, projekt** gomb címkéket, projektet és prioritást javasol, a Részfeladatoknál a **Bontsd lépésekre** 3–7 lépést; a javaslatkártyán kipipálod, mi kell, és **Elfogadom**.
+- **Részletek:** egy feladatra kattintva jobb oldalt megnyílik a panel, ami automatikusan ment. Itt állítható a határidő és időpont, az ismétlődés, a prioritás, a projekt, az állapot, az emlékeztetők, a részfeladatok és a kapcsolt jegyzetek, kódrészletek, könyvjelzők. AI kulccsal az **AI: címkék, projekt** gomb címkéket, projektet és prioritást javasol, a Részfeladatoknál a **Bontsd lépésekre** 3–7 lépést; a javaslatkártyán kipipálod, mi kell, és **Elfogadom**.
 - **Kipipálás:** az ismétlődő feladat a következő esedékességre ugrik (a részfeladatai újra nyitottak lesznek). Alul „Visszavonás” gomb jelenik meg.
 - **Billentyűk:** `N` új feladat, `/` keresés, a listában `↑`/`↓` mozgás, `Enter` részletek, `szóköz` kész, `T` áthelyezés mára, `Esc` panel bezárása.
 - **Értesítések:** az esedékes emlékeztető megjelenik a fejléc csengő ikonjánál, a telefonodon vagy gépeden rendszerértesítésként (ha bekapcsoltad), és e-mailben is (ha az e-mail címed meg van erősítve). A csengőre kattintva látod az értesítéseket, egy értesítésre kattintva megnyílik a feladat.

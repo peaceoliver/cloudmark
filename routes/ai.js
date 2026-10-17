@@ -193,7 +193,7 @@ function registerAiRoutes(app, { pool, requireAuth, recordAuditEvent, fetchPageM
         const input = req.body.input && typeof req.body.input === 'object' ? req.body.input : null;
         if (!action || !input) return res.status(400).json({ error: 'Ismeretlen AI művelet.' });
         if (JSON.stringify(input).length > MAX_INPUT_CHARS + 2000) return res.status(400).json({ error: 'Túl hosszú szöveg az AI-nak (legfeljebb kb. 8000 karakter).' });
-        if (!action.needsInput(input)) return res.status(400).json({ error: 'Írd be a parancsot, vagy a címbe vagy a leírásba azt, hogy mit szeretnél.' });
+        if (!action.needsInput(input)) return res.status(400).json({ error: 'Írd be a kódot, vagy a címbe vagy a leírásba azt, hogy mit szeretnél.' });
         try {
             const keyResult = await pool.query('SELECT * FROM user_ai_keys WHERE user_id = $1 AND is_active LIMIT 1', [req.user.id]);
             const row = keyResult.rows[0];

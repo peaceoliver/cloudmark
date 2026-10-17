@@ -21,11 +21,11 @@ Jelölések: `!1`–`!4` prioritás, `#címke`, `@Projekt` (ha nincs ilyen proje
 
 1. Kattints egy feladatra: jobb oldalt megnyílik a panel, ami automatikusan ment.
 2. Itt állíthatod a határidőt, az ismétlődést, a prioritást, a projektet, az állapotot, az emlékeztetőket,
-   a részfeladatokat és a kapcsolt jegyzeteket, parancsokat, könyvjelzőket.
+   a részfeladatokat és a kapcsolt jegyzeteket, kódrészleteket, könyvjelzőket.
 
 ## Tippek
 
-- A leírásba `[[` beírásával más jegyzetre, feladatra, parancsra vagy könyvjelzőre hivatkozhatsz (lásd [internal-links.md](internal-links.md)).
+- A leírásba `[[` beírásával más jegyzetre, feladatra, kódrészletre vagy könyvjelzőre hivatkozhatsz (lásd [internal-links.md](internal-links.md)).
 - Telefonon a szűrők, a rendezés és a nézet a kereső melletti **Szűrők** gombbal nyílnak, újat a jobb alsó **+** gombbal veszel fel (lásd [mobile.md](mobile.md)).
 - **AI:** saját AI kulccsal a ✨ gomb kötetlen mondatból készít feladatot, a panelben címkét, projektet javasol és lépésekre bont. Lásd [ai-assist.md](ai-assist.md).
 - **Okos listák:** Ma (a lejártakkal), Következő 7 nap, Beérkezett, Mind, Kész, Kuka.

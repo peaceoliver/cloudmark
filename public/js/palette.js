@@ -1,9 +1,11 @@
 /*
- * Command Palette (Ctrl+K / ⌘K): egy ablakból keres a jegyzetekben, feladatokban, könyvjelzőkben és parancsokban,
- * megnyitja vagy használja a találatot, és új elemet is létrehoz. „>” előtaggal gyors műveletek.
+ * Command Palette (Ctrl+K / ⌘K): egy ablakból keres a jegyzetekben, feladatokban, könyvjelzőkben és a kódtárban,
+ * megnyitja vagy használja a találatot, és új elemet is létrehoz. „>” előtaggal gyors műveletek,
+ * `#címke`, `/kategória` és `@kód` (`@jegyzet` …) szűkíti a találatokat (search-query.js, a szerver értelmezi).
  */
 (function () {
     const api = window.CloudMark.api;
+    const searchQuery = window.CloudMark.searchQuery;
     const overlay = document.getElementById('paletteModal');
     const input = document.getElementById('paletteInput');
     const list = document.getElementById('paletteResults');
@@ -18,9 +20,9 @@
         { kind: 'note', label: 'Jegyzetek', icon: 'fa-note-sticky' },
         { kind: 'task', label: 'Feladatok', icon: 'fa-list-check' },
         { kind: 'bookmark', label: 'Könyvjelzők', icon: 'fa-bookmark' },
-        { kind: 'command', label: 'Parancsok', icon: 'fa-terminal' }
+        { kind: 'command', label: 'Kódtár', icon: 'fa-code' }
     ];
-    const KIND_LABEL = { note: 'jegyzet', task: 'feladat', bookmark: 'könyvjelző', command: 'parancs' };
+    const KIND_LABEL = { note: 'jegyzet', task: 'feladat', bookmark: 'könyvjelző', command: 'kódrészlet' };
 
     let entries = [];
     let active = 0;
@@ -96,7 +98,7 @@
                 const item = await api.getItem(result.id);
                 code = item.fragments?.[0]?.content || '';
             } catch (err) {
-                notify('A parancs nem található.', 'error');
+                notify('A kódrészlet nem található.', 'error');
                 return;
             }
         }
@@ -145,13 +147,15 @@
         if (title) { title.value = text; title.focus(); }
     }
 
-    function createEntries(text) {
+    /** Creation entries; `raw` is the whole input (the task quick-add understands #címke and @projekt), the rest get the free text only. */
+    function createEntries(raw, text = raw) {
         const quoted = text ? `: „${text}”` : '';
+        const quotedRaw = raw ? `: „${raw}”` : '';
         return [
             { group: 'Létrehozás', icon: 'fa-plus', label: `Új jegyzet${quoted}`, run: () => createNote(text) },
-            { group: 'Létrehozás', icon: 'fa-plus', label: `Új feladat${quoted}`, hint: text ? 'dátum, !1, #címke, @projekt is mehet' : '', run: () => createTask(text) },
+            { group: 'Létrehozás', icon: 'fa-plus', label: `Új feladat${quotedRaw}`, hint: raw ? 'dátum, !1, #címke, @projekt is mehet' : '', run: () => createTask(raw) },
             { group: 'Létrehozás', icon: 'fa-plus', label: text && looksLikeUrl(text) ? `Új könyvjelző: ${text}` : 'Új könyvjelző', run: () => createBookmark(text) },
-            { group: 'Létrehozás', icon: 'fa-plus', label: `Új parancs${quoted}`, run: () => createCommand(text) }
+            { group: 'Létrehozás', icon: 'fa-plus', label: `Új kódrészlet${quoted}`, run: () => createCommand(text) }
         ];
     }
 
@@ -160,7 +164,7 @@
             { label: 'Jegyzetek megnyitása', icon: 'fa-note-sticky', run: () => views().showView('notes') },
             { label: 'Feladatok megnyitása', icon: 'fa-list-check', run: () => views().showView('tasks') },
             { label: 'Könyvjelzők megnyitása', icon: 'fa-bookmark', run: () => views().showView('bookmarks') },
-            { label: 'Parancsok megnyitása', icon: 'fa-terminal', run: () => views().showView('commands') },
+            { label: 'Kódtár megnyitása', icon: 'fa-code', run: () => views().showView('commands') },
             { label: 'Beállítások', icon: 'fa-gear', run: () => openUserSettings() },
             { label: 'Téma váltása (világos / sötét)', icon: 'fa-circle-half-stroke', run: () => document.getElementById('themeToggle')?.click() },
             ...createEntries('').map(entry => ({ ...entry, group: undefined }))
@@ -227,7 +231,7 @@
         const recent = readRecent();
         entries = recent.map(result => resultEntry(result, { ...GROUPS.find(group => group.kind === result.kind), label: 'Legutóbbiak' }));
         active = 0;
-        render('Kezdj el gépelni: keres a jegyzetekben, feladatokban, könyvjelzőkben és parancsokban. „>” után műveletek.');
+        render('Kezdj el gépelni: keres a jegyzetekben, feladatokban, könyvjelzőkben és a kódtárban. Szűkítés: #címke, /kategória, @kód (@jegyzet, @feladat, @könyvjelző). „>” után műveletek.');
     }
 
     async function update() {
@@ -239,19 +243,23 @@
             active = 0;
             return render('Nincs ilyen művelet.');
         }
+        const parsed = searchQuery.parse(text);
+        const filtered = searchQuery.hasFilters(parsed);
         let results = [];
         try {
-            results = await api.search(text, { limit: 5 });
+            // Csak szűrővel (pl. „#docker”) több találat fér el, mert nincs mire rangsorolni.
+            results = await api.search(text, { limit: filtered && !parsed.text ? 10 : 5 });
         } catch (err) {
             if (current !== requestId) return;
-            entries = createEntries(text);
+            entries = createEntries(text, parsed.text);
             active = 0;
             return render();
         }
         if (current !== requestId) return;
+        const filterLabel = filtered ? ` · ${searchQuery.describe(parsed)}` : '';
         entries = [
-            ...GROUPS.flatMap(group => results.filter(result => result.kind === group.kind).map(result => resultEntry(result, group))),
-            ...createEntries(text)
+            ...GROUPS.flatMap(group => results.filter(result => result.kind === group.kind).map(result => resultEntry(result, { ...group, label: group.label + filterLabel }))),
+            ...createEntries(text, parsed.text)
         ];
         active = 0;
         render();

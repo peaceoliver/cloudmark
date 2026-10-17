@@ -149,7 +149,7 @@ function normalizeItemInput(body, type) {
 
     const { fragments, error } = normalizeFragments(body.fragments, body.language);
     if (error) return { error };
-    if (type === 'command' && !fragments.some(fragment => fragment.content.trim())) return { error: 'A parancs kódja nem lehet üres.' };
+    if (type === 'command' && !fragments.some(fragment => fragment.content.trim())) return { error: 'A kódrészlet kódja nem lehet üres.' };
 
     const value = {
         title,

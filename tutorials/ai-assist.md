@@ -1,7 +1,7 @@
 # AI kitöltés saját kulccsal
 
 A saját AI kulcsoddal (Gemini, Claude vagy egy OpenAI-kompatibilis szolgáltató) az **✨ AI kitöltés** gomb
-kitölti a parancsok és a könyvjelzők űrlapját, a feladatoknál és a jegyzeteknél pedig javaslatot ad. Az AI csak a
+kitölti a Kódtár és a könyvjelzők űrlapját, a feladatoknál és a jegyzeteknél pedig javaslatot ad. Az AI csak a
 gomb megnyomására fut, és semmit nem ment el magától.
 
 ## Kulcs megadása
@@ -19,11 +19,11 @@ gomb megnyomására fut, és semmit nem ment el magától.
 Több kulcsot is elmenthetsz; egyszerre egy aktív (**Használom ezt** / **Kikapcsolás**). Ha nincs aktív kulcs,
 az AI gomb nem látszik.
 
-## Új parancs kitöltése
+## Új kódrészlet kitöltése
 
-1. Parancsok fül → **Új parancs hozzáadása**.
+1. Kódtár fül → **Új kódrészlet hozzáadása**.
 2. Két lehetőség:
-   - **Bemásolod a parancsot** a Kód mezőbe → az AI kitölti a címet, a leírást, a címkéket, a kategóriát és a nyelvet.
+   - **Bemásolod a kódot** a Kód mezőbe → az AI kitölti a címet (amire keresnél), a leírást (mire való, buktatók), a címkéket (témák), a kategóriát (munkaterület, pl. `devops`), a nyelvet, és több fülnél a fül nevét.
      A bemásolt kódot nem írja át.
    - **A címbe vagy a leírásba írod, mit szeretnél** (pl. „állítsd le az összes docker konténert”) → az AI megírja a
      parancsot, kitölti a többi mezőt, és a címet, leírást rendes szövegre javítja.
@@ -70,7 +70,7 @@ szolgáltatóhoz: jelszót, tokent ne küldj vele.
 
 - Alapból csak az üres mezőket tölti ki. A **Mindent újraír** jelölővel a kitöltött mezőket is újraírja (a bemásolt kódot ekkor sem).
 - Kategóriát csak a meglévők közül választ, a címkéknél a már használt címkéidet részesíti előnyben.
-- Egy meglévő parancs szerkesztésekor is működik.
+- Egy meglévő kódrészlet szerkesztésekor is működik.
 
 ## Gyakori kérdések
 

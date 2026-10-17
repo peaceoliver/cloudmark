@@ -4,21 +4,17 @@
  */
 const shareAccess = require('./share-access');
 
+const searchQuery = require('../public/js/search-query');
+
 const SEARCH_TYPES = ['note', 'task', 'command', 'bookmark'];
 const MAX_QUERY_LENGTH = 200;
+const MAX_FILTERS = 5;
 // Ékezetek nélkül is talál: „kazan” megtalálja a „Kazán”-t és fordítva (a magyar ékezetes betűk alapbetűvé válnak).
-const ACCENTED = 'áéíóöőúüűàâäãåçèêëìîïñòôõùûýÿÁÉÍÓÖŐÚÜŰ';
-const PLAIN = 'aeiooouuuaaaaaceeeiiinooouuyyaeiooouuu';
+const { ACCENTED, PLAIN, foldText } = searchQuery;
 
 /** SQL expression that lower-cases and strips accents, to match against a folded pattern. */
 function fold(expression) {
     return `translate(lower(${expression}), '${ACCENTED}', '${PLAIN}')`;
-}
-
-/** The same folding in JS for the search text. */
-function foldText(text) {
-    const map = new Map([...ACCENTED].map((char, index) => [char, PLAIN[index]]));
-    return [...String(text).toLowerCase()].map(char => map.get(char) || char).join('');
 }
 
 /** Escapes LIKE wildcards so the user's text is matched literally. */
@@ -52,15 +48,43 @@ function parseTypes(value) {
 
 function registerSearchRoutes(app, { pool, requireAuth }) {
     app.get('/api/search', requireAuth, async (req, res) => {
-        const query = String(req.query.q || '').trim().slice(0, MAX_QUERY_LENGTH);
-        if (!query) return res.json({ results: [] });
-        const types = parseTypes(req.query.types);
+        // Előtagok: #címke, /kategória, @kód (search-query.js); a maradék a szabad szöveg.
+        const parsed = searchQuery.parse(String(req.query.q || '').slice(0, MAX_QUERY_LENGTH));
+        const query = parsed.text;
+        const tags = parsed.tags.slice(0, MAX_FILTERS);
+        const categories = parsed.categories.slice(0, MAX_FILTERS);
+        if (!query && !tags.length && !categories.length && !parsed.types.length) return res.json({ results: [] });
+        let types = parseTypes(req.query.types);
+        if (parsed.types.length) types = types.filter(type => parsed.types.includes(type));
         const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 5, 1), 20);
         const folded = foldText(query);
         const contains = `%${likePattern(folded)}%`;
         const prefix = `${likePattern(folded)}%`;
+        const prefixes = list => list.map(value => `${likePattern(value)}%`);
         const itemTypes = types.filter(type => type !== 'bookmark');
         try {
+            // Elemek: $1 néző, $2 tartalmazza, $3 így kezdődik, $4 típusok, $5 limit, $6 címkék, $7 kategóriák.
+            const itemText = query ? `(${fold('i.title')} LIKE $2 ESCAPE '\\' OR ${fold('i.body')} LIKE $2 ESCAPE '\\' OR ${fold('i.description')} LIKE $2 ESCAPE '\\'
+                                OR ${fold('c.name')} LIKE $2 ESCAPE '\\'
+                                OR EXISTS (SELECT 1 FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = i.id AND ${fold('t.name')} LIKE $2 ESCAPE '\\')
+                                OR EXISTS (SELECT 1 FROM item_fragments f WHERE f.item_id = i.id AND ${fold('f.content')} LIKE $2 ESCAPE '\\')
+                                OR (i.extra ? 'checklist' AND ${fold("(i.extra->'checklist')::text")} LIKE $2 ESCAPE '\\'))` : 'TRUE';
+            // Minden címke-előtagnak legyen egyező címkéje.
+            const itemTags = `NOT EXISTS (SELECT 1 FROM unnest($6::text[]) AS wanted(pattern)
+                                WHERE NOT EXISTS (SELECT 1 FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = i.id AND ${fold('t.name')} LIKE wanted.pattern ESCAPE '\\'))`;
+            // A kategória vagy bármelyik szülője (beágyazott mappák: a szülő a gyerekek elemeit is mutatja).
+            const itemCategories = `NOT EXISTS (SELECT 1 FROM unnest($7::text[]) AS wanted(pattern)
+                                WHERE NOT EXISTS (
+                                    WITH RECURSIVE up(id, parent_id, name, depth) AS (
+                                        SELECT c0.id, c0.parent_id, c0.name, 0 FROM categories c0 WHERE c0.id = v.category_id
+                                        UNION ALL
+                                        SELECT cp.id, cp.parent_id, cp.name, up.depth + 1 FROM categories cp JOIN up ON cp.id = up.parent_id WHERE up.depth < 10
+                                    )
+                                    SELECT 1 FROM up WHERE ${fold('up.name')} LIKE wanted.pattern ESCAPE '\\'))`;
+            // Könyvjelzők: $1 felhasználó, $2, $3, $4 limit, $5 néző id, $6 címkék, $7 kategóriák.
+            const bookmarkCategory = 'CASE WHEN bsh.id IS NULL THEN b.category ELSE bshc.name END';
+            const bookmarkText = query ? `BOOL_OR(${fold('b.title')} LIKE $2 ESCAPE '\\' OR ${fold('b.url')} LIKE $2 ESCAPE '\\' OR ${fold('b.description')} LIKE $2 ESCAPE '\\'
+                                    OR ${fold('b.category')} LIKE $2 ESCAPE '\\' OR COALESCE(${fold('t.name')} LIKE $2 ESCAPE '\\', FALSE))` : 'TRUE';
             const [itemRows, bookmarkRows] = await Promise.all([
                 itemTypes.length ? pool.query(
                     `WITH matches AS (
@@ -74,34 +98,33 @@ function registerSearchRoutes(app, { pool, requireAuth }) {
                          ${shareAccess.viewerJoinSql('$1')}
                          LEFT JOIN categories c ON c.id = v.category_id
                          WHERE ${shareAccess.visibleSql('$1')} AND i.trashed = FALSE AND i.type = ANY($4)
-                           AND (${fold('i.title')} LIKE $2 ESCAPE '\\' OR ${fold('i.body')} LIKE $2 ESCAPE '\\' OR ${fold('i.description')} LIKE $2 ESCAPE '\\'
-                                OR ${fold('c.name')} LIKE $2 ESCAPE '\\'
-                                OR EXISTS (SELECT 1 FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = i.id AND ${fold('t.name')} LIKE $2 ESCAPE '\\')
-                                OR EXISTS (SELECT 1 FROM item_fragments f WHERE f.item_id = i.id AND ${fold('f.content')} LIKE $2 ESCAPE '\\')
-                                OR (i.extra ? 'checklist' AND ${fold("(i.extra->'checklist')::text")} LIKE $2 ESCAPE '\\'))
+                           AND ${itemText} AND ${itemTags} AND ${itemCategories}
                      ), ranked AS (
                          SELECT *, ROW_NUMBER() OVER (PARTITION BY type ORDER BY rank, archived, (status = 'done'), updated_at DESC) AS position
                          FROM matches
                      )
                      SELECT * FROM ranked WHERE position <= $5 ORDER BY type, position`,
-                    [req.user.id, contains, prefix, itemTypes, limit]
+                    [req.user.id, contains, prefix, itemTypes, limit, prefixes(tags), prefixes(categories)]
                 ) : { rows: [] },
                 types.includes('bookmark') ? pool.query(
                     // A megosztott könyvjelzők is (elfogadott megosztás), a címzett saját kategóriájával.
                     `SELECT b.id, b.title, b.url, b.description, (bsh.id IS NOT NULL) AS shared,
-                            CASE WHEN bsh.id IS NULL THEN b.category ELSE bshc.name END AS category, b.created_at,
+                            ${bookmarkCategory} AS category, b.created_at,
                             COALESCE(array_agg(t.name ORDER BY t.name) FILTER (WHERE t.name IS NOT NULL), '{}') AS tags,
                             MIN(CASE WHEN ${fold('b.title')} LIKE $3 ESCAPE '\\' THEN 0 WHEN ${fold('b.title')} LIKE $2 ESCAPE '\\' THEN 1 ELSE 2 END) AS rank
                      FROM bookmarks b ${shareAccess.bookmarkJoinSql('$5')}
                      LEFT JOIN bookmark_tags bt ON bt.bookmark_id = b.id
                      LEFT JOIN tags t ON t.id = bt.tag_id
                      WHERE (LOWER(CAST(b.user_id AS TEXT)) = ANY($1) OR bsh.id IS NOT NULL) AND b.trashed = FALSE
+                       AND NOT EXISTS (SELECT 1 FROM unnest($6::text[]) AS wanted(pattern)
+                           WHERE NOT EXISTS (SELECT 1 FROM bookmark_tags bt2 JOIN tags t2 ON t2.id = bt2.tag_id WHERE bt2.bookmark_id = b.id AND ${fold('t2.name')} LIKE wanted.pattern ESCAPE '\\'))
+                       AND NOT EXISTS (SELECT 1 FROM unnest($7::text[]) AS wanted(pattern)
+                           WHERE NOT COALESCE(${fold(bookmarkCategory)} LIKE wanted.pattern ESCAPE '\\', FALSE))
                      GROUP BY b.id, bsh.id, bshc.id
-                     HAVING BOOL_OR(${fold('b.title')} LIKE $2 ESCAPE '\\' OR ${fold('b.url')} LIKE $2 ESCAPE '\\' OR ${fold('b.description')} LIKE $2 ESCAPE '\\'
-                                    OR ${fold('b.category')} LIKE $2 ESCAPE '\\' OR COALESCE(${fold('t.name')} LIKE $2 ESCAPE '\\', FALSE))
+                     HAVING ${bookmarkText}
                      ORDER BY rank, CASE WHEN bsh.id IS NULL THEN b.archived ELSE bsh.recipient_archived END, b.created_at DESC
                      LIMIT $4`,
-                    [[String(req.user.username || '').toLowerCase(), String(req.user.id)], contains, prefix, limit, req.user.id]
+                    [[String(req.user.username || '').toLowerCase(), String(req.user.id)], contains, prefix, limit, req.user.id, prefixes(tags), prefixes(categories)]
                 ) : { rows: [] }
             ]);
             const results = [
