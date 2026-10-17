@@ -30,7 +30,7 @@
     }
 
     function kindIcon(kind) {
-        return { task_reminder: 'fa-regular fa-bell', daily_digest: 'fa-regular fa-sun', test: 'fa-solid fa-vial' }[kind] || 'fa-regular fa-bell';
+        return { task_reminder: 'fa-regular fa-bell', daily_digest: 'fa-regular fa-sun', test: 'fa-solid fa-vial', share_invite: 'fa-solid fa-user-group', share_info: 'fa-solid fa-user-group' }[kind] || 'fa-regular fa-bell';
     }
 
     function renderBadge() {
@@ -39,16 +39,76 @@
         toggle.setAttribute('aria-label', state.unread ? `Értesítések, ${state.unread} olvasatlan` : 'Értesítések');
     }
 
+    /** A share invitation that still waits for the user's answer. */
+    function isOpenInvite(item) {
+        return item.kind === 'share_invite' && item.share_incoming && item.share_status === 'pending';
+    }
+
     function renderList() {
-        list.innerHTML = state.items.length ? state.items.map(item => `
-            <button type="button" class="bell-item ${item.read_at ? '' : 'is-unread'}" data-notification="${Number(item.id)}">
+        list.innerHTML = state.items.length ? state.items.map(item => {
+            const main = `
                 <i class="${kindIcon(item.kind)}" aria-hidden="true"></i>
                 <span class="bell-item-main">
                     <span class="bell-item-title">${esc(item.title)}</span>
                     ${item.body ? `<span class="bell-item-body">${esc(item.body)}</span>` : ''}
                     <span class="bell-item-time">${esc(timeAgo(item.created_at))}</span>
-                </span>
-            </button>`).join('') : '<div class="bell-empty">Nincs értesítésed. Az emlékeztetők és a napi összefoglaló itt jelennek meg.</div>';
+                </span>`;
+            if (!isOpenInvite(item)) {
+                return `<button type="button" class="bell-item ${item.read_at ? '' : 'is-unread'}" data-notification="${Number(item.id)}">${main}</button>`;
+            }
+            // Meghívó: gombok a sorban (gomb a gombban nem lehet, ezért itt div a sor).
+            return `
+                <div class="bell-item bell-invite ${item.read_at ? '' : 'is-unread'}">
+                    ${main}
+                    <span class="bell-invite-actions">
+                        <button type="button" class="btn btn-primary" data-share-accept="${Number(item.share_id)}" data-notification-id="${Number(item.id)}"><i class="fa-solid fa-check"></i> Elfogadom</button>
+                        <button type="button" class="btn btn-secondary" data-share-decline="${Number(item.share_id)}" data-notification-id="${Number(item.id)}">Elutasítom</button>
+                    </span>
+                </div>`;
+        }).join('') : '<div class="bell-empty">Nincs értesítésed. Az emlékeztetők, a napi összefoglaló és a megosztások itt jelennek meg.</div>';
+    }
+
+    const SHARE_VIEWS = { note: 'notes', task: 'tasks', command: 'commands' };
+
+    /** Shows a shared item in its own view (after accepting, or when its notification is clicked). */
+    async function openSharedItem(type, id, item = null) {
+        const view = SHARE_VIEWS[type];
+        if (!view || !id) return;
+        closePanel();
+        const cloudMark = window.CloudMark;
+        cloudMark.views?.showView(view);
+        if (type === 'note') {
+            if (item) cloudMark.notes?.remember?.(item);
+            await cloudMark.notes?.openById?.(id);
+        } else if (type === 'task') {
+            await cloudMark.tasks?.reload?.();
+            await cloudMark.tasks?.openById?.(id);
+        } else {
+            await cloudMark.commands?.openById?.(id);
+        }
+    }
+
+    async function answerInvite(button, accept) {
+        const shareId = accept ? button.dataset.shareAccept : button.dataset.shareDecline;
+        const entry = state.items.find(candidate => String(candidate.id) === button.dataset.notificationId);
+        button.closest('.bell-invite')?.querySelectorAll('button').forEach(other => { other.disabled = true; });
+        try {
+            if (accept) {
+                const result = await notifyApi.acceptShare(shareId);
+                if (entry) entry.share_status = 'accepted';
+                notify('Elfogadva, megjelent a listádban.', 'success');
+                await refresh();
+                if (result.item) await openSharedItem(result.item.type, result.item.id, result.item);
+            } else {
+                await notifyApi.declineShare(shareId);
+                if (entry) entry.share_status = 'declined';
+                notify('Elutasítva.', 'success');
+                await refresh();
+            }
+        } catch (err) {
+            notify(err.message || 'Nem sikerült.', 'error');
+            await refresh();
+        }
     }
 
     /** What this browser can do with push: 'ok', 'unsupported', 'ios-install' (iPhone outside the installed app) or 'denied'. */
@@ -218,10 +278,18 @@
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
 
     async function onBellClick(event) {
+        const accept = event.target.closest('[data-share-accept]');
+        if (accept) { answerInvite(accept, true); return; }
+        const decline = event.target.closest('[data-share-decline]');
+        if (decline) { answerInvite(decline, false); return; }
         const entry = event.target.closest('[data-notification]');
         if (entry) {
             const item = state.items.find(candidate => String(candidate.id) === entry.dataset.notification);
             await markRead([entry.dataset.notification]);
+            if (item?.share_id) {
+                if (item.share_status === 'accepted') await openSharedItem(item.share_item_type, item.share_item_id);
+                return;
+            }
             if (item?.item_id || item?.kind === 'daily_digest') {
                 closePanel();
                 window.CloudMark.views?.showView('tasks');
@@ -335,5 +403,5 @@
         else clearInterval(state.timer);
     }
 
-    window.CloudMark.inbox = { onAuthChange, refresh, loadSettings };
+    window.CloudMark.inbox = { onAuthChange, refresh, loadSettings, openPanel };
 })();

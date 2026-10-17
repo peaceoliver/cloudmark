@@ -6,7 +6,7 @@
  * adja a gyorsítótárból. Más címekre (CDN betűkészletek, ikonok) menő kéréseket nem érinti: azokat a böngésző
  * maga tölti, mert a service worker saját CSP-je (connect-src 'self') nem engedné őket.
  */
-const VERSION = '2026-10-17-clipper';
+const VERSION = '2026-10-17-sharing';
 const APP_CACHE = `cloudmark-app-${VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const PRECACHE = [
@@ -105,12 +105,13 @@ async function openApp(data) {
     const existing = windows.find(client => new URL(client.url).origin === self.location.origin);
     if (existing) {
         await existing.focus();
-        existing.postMessage({ type: 'cloudmark:open', itemId: data.itemId, notificationId: data.notificationId, view: 'tasks' });
+        existing.postMessage({ type: 'cloudmark:open', itemId: data.itemId, notificationId: data.notificationId, kind: data.type, view: 'tasks' });
         return;
     }
     const params = new URLSearchParams({ source: 'notification' });
     if (data.itemId) params.set('task', data.itemId);
     if (data.notificationId) params.set('notification', data.notificationId);
+    if (data.type) params.set('kind', data.type);
     await self.clients.openWindow(`/?${params}#/feladatok`);
 }
 

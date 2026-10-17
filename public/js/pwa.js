@@ -92,8 +92,13 @@
     new MutationObserver(syncThemeColor).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
     /** Shows a task that a notification pointed at, and marks that notification read. */
-    async function openFromNotification(itemId, notificationId) {
+    async function openFromNotification(itemId, notificationId, kind) {
         const cloudMark = window.CloudMark;
+        // Megosztás: a csengő nyílik meg, ott lehet elfogadni vagy megnyitni az elemet.
+        if (kind === 'share_invite' || kind === 'share_info') {
+            await cloudMark.inbox?.openPanel?.();
+            return;
+        }
         if (notificationId) cloudMark.api?.markNotificationsRead({ ids: [Number(notificationId)] }).catch(() => {});
         cloudMark.views?.showView('tasks');
         if (itemId) await cloudMark.tasks?.openById?.(Number(itemId));
@@ -109,7 +114,7 @@
             window.CloudMark.tasks?.refreshBadge();
             if (window.CloudMark.views?.active === 'tasks') window.CloudMark.tasks?.show();
         }
-        if (message.type === 'cloudmark:open') openFromNotification(message.itemId, message.notificationId);
+        if (message.type === 'cloudmark:open') openFromNotification(message.itemId, message.notificationId, message.kind);
     });
 
     /** A notification opened a new window as /?task=…&notification=…: open that task once signed in. */
@@ -117,6 +122,7 @@
         const params = new URLSearchParams(window.location.search);
         const itemId = params.get('task');
         const notificationId = params.get('notification');
+        const kind = params.get('kind');
         if (!itemId && !notificationId) return;
         const clean = () => history.replaceState(null, '', window.location.pathname + window.location.hash);
         let tries = 0;
@@ -126,7 +132,7 @@
             if (signedIn) {
                 clearInterval(timer);
                 clean();
-                openFromNotification(itemId, notificationId);
+                openFromNotification(itemId, notificationId, kind);
             } else if (tries > 40) {
                 clearInterval(timer);
                 clean();

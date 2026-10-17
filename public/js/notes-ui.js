@@ -37,6 +37,7 @@
     const newButton = document.getElementById('noteNewBtn');
     const editBox = document.getElementById('noteEditBox');
     const links = window.CloudMark.inlineLinks;
+    const share = window.CloudMark.share;
     if (!sections) return;
 
     function esc(value) {
@@ -73,8 +74,21 @@
             categoryId: merged.category_id ?? null,
             tags: merged.tags || [],
             extra: merged.extra || {},
-            fragments: []
+            fragments: [],
+            // Megosztott jegyzetnél a szerver 409-cel jelzi, ha közben más módosította.
+            // `item` a legfrissebb mentett példány (a szerkesztő mezői régebbi updated_at-et hordozhatnak).
+            ...(isShared(item) && item.updated_at ? { expectedUpdatedAt: item.updated_at } : {})
         };
+    }
+
+    /** Whether others can also change this note (shared with someone, or shared with me). */
+    function isShared(item) {
+        return Boolean(item?.id) && (!share.isOwn(item) || item.share_count > 0);
+    }
+
+    /** Whether the user may change the note's content (own, or shared with edit access). */
+    function canEdit(item) {
+        return share.isOwn(item) || item.access === 'edit';
     }
 
     function isEmptyNote(note) {
@@ -179,9 +193,33 @@
     }
 
     async function saveNote(item, overrides) {
-        const saved = await noteApi.updateItem(item.id, notePayload(item, overrides));
-        upsert(saved);
-        return saved;
+        try {
+            const saved = await noteApi.updateItem(item.id, notePayload(item, overrides));
+            upsert(saved);
+            return saved;
+        } catch (err) {
+            // Valaki más közben módosította: a friss változat kerül a listába és a nyitott szerkesztőbe.
+            if (err.status === 409 && err.body?.item) {
+                upsert(err.body.item);
+                if (editing && String(editing.id) === String(err.body.item.id)) {
+                    editing = { ...err.body.item };
+                    editBox.innerHTML = editorHtml(editing, { composer: false });
+                }
+                render();
+            }
+            throw err;
+        }
+    }
+
+    /** Drops a note shared with the user from the list (they left the share). */
+    function forget(item) {
+        state.items = state.items.filter(entry => String(entry.id) !== String(item.id));
+        if (editing && String(editing.id) === String(item.id)) { editing = null; closeModal('noteEditModal'); }
+        render();
+    }
+
+    function openShare(item) {
+        share.open(item, { onChange: () => render(), onLeft: forget });
     }
 
     // ---------- megjelenítés ----------
@@ -190,6 +228,7 @@
     function inCurrentTab(item) {
         if (state.filter === 'trash') return Boolean(item.trashed);
         if (item.trashed) return false;
+        if (state.filter === 'shared') return !share.isOwn(item);
         return state.filter === 'archived' ? Boolean(item.archived) : !item.archived;
     }
 
@@ -259,7 +298,7 @@
             const done = checklist.map((entry, index) => ({ ...entry, index })).filter(entry => entry.done);
             const row = entry => `
                 <label class="note-check ${entry.done ? 'is-done' : ''}">
-                    <input type="checkbox" data-action="check" data-index="${entry.index}" ${entry.done ? 'checked' : ''} ${item.trashed ? 'disabled' : ''}>
+                    <input type="checkbox" data-action="check" data-index="${entry.index}" ${entry.done ? 'checked' : ''} ${item.trashed || !canEdit(item) ? 'disabled' : ''}>
                     <span>${esc(entry.text)}</span>
                 </label>`;
             return `<div class="note-checklist">${open.map(row).join('')}${done.length ? `<div class="note-check-done-label">${done.length} kipipált elem</div>${done.map(row).join('')}` : ''}</div>`;
@@ -273,20 +312,26 @@
     }
 
     function cardHtml(item) {
+        const editable = canEdit(item);
+        const own = share.isOwn(item);
         const actions = item.trashed ? `
             <button type="button" class="note-action" data-action="restore" title="Visszaállítás"><i class="fa-solid fa-rotate-left"></i></button>
             <button type="button" class="note-action" data-action="delete" title="Végleges törlés"><i class="fa-solid fa-trash-can"></i></button>` : `
-            <div class="note-color-menu">
+            ${editable ? `<div class="note-color-menu">
                 <button type="button" class="note-action" data-action="palette" title="Háttérszín"><i class="fa-solid fa-palette"></i></button>
                 ${paletteHtml(item.color)}
-            </div>
+            </div>` : ''}
+            <button type="button" class="note-action" data-action="share" title="Megosztás"><i class="fa-solid fa-user-plus"></i></button>
             <button type="button" class="note-action" data-action="${item.archived ? 'unarchive' : 'archive'}" title="${item.archived ? 'Visszahelyezés az archívumból' : 'Archiválás'}"><i class="fa-solid ${item.archived ? 'fa-box-open' : 'fa-box-archive'}"></i></button>
-            <button type="button" class="note-action" data-action="trash" title="Törlés"><i class="fa-solid fa-trash"></i></button>`;
+            ${own
+                ? '<button type="button" class="note-action" data-action="trash" title="Törlés"><i class="fa-solid fa-trash"></i></button>'
+                : '<button type="button" class="note-action" data-action="leave" title="Eltávolítás a listámból"><i class="fa-solid fa-right-from-bracket"></i></button>'}`;
+        const badge = share.badgeHtml(item);
         return `
             <article class="note-card ${colorClass(item.color)}" data-item-id="${Number(item.id)}" tabindex="0">
                 ${item.trashed ? '' : `<button type="button" class="note-pin ${item.pinned ? 'is-pinned' : ''}" data-action="pin" title="${item.pinned ? 'Rögzítés feloldása' : 'Rögzítés'}"><i class="fa-solid fa-thumbtack"></i></button>`}
                 ${item.title ? `<h3 class="note-title">${esc(item.title)}</h3>` : ''}
-                ${item.category_name ? `<div class="card-meta note-card-meta"><span class="card-category">${esc(item.category_name)}</span></div>` : ''}
+                ${item.category_name || badge ? `<div class="card-meta note-card-meta">${item.category_name ? `<span class="card-category">${esc(item.category_name)}</span>` : ''}${badge}</div>` : ''}
                 ${noteBodyHtml(item)}
                 ${item.tags.length ? `<div class="card-tags">${item.tags.map(tag => `#${esc(tag)}`).join(' ')}</div>` : ''}
                 <div class="note-actions">${actions}</div>
@@ -330,6 +375,7 @@
                 : state.category === 'none' ? 'Nincs kategória nélküli jegyzet.'
                 : state.category !== 'all' ? 'Ebben a kategóriában még nincs jegyzet.'
                 : state.filter === 'trash' ? 'A kuka üres.'
+                : state.filter === 'shared' ? 'Még senki nem osztott meg veled jegyzetet.'
                 : state.filter === 'archived' ? 'Nincs archivált jegyzet.'
                 : 'Még nincs jegyzeted. Írd be az elsőt fent!';
             sections.innerHTML = `<div class="empty-state notes-empty">${message}</div>`;
@@ -356,30 +402,36 @@
 
     function editorHtml(note, { composer }) {
         const checklist = checklistOf(note);
-        const items = checklist ? checklist.map(entry => checkRowHtml(entry)).join('') + checkRowHtml({ text: '', done: false }) : '';
+        // Megosztott jegyzet: csak megtekintési joggal a tartalom zárva, a címkék a tulajdonoséi.
+        const own = share.isOwn(note);
+        const editable = canEdit(note);
+        const lock = editable ? '' : 'readonly';
+        const items = checklist ? checklist.map(entry => checkRowHtml(entry, editable)).join('') + (editable ? checkRowHtml({ text: '', done: false }) : '') : '';
         return `
-            <div class="note-editor ${colorClass(note.color)}" data-color="${esc(note.color || '')}">
-                <input type="text" class="note-editor-title" maxlength="300" placeholder="Cím" value="${esc(note.title || '')}" aria-label="Cím">
+            <div class="note-editor ${colorClass(note.color)} ${editable ? '' : 'is-readonly'}" data-color="${esc(note.color || '')}">
+                ${own ? '' : `<div class="share-editor-note">${share.badgeHtml(note)} ${editable ? 'Megosztott jegyzet, a módosításaidat a tulajdonos is látja.' : 'Megosztott jegyzet, csak megtekintheted.'}</div>`}
+                <input type="text" class="note-editor-title" maxlength="300" placeholder="Cím" value="${esc(note.title || '')}" aria-label="Cím" ${lock}>
                 ${checklist
                     ? `<div class="note-editor-checklist">${items}</div>`
-                    : `<textarea class="note-editor-body" rows="${composer ? 3 : 8}" placeholder="Jegyzet írása… ([[ = hivatkozás)" aria-label="Jegyzet">${esc(note.body || '')}</textarea>`}
+                    : `<textarea class="note-editor-body" rows="${composer ? 3 : 8}" placeholder="Jegyzet írása… ([[ = hivatkozás)" aria-label="Jegyzet" ${lock}>${esc(note.body || '')}</textarea>`}
                 <div class="note-editor-meta">
                     <label class="note-editor-category-wrap" title="Kategória">
                         <i class="fa-regular fa-folder"></i>
                         <select class="note-editor-category" aria-label="Kategória">${categoryOptionsHtml(note.category_id)}</select>
                     </label>
-                    <input type="text" class="note-editor-tags" placeholder="Címkék vesszővel (pl. ötlet, munka)" value="${esc((note.tags || []).join(', '))}" aria-label="Címkék">
+                    <input type="text" class="note-editor-tags" placeholder="Címkék vesszővel (pl. ötlet, munka)" value="${esc((note.tags || []).join(', '))}" aria-label="Címkék" ${own ? '' : 'readonly title="A címkéket a tulajdonos kezeli"'}>
                 </div>
                 <div class="note-ai-slot"></div>
                 ${!composer && note.id ? '<div class="inline-backlinks" data-backlinks hidden></div>' : ''}
                 <div class="note-editor-bar">
-                    <div class="note-color-menu">
+                    ${editable ? `<div class="note-color-menu">
                         <button type="button" class="note-action" data-editor="palette" title="Háttérszín"><i class="fa-solid fa-palette"></i></button>
                         ${paletteHtml(note.color).replace(/data-action="set-color"/g, 'data-editor="set-color"')}
                     </div>
-                    <button type="button" class="note-action" data-editor="toggle-checklist" title="${checklist ? 'Szöveges jegyzet' : 'Jelölőnégyzetek'}"><i class="fa-regular ${checklist ? 'fa-file-lines' : 'fa-square-check'}"></i></button>
+                    <button type="button" class="note-action" data-editor="toggle-checklist" title="${checklist ? 'Szöveges jegyzet' : 'Jelölőnégyzetek'}"><i class="fa-regular ${checklist ? 'fa-file-lines' : 'fa-square-check'}"></i></button>` : ''}
                     <button type="button" class="note-action ${note.pinned ? 'is-pinned' : ''}" data-editor="pin" title="Rögzítés"><i class="fa-solid fa-thumbtack"></i></button>
-                    ${aiEnabled ? `<div class="note-ai-menu-wrap">
+                    ${!composer && note.id ? '<button type="button" class="note-action" data-editor="share" title="Megosztás"><i class="fa-solid fa-user-plus"></i></button>' : ''}
+                    ${aiEnabled && editable ? `<div class="note-ai-menu-wrap">
                         <button type="button" class="note-action note-ai-btn" data-editor="ai" title="AI segítség" aria-haspopup="true"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
                         <div class="note-ai-menu" role="menu">
                             <button type="button" class="cmd-dropdown-item" data-editor="ai-fill"><i class="fa-solid fa-tags"></i> Cím, címkék, kategória</button>
@@ -400,12 +452,12 @@
             + `<option value="${NEW_CATEGORY}">+ Új kategória…</option>`;
     }
 
-    function checkRowHtml(entry) {
+    function checkRowHtml(entry, editable = true) {
         return `
             <div class="note-editor-check">
-                <input type="checkbox" class="note-editor-check-done" ${entry.done ? 'checked' : ''} aria-label="Kész">
-                <input type="text" class="note-editor-check-text" maxlength="1000" placeholder="Listaelem" value="${esc(entry.text)}" aria-label="Listaelem">
-                <button type="button" class="note-action" data-editor="remove-check" title="Elem törlése" aria-label="Elem törlése"><i class="fa-solid fa-xmark"></i></button>
+                <input type="checkbox" class="note-editor-check-done" ${entry.done ? 'checked' : ''} aria-label="Kész" ${editable ? '' : 'disabled'}>
+                <input type="text" class="note-editor-check-text" maxlength="1000" placeholder="Listaelem" value="${esc(entry.text)}" aria-label="Listaelem" ${editable ? '' : 'readonly'}>
+                ${editable ? '<button type="button" class="note-action" data-editor="remove-check" title="Elem törlése" aria-label="Elem törlése"><i class="fa-solid fa-xmark"></i></button>' : ''}
             </div>`;
     }
 
@@ -648,6 +700,11 @@
                 onChange();
                 return;
             }
+            if (action === 'share') {
+                const base = getBase();
+                if (base?.id) openShare(findItem(base.id) || base);
+                return;
+            }
             if (action === 'close') onClose();
         });
     }
@@ -810,6 +867,11 @@
         if (action === 'set-color') {
             try { await saveNote(item, { color: button.dataset.color || null }); render(); }
             catch (err) { notify(err.message || 'A mentés nem sikerült.', 'error'); }
+            return;
+        }
+        if (action === 'share') return openShare(item);
+        if (action === 'leave') {
+            if (await share.leave(item)) forget(item);
             return;
         }
         if (action === 'pin') return changeState(item, { pinned: !item.pinned });

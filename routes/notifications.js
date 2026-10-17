@@ -10,7 +10,7 @@
 const crypto = require('crypto');
 const taskDates = require('../public/js/task-parser');
 
-const NOTIFICATION_KINDS = ['task_reminder', 'daily_digest', 'test'];
+const NOTIFICATION_KINDS = ['task_reminder', 'daily_digest', 'test', 'share_invite', 'share_info'];
 const STALE_REMINDER_MS = 12 * 3600 * 1000;
 const TEST_COOLDOWN_MS = 30 * 1000;
 const DIGEST_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -315,8 +315,14 @@ function registerNotificationRoutes(app, { pool, requireAuth, recordAuditEvent, 
         try {
             const [items, unread] = await Promise.all([
                 pool.query(
-                    `SELECT n.id, n.kind, n.title, n.body, n.item_id, n.created_at, n.read_at
-                     FROM notifications n WHERE n.user_id = $1 ORDER BY n.created_at DESC, n.id DESC LIMIT $2`,
+                    // Megosztásnál: a meghívó állapota (függő meghívónál Elfogadom / Elutasítom), és az elem típusa a megnyitáshoz.
+                    `SELECT n.id, n.kind, n.title, n.body, n.item_id, n.created_at, n.read_at,
+                            n.share_id, s.status AS share_status, s.item_id AS share_item_id, si.type AS share_item_type,
+                            (s.recipient_user_id = n.user_id) AS share_incoming
+                     FROM notifications n
+                     LEFT JOIN shares s ON s.id = n.share_id
+                     LEFT JOIN items si ON si.id = s.item_id
+                     WHERE n.user_id = $1 ORDER BY n.created_at DESC, n.id DESC LIMIT $2`,
                     [req.user.id, limit]
                 ),
                 pool.query('SELECT COUNT(*)::int AS count FROM notifications WHERE user_id = $1 AND read_at IS NULL', [req.user.id])

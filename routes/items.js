@@ -6,6 +6,7 @@
 
 const taskDates = require('../public/js/task-parser');
 const linkParser = require('../public/js/inline-links');
+const shareAccess = require('./share-access');
 
 const ITEM_TYPES = ['command', 'note', 'task'];
 const TASK_STATUSES = ['todo', 'doing', 'done'];
@@ -217,7 +218,8 @@ const TASK_VIEW_CONDITIONS = {
               AND ((i.due_all_day AND i.due_at < d.today_start) OR (NOT i.due_all_day AND i.due_at < NOW()))`,
     today: `i.status <> 'done' AND i.due_at < d.tomorrow_start`,
     upcoming: `i.status <> 'done' AND i.due_at >= d.tomorrow_start AND i.due_at < d.week_end`,
-    inbox: `i.status <> 'done' AND i.category_id IS NULL AND i.parent_item_id IS NULL`,
+    // v: a néző saját kategóriája (megosztott elemnél a megosztás sorából), lásd share-access.js.
+    inbox: `i.status <> 'done' AND v.category_id IS NULL AND i.parent_item_id IS NULL`,
     done: `i.status = 'done'`
 };
 
@@ -233,8 +235,13 @@ async function resolveTimeZone(db, userId, explicit) {
 }
 
 function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normalizeTags }) {
-    const ITEM_SELECT = `
-        SELECT i.*, c.name AS category_name,
+    /**
+     * Item rows as `viewer` (a SQL placeholder) sees them: with fragments, tags, reminders, links, subtask counts
+     * and the share columns. Map the rows through shareAccess.presentItem before returning them.
+     * Link targets are listed only when the viewer can see them; bookmark targets only for the owner.
+     */
+    const itemSelect = viewer => `
+        SELECT i.*, c.name AS category_name, ${shareAccess.shareColumnsSql(viewer)},
                COALESCE((SELECT json_agg(json_build_object('id', f.id, 'position', f.position, 'label', f.label, 'language', f.language, 'content', f.content) ORDER BY f.position)
                          FROM item_fragments f WHERE f.item_id = i.id), '[]') AS fragments,
                COALESCE((SELECT array_agg(t.name ORDER BY t.name)
@@ -244,23 +251,24 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                COALESCE((SELECT json_agg(json_build_object('targetType', l.target_type, 'targetId', l.target_id, 'itemType', li.type,
                                                            'title', COALESCE(li.title, b.title), 'url', b.url) ORDER BY l.created_at, l.target_type DESC, l.target_id)
                          FROM item_links l
-                         LEFT JOIN items li ON l.target_type = 'item' AND li.id = l.target_id AND li.owner_user_id = i.owner_user_id AND li.trashed = FALSE
-                         LEFT JOIN bookmarks b ON l.target_type = 'bookmark' AND b.id = l.target_id AND b.trashed = FALSE
+                         LEFT JOIN items li ON l.target_type = 'item' AND li.id = l.target_id AND li.trashed = FALSE AND ${shareAccess.canSeeItemSql('li', viewer)}
+                         LEFT JOIN bookmarks b ON l.target_type = 'bookmark' AND b.id = l.target_id AND b.trashed = FALSE AND i.owner_user_id = ${viewer}
                          WHERE l.item_id = i.id AND l.origin = 'manual' AND (li.id IS NOT NULL OR b.id IS NOT NULL)), '[]') AS links,
                COALESCE((SELECT json_agg(json_build_object('targetType', l.target_type, 'targetId', l.target_id, 'itemType', li.type,
                                                            'title', COALESCE(li.title, b.title), 'url', b.url) ORDER BY l.created_at, l.target_type DESC, l.target_id)
                          FROM item_links l
-                         LEFT JOIN items li ON l.target_type = 'item' AND li.id = l.target_id AND li.owner_user_id = i.owner_user_id AND li.trashed = FALSE
-                         LEFT JOIN bookmarks b ON l.target_type = 'bookmark' AND b.id = l.target_id AND b.trashed = FALSE
+                         LEFT JOIN items li ON l.target_type = 'item' AND li.id = l.target_id AND li.trashed = FALSE AND ${shareAccess.canSeeItemSql('li', viewer)}
+                         LEFT JOIN bookmarks b ON l.target_type = 'bookmark' AND b.id = l.target_id AND b.trashed = FALSE AND i.owner_user_id = ${viewer}
                          WHERE l.item_id = i.id AND l.origin = 'inline' AND (li.id IS NOT NULL OR b.id IS NOT NULL)), '[]') AS inline_links,
                (SELECT COUNT(*) FROM items s WHERE s.parent_item_id = i.id AND s.trashed = FALSE)::int AS subtask_count,
                (SELECT COUNT(*) FROM items s WHERE s.parent_item_id = i.id AND s.trashed = FALSE AND s.status = 'done')::int AS subtask_done_count
         FROM items i
-        LEFT JOIN categories c ON c.id = i.category_id`;
+        ${shareAccess.viewerJoinSql(viewer)}
+        LEFT JOIN categories c ON c.id = v.category_id`;
 
     async function loadItem(db, id, userId) {
-        const result = await db.query(`${ITEM_SELECT} WHERE i.id = $1 AND i.owner_user_id = $2`, [id, userId]);
-        return result.rows[0] || null;
+        const result = await db.query(`${itemSelect('$2')} WHERE i.id = $1 AND ${shareAccess.visibleSql('$2')}`, [id, userId]);
+        return shareAccess.presentItem(result.rows[0] || null);
     }
 
     async function categoryBelongsToUser(db, categoryId, userId, type) {
@@ -314,7 +322,11 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
         const bookmarkIds = links.filter(link => link.targetType === 'bookmark').map(link => link.targetId);
         if (itemId !== null && itemIds.some(id => String(id) === String(itemId))) return 'Egy elem nem kapcsolható önmagához.';
         if (itemIds.length) {
-            const found = await db.query('SELECT COUNT(*)::int AS count FROM items WHERE id = ANY($1) AND owner_user_id = $2', [itemIds, user.id]);
+            // Saját elem, vagy amit megosztottak a felhasználóval.
+            const found = await db.query(
+                `SELECT COUNT(*)::int AS count FROM items li WHERE li.id = ANY($1) AND li.trashed = FALSE AND ${shareAccess.canSeeItemSql('li', '$2')}`,
+                [itemIds, user.id]
+            );
             if (found.rows[0].count !== itemIds.length) return 'A kapcsolt elem nem található.';
         }
         if (bookmarkIds.length) {
@@ -328,19 +340,24 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
     }
 
     /**
-     * Rebuilds the item's inline links ([[jegyzet:12|…]] in the body). Targets that don't exist or aren't the
-     * user's own are skipped rather than rejected, so pasted text never blocks saving; the card shows them as missing.
+     * Rebuilds the item's inline links ([[jegyzet:12|…]] in the body). Targets that don't exist or that the
+     * user cannot see are skipped rather than rejected, so pasted text never blocks saving; the card shows them as missing.
+     * Links still in the text are kept, so a shared item edited by someone else keeps the owner's links.
      */
     async function syncInlineLinks(db, itemId, body, user) {
-        await db.query("DELETE FROM item_links WHERE item_id = $1 AND origin = 'inline'", [itemId]);
         const targets = linkParser.targets(body, itemId);
-        if (!targets.length) return;
         const itemIds = targets.filter(target => target.targetType === 'item').map(target => target.targetId);
         const bookmarkIds = targets.filter(target => target.targetType === 'bookmark').map(target => target.targetId);
+        await db.query(
+            `DELETE FROM item_links WHERE item_id = $1 AND origin = 'inline'
+               AND NOT ((target_type = 'item' AND target_id = ANY($2::bigint[])) OR (target_type = 'bookmark' AND target_id = ANY($3::bigint[])))`,
+            [itemId, itemIds, bookmarkIds]
+        );
+        if (!targets.length) return;
         if (itemIds.length) {
             await db.query(
                 `INSERT INTO item_links (item_id, target_type, target_id, origin)
-                 SELECT $1, 'item', id, 'inline' FROM items WHERE id = ANY($2) AND owner_user_id = $3 ON CONFLICT DO NOTHING`,
+                 SELECT $1, 'item', li.id, 'inline' FROM items li WHERE li.id = ANY($2) AND ${shareAccess.canSeeItemSql('li', '$3')} ON CONFLICT DO NOTHING`,
                 [itemId, itemIds, user.id]
             );
         }
@@ -420,17 +437,18 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
         const view = req.query.view ? String(req.query.view) : null;
         if (view && (type !== 'task' || !TASK_VIEWS.includes(view))) return res.status(400).json({ error: 'Érvénytelen nézet.' });
         const params = [req.user.id, type];
-        const conditions = ['i.owner_user_id = $1', 'i.type = $2'];
+        // A saját elemek mellett a felhasználóval megosztottak is (a kukában csak a sajátjai vannak).
+        const conditions = [shareAccess.visibleSql('$1'), 'i.type = $2'];
         if (req.query.all !== 'true') {
             if (req.query.trash === 'true') conditions.push('i.trashed = TRUE');
             else {
                 conditions.push('i.trashed = FALSE');
-                if (req.query.archived !== 'true') conditions.push('i.archived = FALSE');
+                if (req.query.archived !== 'true') conditions.push('v.archived = FALSE');
             }
         }
         try {
             let from = '';
-            let order = 'i.pinned DESC, i.position ASC NULLS LAST, i.updated_at DESC';
+            let order = 'v.pinned DESC, i.position ASC NULLS LAST, i.updated_at DESC';
             let page = '';
             if (type === 'task') {
                 order = `i.status = 'done', i.due_at ASC NULLS LAST, i.priority ASC NULLS LAST, i.position ASC NULLS LAST, i.created_at ASC`;
@@ -447,11 +465,11 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
                 }
             }
             const result = await pool.query(
-                `${ITEM_SELECT} ${from} WHERE ${conditions.join(' AND ')}
+                `${itemSelect('$1')} ${from} WHERE ${conditions.join(' AND ')}
                  ORDER BY ${order} ${page}`,
                 params
             );
-            res.json(result.rows);
+            res.json(result.rows.map(shareAccess.presentItem));
         } catch (err) {
             res.status(500).json({ error: err.message });
         }
@@ -463,11 +481,11 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
         if (!ITEM_TYPES.includes(type)) return res.status(400).json({ error: 'Érvénytelen típus.' });
         try {
             const result = await pool.query(
-                `${ITEM_SELECT} WHERE i.owner_user_id = $1 AND i.type = $2 AND i.trashed = FALSE
+                `${itemSelect('$1')} WHERE i.owner_user_id = $1 AND i.type = $2 AND i.trashed = FALSE
                  ORDER BY c.name NULLS FIRST, i.position ASC NULLS LAST, i.title`,
                 [req.user.id, type]
             );
-            const rows = result.rows;
+            const rows = result.rows.map(shareAccess.presentItem);
             const tz = type === 'task' ? await resolveTimeZone(pool, req.user.id, req.query.tz) : null;
             await recordAuditEvent({ userId: req.user.id, action: 'items_exported', entityType: 'item', details: { type, format: req.query.format || 'json', count: rows.length }, req });
             if (req.query.format === 'md' && type === 'task') {
@@ -624,18 +642,29 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
         const { value, error } = normalizeItemInput(req.body, type);
         if (error) return res.status(400).json({ error });
         try {
+            // Megosztott (szerkeszthető) feladat részfeladata a feladat tulajdonosáé lesz, az ő projektjében.
+            let owner = req.user;
+            if (value.task?.parentItemId) {
+                const parent = await shareAccess.itemAccess(pool, value.task.parentItemId, req.user.id);
+                if (parent && parent.access === 'view') return res.status(403).json({ error: 'Ehhez a feladathoz csak megtekintési jogod van.' });
+                if (parent && parent.access === 'edit') {
+                    owner = { id: parent.owner_user_id };
+                    Object.assign(value, { categoryId: parent.category_id, tags: [], pinned: false, starred: false });
+                    Object.assign(value.task, { reminders: undefined, links: undefined });
+                }
+            }
             const item = await withTransaction(async client => {
-                if (!(await categoryBelongsToUser(client, value.categoryId, req.user.id, type))) return null;
+                if (!(await categoryBelongsToUser(client, value.categoryId, owner.id, type))) return null;
                 const inserted = await client.query(
                     `INSERT INTO items (owner_user_id, type, title, description, category_id, body, color, pinned, starred, position, extra, status)
                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
-                    [req.user.id, type, value.title, value.description, value.categoryId, value.body, value.color, value.pinned, value.starred, value.position, value.extra, value.task ? value.task.status || 'todo' : null]
+                    [owner.id, type, value.title, value.description, value.categoryId, value.body, value.color, value.pinned, value.starred, value.position, value.extra, value.task ? value.task.status || 'todo' : null]
                 );
                 await replaceFragments(client, inserted.rows[0].id, value.fragments);
-                await replaceItemTags(client, inserted.rows[0].id, req.user.id, value.tags);
+                await replaceItemTags(client, inserted.rows[0].id, owner.id, value.tags);
                 await syncInlineLinks(client, inserted.rows[0].id, value.body, req.user);
                 if (value.task) {
-                    const taskError = await saveTaskFields(client, inserted.rows[0].id, value.task, req.user);
+                    const taskError = await saveTaskFields(client, inserted.rows[0].id, value.task, owner);
                     if (taskError) throw new ItemInputError(taskError);
                 }
                 return loadItem(client, inserted.rows[0].id, req.user.id);
@@ -653,12 +682,11 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
         const id = parseId(req.params.id);
         if (!id) return res.status(404).json({ error: 'Not found' });
         try {
-            const own = await pool.query('SELECT 1 FROM items WHERE id = $1 AND owner_user_id = $2', [id, req.user.id]);
-            if (!own.rowCount) return res.status(404).json({ error: 'Not found' });
+            if (!(await shareAccess.itemAccess(pool, id, req.user.id))) return res.status(404).json({ error: 'Not found' });
             const result = await pool.query(
                 `SELECT i.id, i.type, i.title, i.body, i.status, MAX(l.created_at) AS linked_at
                  FROM item_links l JOIN items i ON i.id = l.item_id
-                 WHERE l.target_type = 'item' AND l.target_id = $1 AND i.owner_user_id = $2 AND i.trashed = FALSE
+                 WHERE l.target_type = 'item' AND l.target_id = $1 AND i.trashed = FALSE AND ${shareAccess.canSeeItemSql('i', '$2')}
                  GROUP BY i.id ORDER BY linked_at DESC LIMIT 100`,
                 [id, req.user.id]
             );
@@ -673,35 +701,71 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
         }
     });
 
-    /** Replaces an item's editable fields, fragments and tags; the type cannot change. */
+    /** A recipient's own category, pin and star of a directly shared item (kept in their share row). */
+    async function savePersonalState(db, access, userId, value) {
+        if (!access.direct) return true;
+        if (!(await categoryBelongsToUser(db, value.categoryId, userId, access.type))) return false;
+        await db.query(
+            'UPDATE shares SET recipient_category_id = $2, recipient_pinned = $3, recipient_starred = $4 WHERE id = $1',
+            [access.share_id, value.categoryId, value.pinned, value.starred]
+        );
+        return true;
+    }
+
+    /**
+     * Replaces an item's editable fields, fragments and tags; the type cannot change.
+     * A recipient with edit access changes the content and task fields, but not the owner's tags, reminders,
+     * links, category or parent; their own category, pin and star go to their share row. With view access
+     * only that personal state is saved. `expectedUpdatedAt` (optional) turns an overwrite of a newer change into 409.
+     */
     app.put('/api/items/:id', requireAuth, async (req, res) => {
         const id = parseId(req.params.id);
         if (!id) return res.status(404).json({ error: 'Not found' });
         try {
-            const existing = await pool.query('SELECT type FROM items WHERE id = $1 AND owner_user_id = $2', [id, req.user.id]);
-            if (!existing.rowCount) return res.status(404).json({ error: 'Not found' });
-            const type = existing.rows[0].type;
+            const access = await shareAccess.itemAccess(pool, id, req.user.id);
+            if (!access) return res.status(404).json({ error: 'Not found' });
+            const type = access.type;
             const { value, error } = normalizeItemInput(req.body, type);
             if (error) return res.status(400).json({ error });
+            if (access.access !== 'view' && shareAccess.isStaleSave(access.updated_at, req.body.expectedUpdatedAt)) {
+                return res.status(409).json({ error: 'Valaki közben módosította ezt az elemet. A legfrissebb változat betöltődött, írd be újra a módosításodat.', item: await loadItem(pool, id, req.user.id) });
+            }
             const item = await withTransaction(async client => {
-                if (!(await categoryBelongsToUser(client, value.categoryId, req.user.id, type))) return null;
-                await client.query(
-                    `UPDATE items SET title = $3, description = $4, category_id = $5, body = $6, color = $7,
-                            pinned = $8, starred = $9, position = $10, extra = $11, updated_at = NOW()
-                     WHERE id = $1 AND owner_user_id = $2`,
-                    [id, req.user.id, value.title, value.description, value.categoryId, value.body, value.color, value.pinned, value.starred, value.position, value.extra]
-                );
-                await replaceFragments(client, id, value.fragments);
-                await replaceItemTags(client, id, req.user.id, value.tags);
-                await syncInlineLinks(client, id, value.body, req.user);
-                if (value.task) {
-                    const taskError = await saveTaskFields(client, id, value.task, req.user);
-                    if (taskError) throw new ItemInputError(taskError);
+                if (access.access === 'owner') {
+                    if (!(await categoryBelongsToUser(client, value.categoryId, req.user.id, type))) return null;
+                    await client.query(
+                        `UPDATE items SET title = $3, description = $4, category_id = $5, body = $6, color = $7,
+                                pinned = $8, starred = $9, position = $10, extra = $11, updated_at = NOW()
+                         WHERE id = $1 AND owner_user_id = $2`,
+                        [id, req.user.id, value.title, value.description, value.categoryId, value.body, value.color, value.pinned, value.starred, value.position, value.extra]
+                    );
+                    await replaceFragments(client, id, value.fragments);
+                    await replaceItemTags(client, id, req.user.id, value.tags);
+                    await syncInlineLinks(client, id, value.body, req.user);
+                    if (value.task) {
+                        const taskError = await saveTaskFields(client, id, value.task, req.user);
+                        if (taskError) throw new ItemInputError(taskError);
+                    }
+                    return loadItem(client, id, req.user.id);
+                }
+                if (!(await savePersonalState(client, access, req.user.id, value))) return null;
+                if (access.access === 'edit') {
+                    await client.query(
+                        'UPDATE items SET title = $2, description = $3, body = $4, color = $5, extra = $6, updated_at = NOW() WHERE id = $1',
+                        [id, value.title, value.description, value.body, value.color, value.extra]
+                    );
+                    await replaceFragments(client, id, value.fragments);
+                    await syncInlineLinks(client, id, value.body, req.user);
+                    if (value.task) {
+                        const task = { ...value.task, parentItemId: access.parent_item_id, reminders: undefined, links: undefined };
+                        const taskError = await saveTaskFields(client, id, task, { id: access.owner_user_id });
+                        if (taskError) throw new ItemInputError(taskError);
+                    }
                 }
                 return loadItem(client, id, req.user.id);
             });
             if (!item) return res.status(403).json({ error: 'Nincs jogosultságod ehhez a kategóriához.' });
-            await recordAuditEvent({ userId: req.user.id, action: 'item_updated', entityType: 'item', entityId: id, details: { type, title: item.title }, req });
+            await recordAuditEvent({ userId: req.user.id, action: 'item_updated', entityType: 'item', entityId: id, details: { type, title: item.title, ...(access.access === 'owner' ? {} : { sharedAccess: access.access }) }, req });
             res.json(item);
         } catch (err) {
             res.status(err instanceof ItemInputError ? 400 : 500).json({ error: err.message });
@@ -718,6 +782,19 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
         }
         if (!fields.length) return res.status(400).json({ error: 'Nincs módosítandó állapot.' });
         try {
+            const access = await shareAccess.itemAccess(pool, id, req.user.id);
+            if (!access) return res.status(404).json({ error: 'Not found' });
+            if (access.access !== 'owner') {
+                // A címzett a saját csillagát, rögzítését és archívumát állítja; kukába csak a tulajdonos tehet.
+                if (req.body.trashed !== undefined) return res.status(403).json({ error: 'Megosztott elemet csak a tulajdonosa törölhet. A listádból a Megosztás ablakban veheted ki.' });
+                if (!access.direct) return res.status(400).json({ error: 'Részfeladat állapota a szülőfeladattal együtt változik.' });
+                const personal = [], personalValues = [access.share_id];
+                for (const key of ['starred', 'pinned', 'archived']) {
+                    if (req.body[key] !== undefined) { personalValues.push(Boolean(req.body[key])); personal.push(`recipient_${key} = $${personalValues.length}`); }
+                }
+                await pool.query(`UPDATE shares SET ${personal.join(', ')} WHERE id = $1`, personalValues);
+                return res.json(await loadItem(pool, id, req.user.id));
+            }
             const result = await pool.query(`UPDATE items SET ${fields.join(', ')} WHERE id = $1 AND owner_user_id = $2 RETURNING id`, values);
             if (!result.rowCount) return res.status(404).json({ error: 'Not found' });
             // A részfeladatok a szülővel együtt kerülnek kukába, archívumba, és onnan vissza.
@@ -740,7 +817,8 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
         const id = parseId(req.params.id);
         if (!id) return res.status(404).json({ error: 'Not found' });
         try {
-            const result = await pool.query('UPDATE items SET use_count = use_count + 1 WHERE id = $1 AND owner_user_id = $2 RETURNING use_count', [id, req.user.id]);
+            if (!(await shareAccess.itemAccess(pool, id, req.user.id))) return res.status(404).json({ error: 'Not found' });
+            const result = await pool.query('UPDATE items SET use_count = use_count + 1 WHERE id = $1 RETURNING use_count', [id]);
             if (!result.rowCount) return res.status(404).json({ error: 'Not found' });
             res.json(result.rows[0]);
         } catch (err) {
@@ -748,11 +826,22 @@ function registerItemRoutes(app, { pool, requireAuth, recordAuditEvent, normaliz
         }
     });
 
-    /** Moves an item to the trash; permanent deletion is available for trashed items only. */
+    /**
+     * Moves an item to the trash; permanent deletion is available for trashed items only.
+     * For a recipient it removes the item from their list (their share ends), the owner's item stays.
+     */
     app.delete('/api/items/:id', requireAuth, async (req, res) => {
         const id = parseId(req.params.id);
         if (!id) return res.status(404).json({ error: 'Not found' });
         try {
+            const access = await shareAccess.itemAccess(pool, id, req.user.id);
+            if (!access) return res.status(404).json({ error: 'Not found' });
+            if (access.access !== 'owner') {
+                if (!access.direct) return res.status(403).json({ error: 'Megosztott részfeladatot csak a tulajdonosa törölhet.' });
+                await pool.query('DELETE FROM shares WHERE id = $1 AND recipient_user_id = $2', [access.share_id, req.user.id]);
+                await recordAuditEvent({ userId: req.user.id, action: 'share_left', entityType: 'share', entityId: access.share_id, details: { itemId: id }, req });
+                return res.json({ success: true, left: true });
+            }
             const result = await pool.query('UPDATE items SET trashed = TRUE, archived = FALSE WHERE id = $1 AND owner_user_id = $2 RETURNING id', [id, req.user.id]);
             if (!result.rowCount) return res.status(404).json({ error: 'Not found' });
             await pool.query('UPDATE items SET trashed = TRUE, archived = FALSE WHERE parent_item_id = $1 AND owner_user_id = $2', [id, req.user.id]);
